@@ -25,8 +25,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (!user) return;
-      // MVP: use a default workspace; will be dynamic in Phase 2
-      getLeadStats("default").then((stats) => {
+      getLeadStats(user.uid).then((stats) => {
         const activeDeals =
           (stats.byStatus["new"] || 0) +
           (stats.byStatus["contacted"] || 0) +

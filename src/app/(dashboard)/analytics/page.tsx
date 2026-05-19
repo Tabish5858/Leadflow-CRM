@@ -50,15 +50,20 @@ const DATE_RANGES = [
 ];
 
 export default function AnalyticsPage() {
-  const [workspaceId] = useState("default");
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const { leads, loading, initialize } = useLeadStore();
   const [dateRange, setDateRange] = useState(30);
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((u) => {
-      if (u) initialize(workspaceId);
+      if (u) setWorkspaceId(u.uid);
     });
     return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    initialize(workspaceId);
   }, [workspaceId, initialize]);
 
   // Filter leads by date range

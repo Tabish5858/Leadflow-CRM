@@ -30,7 +30,7 @@ import { Timestamp } from "firebase/firestore";
 import { toast } from "sonner";
 
 export default function TimeTrackerPage() {
-  const [workspaceId] = useState("default");
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [showManualForm, setShowManualForm] = useState(false);
   const [manualEntry, setManualEntry] = useState({
     leadId: "",
@@ -60,11 +60,14 @@ export default function TimeTrackerPage() {
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((u) => {
-      if (u) {
-        initialize(workspaceId);
-      }
+      if (u) setWorkspaceId(u.uid);
     });
     return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    initialize(workspaceId);
   }, [workspaceId, initialize]);
 
   // Timer tick
@@ -82,7 +85,7 @@ export default function TimeTrackerPage() {
 
   const handleStopTimer = async () => {
     const u = auth.currentUser;
-    if (!u) return;
+    if (!u || !workspaceId) return;
     const id = await stopTimer(workspaceId, u.uid);
     if (id) {
       toast.success("Time entry saved");
@@ -94,7 +97,7 @@ export default function TimeTrackerPage() {
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const u = auth.currentUser;
-    if (!u || !manualEntry.description) {
+    if (!u || !workspaceId || !manualEntry.description) {
       toast.error("Description is required");
       return;
     }

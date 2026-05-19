@@ -56,6 +56,35 @@ export default function RegisterPage() {
         lastActiveAt: Timestamp.now(),
       });
 
+      // Create default workspace
+      const workspaceId = cred.user.uid; // Use user ID as workspace ID for simplicity
+      await setDoc(doc(db, "workspaces", workspaceId), {
+        id: workspaceId,
+        name: `${formData.name}'s Workspace`,
+        logoUrl: null,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        currency: "USD",
+        dateFormat: "MM/DD/YYYY",
+        weekStart: "monday",
+        pipeline: {
+          stages: [
+            { id: "new", name: "New", color: "#3b82f6", probability: 0, order: 0 },
+            { id: "contacted", name: "Contacted", color: "#eab308", probability: 10, order: 1 },
+            { id: "qualified", name: "Qualified", color: "#f97316", probability: 25, order: 2 },
+            { id: "proposal", name: "Proposal", color: "#a855f7", probability: 50, order: 3 },
+            { id: "negotiation", name: "Negotiation", color: "#ef4444", probability: 75, order: 4 },
+            { id: "won", name: "Won", color: "#22c55e", probability: 100, order: 5 },
+            { id: "lost", name: "Lost", color: "#6b7280", probability: 0, order: 6 },
+          ],
+        },
+        customFields: [],
+        niches: [],
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+        ownerId: cred.user.uid,
+        memberIds: [cred.user.uid],
+      });
+
       toast.success("Account created successfully");
       // Use setTimeout to ensure toast renders before navigation
       setTimeout(() => {

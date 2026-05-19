@@ -53,7 +53,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function LeadsPage() {
   const [user, setUser] = useState<string | null>(null);
-  const [workspaceId] = useState("default"); // MVP: single workspace
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedLead, setSelectedLead] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -77,11 +77,16 @@ export default function LeadsPage() {
     const unsub = auth.onAuthStateChanged((u) => {
       if (u) {
         setUser(u.uid);
-        initialize(workspaceId);
-        refreshStats(workspaceId);
+        setWorkspaceId(u.uid); // Use user ID as workspace ID
       }
     });
     return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    initialize(workspaceId);
+    refreshStats(workspaceId);
   }, [workspaceId, initialize, refreshStats]);
 
   const handleDeleteSelected = async () => {
@@ -331,7 +336,7 @@ export default function LeadsPage() {
           <LeadForm
             onSuccess={handleCreateSuccess}
             userId={user || ""}
-            workspaceId={workspaceId}
+            workspaceId={workspaceId || ""}
           />
         </DialogContent>
       </Dialog>

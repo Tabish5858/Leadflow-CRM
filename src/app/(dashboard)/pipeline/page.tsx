@@ -7,17 +7,22 @@ import { KanbanBoard } from "@/components/pipeline/kanban-board";
 import { Loader2 } from "lucide-react";
 
 export default function PipelinePage() {
-  const [workspaceId] = useState("default");
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const { loading, initialize, refreshStats } = useLeadStore();
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((u) => {
       if (u) {
-        initialize(workspaceId);
-        refreshStats(workspaceId);
+        setWorkspaceId(u.uid);
       }
     });
     return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    initialize(workspaceId);
+    refreshStats(workspaceId);
   }, [workspaceId, initialize, refreshStats]);
 
   if (loading) {
