@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, query, where, getCountFromServer } from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
 import { auth } from "@/lib/firebase/client";
+import { getLeadStats } from "@/lib/firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, TrendingUp, DollarSign, Clock, Target, CheckCircle } from "lucide-react";
+import { Users, TrendingUp, DollarSign, Target } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 interface KPI {
   label: string;
@@ -20,25 +20,29 @@ export default function DashboardPage() {
     { label: "Active Deals", value: "—", icon: Target, color: "text-orange-500" },
     { label: "Pipeline Value", value: "—", icon: DollarSign, color: "text-green-500" },
     { label: "Conversion Rate", value: "—", icon: TrendingUp, color: "text-purple-500" },
-    { label: "Tasks Due", value: "—", icon: Clock, color: "text-yellow-500" },
-    { label: "Won This Month", value: "—", icon: CheckCircle, color: "text-emerald-500" },
   ]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (!user) return;
+      // MVP: use a default workspace; will be dynamic in Phase 2
+      getLeadStats("default").then((stats) => {
+        const activeDeals =
+          (stats.byStatus["new"] || 0) +
+          (stats.byStatus["contacted"] || 0) +
+          (stats.byStatus["qualified"] || 0) +
+          (stats.byStatus["proposal"] || 0) +
+          (stats.byStatus["negotiation"] || 0);
+        const won = stats.byStatus["won"] || 0;
+        const conversionRate =
+          stats.total > 0 ? Math.round((won / stats.total) * 100) : 0;
 
-      // Count leads
-      const leadsRef = collection(db, "leads");
-      const leadsQuery = query(leadsRef, where("createdBy", "==", user.uid));
-      getCountFromServer(leadsQuery).then((snapshot) => {
-        setKpis((prev) =>
-          prev.map((kpi) =>
-            kpi.label === "Total Leads"
-              ? { ...kpi, value: snapshot.data().count.toString() }
-              : kpi
-          )
-        );
+        setKpis([
+          { label: "Total Leads", value: stats.total.toString(), icon: Users, color: "text-blue-500" },
+          { label: "Active Deals", value: activeDeals.toString(), icon: Target, color: "text-orange-500" },
+          { label: "Pipeline Value", value: formatCurrency(stats.totalValue), icon: DollarSign, color: "text-green-500" },
+          { label: "Conversion Rate", value: `${conversionRate}%`, icon: TrendingUp, color: "text-purple-500" },
+        ]);
       });
     });
     return () => unsubscribe();
@@ -53,7 +57,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => (
           <Card key={kpi.label}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -77,7 +81,7 @@ export default function DashboardPage() {
             <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
             <h3 className="mt-4 text-lg font-semibold">No leads yet</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Start by adding your first lead or importing from a CSV file.
+              Start by adding your first lead to get started.
             </p>
           </div>
         </CardContent>
