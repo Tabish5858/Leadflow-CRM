@@ -15,16 +15,20 @@ import {
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useLeadStore } from "@/lib/stores/leadStore";
+import { useWorkspace } from "@/contexts/workspace-context";
 import { DEFAULT_PIPELINE_STAGES } from "@/lib/constants";
 import { KanbanColumn } from "./kanban-column";
 import { KanbanCard } from "./kanban-card";
-import type { Lead } from "@/types";
+import type { Lead, PipelineStage } from "@/types";
 import { useState } from "react";
 import { toast } from "@/components/ui/sonner";
 
 export function KanbanBoard() {
+  const { activeWorkspace } = useWorkspace();
   const { leads, updateStatus } = useLeadStore();
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+
+  const stages: PipelineStage[] = activeWorkspace?.pipeline?.stages || DEFAULT_PIPELINE_STAGES;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -57,7 +61,7 @@ export function KanbanBoard() {
     if (overId.startsWith("column-")) {
       newStatus = overId.replace("column-", "");
     }
-    // Check if dropped on a card — find that card's column
+    // Check if dropped on a card -- find that card's column
     else {
       const targetLead = leads.find((l) => l.id === overId);
       if (targetLead) {
@@ -67,7 +71,7 @@ export function KanbanBoard() {
 
     if (newStatus && newStatus !== lead.status) {
       updateStatus(leadId, newStatus);
-      const stageName = DEFAULT_PIPELINE_STAGES.find((s) => s.id === newStatus)?.name;
+      const stageName = stages.find((s) => s.id === newStatus)?.name;
       toast.success(`Moved ${lead.firstName} ${lead.lastName} to ${stageName}`);
     }
   };
@@ -78,7 +82,7 @@ export function KanbanBoard() {
 
   // Group leads by status
   const leadsByStatus: Record<string, Lead[]> = {};
-  for (const stage of DEFAULT_PIPELINE_STAGES) {
+  for (const stage of stages) {
     leadsByStatus[stage.id] = leads.filter((l) => l.status === stage.id);
   }
 
@@ -92,10 +96,10 @@ export function KanbanBoard() {
     >
       <div className="flex gap-4 overflow-x-auto pb-4">
         <SortableContext
-          items={DEFAULT_PIPELINE_STAGES.map((s) => `column-${s.id}`)}
+          items={stages.map((s) => `column-${s.id}`)}
           strategy={horizontalListSortingStrategy}
         >
-          {DEFAULT_PIPELINE_STAGES.map((stage) => (
+          {stages.map((stage) => (
             <KanbanColumn
               key={stage.id}
               stage={stage}

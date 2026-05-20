@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { cn, formatDate, formatCurrency, getInitials } from "@/lib/utils";
 import { DEFAULT_PIPELINE_STAGES } from "@/lib/constants";
+import type { PipelineStage } from "@/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -83,6 +84,8 @@ export default function LeadsPage() {
     initialize,
     refreshStats,
   } = useLeadStore();
+
+  const stages: PipelineStage[] = activeWorkspace?.pipeline?.stages || DEFAULT_PIPELINE_STAGES;
 
   useEffect(() => {
     if (!activeWorkspace) return;
@@ -151,7 +154,7 @@ export default function LeadsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            {DEFAULT_PIPELINE_STAGES.map((stage) => (
+            {stages.map((stage) => (
               <SelectItem key={stage.id} value={stage.id}>
                 {stage.name}
               </SelectItem>
@@ -308,7 +311,7 @@ export default function LeadsPage() {
                             <ExternalLink className="mr-2 h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
-                          {DEFAULT_PIPELINE_STAGES.filter(
+                          {stages.filter(
                             (s) => s.id !== lead.status
                           ).map((stage) => (
                             <DropdownMenuItem
