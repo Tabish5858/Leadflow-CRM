@@ -40,10 +40,12 @@ import {
   Shield,
   Crown,
   MoreHorizontal,
+  KanbanSquare,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import {
   updateWorkspaceName,
+  updateWorkspace,
   getWorkspaceMembers,
   removeMemberFromWorkspace,
   leaveWorkspace,
@@ -51,7 +53,9 @@ import {
   regenerateInviteCode,
   createInvite,
 } from "@/lib/firebase/workspaces";
-import type { WorkspaceMember } from "@/types";
+import type { WorkspaceMember, PipelineStage } from "@/types";
+import { PipelineEditor } from "@/components/settings/pipeline-editor";
+import { useLeadStore } from "@/lib/stores/leadStore";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,7 +63,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type Tab = "workspace" | "members" | "preferences";
+type Tab = "workspace" | "members" | "pipeline" | "preferences";
 
 export default function SettingsPage() {
   const { user, activeWorkspace, workspaces, switchWorkspace, refreshWorkspaces } = useWorkspace();
@@ -79,11 +83,15 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
 
   const isOwner = activeWorkspace?.ownerId === user?.id;
+  const { stats, refreshStats } = useLeadStore();
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
+  const [savingPipeline, setSavingPipeline] = useState(false);
 
   useEffect(() => {
     if (activeWorkspace) {
       setWorkspaceName(activeWorkspace.name);
       setInviteCode(activeWorkspace.inviteCode || "");
+      setPipelineStages(activeWorkspace.pipeline?.stages || []);
     }
   }, [activeWorkspace]);
 
@@ -95,7 +103,10 @@ export default function SettingsPage() {
         .catch(() => toast.error("Failed to load members"))
         .finally(() => setLoadingMembers(false));
     }
-  }, [activeTab, activeWorkspace]);
+    if (activeTab === "pipeline" && activeWorkspace) {
+      refreshStats(activeWorkspace.id);
+    }
+  }, [activeTab, activeWorkspace, refreshStats]);
 
   const handleSaveName = async () => {
     if (!activeWorkspace) return;
@@ -206,6 +217,22 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSavePipeline = async (stages: PipelineStage[]) => {
+    if (!activeWorkspace) return;
+    setSavingPipeline(true);
+    try {
+      await updateWorkspace(activeWorkspace.id, {
+        pipeline: { stages },
+      });
+      setPipelineStages(stages);
+      refreshWorkspaces();
+    } catch {
+      toast.error("Failed to save pipeline stages");
+    } finally {
+      setSavingPipeline(false);
+    }
+  };
+
   if (!activeWorkspace) {
     return (
       <div className="space-y-6">
@@ -220,6 +247,7 @@ export default function SettingsPage() {
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "workspace", label: "Workspace", icon: <Building2 className="h-4 w-4" /> },
     { id: "members", label: "Members", icon: <Users className="h-4 w-4" /> },
+    { id: "pipeline", label: "Pipeline", icon: <KanbanSquare className="h-4 w-4" /> },
     { id: "preferences", label: "Preferences", icon: <Shield className="h-4 w-4" /> },
   ];
 
@@ -468,6 +496,17 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Pipeline Tab */}
+      {activeTab === "pipeline" && (
+        <div className="space-y-6">
+          <PipelineEditor
+            stages={pipelineStages}
+            leadCounts={stats.byStatus}
+            onSave={handleSavePipeline}
+          />
         </div>
       )}
 

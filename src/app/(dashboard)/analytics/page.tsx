@@ -30,6 +30,7 @@ import {
   Bar,
 } from "recharts";
 import { DEFAULT_PIPELINE_STAGES, LEAD_SOURCES } from "@/lib/constants";
+import type { PipelineStage } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { TrendingUp, Users, DollarSign, Target } from "lucide-react";
 
@@ -61,6 +62,8 @@ export default function AnalyticsPage() {
   const { leads, loading, initialize } = useLeadStore();
   const [dateRange, setDateRange] = useState(30);
 
+  const stages: PipelineStage[] = activeWorkspace?.pipeline?.stages || DEFAULT_PIPELINE_STAGES;
+
   useEffect(() => {
     if (!activeWorkspace) return;
     initialize(activeWorkspace.id);
@@ -84,14 +87,14 @@ export default function AnalyticsPage() {
     .map(([date, count]) => ({ date, leads: count }));
 
   // Pipeline distribution
-  const pipelineData = DEFAULT_PIPELINE_STAGES.map((stage) => ({
+  const pipelineData = stages.map((stage) => ({
     name: stage.name,
     value: filteredLeads.filter((l) => l.status === stage.id).length,
     color: stage.color,
   })).filter((d) => d.value > 0);
 
   // Revenue by stage
-  const revenueData = DEFAULT_PIPELINE_STAGES.map((stage) => ({
+  const revenueData = stages.map((stage) => ({
     name: stage.name,
     value: filteredLeads
       .filter((l) => l.status === stage.id)
