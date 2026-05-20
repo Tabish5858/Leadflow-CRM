@@ -33,6 +33,8 @@ export function KanbanCard({ lead, isDragging }: KanbanCardProps) {
 
   return (
     <div
+      {...attributes}
+      {...listeners}
       ref={setNodeRef}
       style={style}
       className={cn(
@@ -42,11 +44,7 @@ export function KanbanCard({ lead, isDragging }: KanbanCardProps) {
     >
       {/* Header */}
       <div className="flex items-start gap-2">
-        <div
-          {...attributes}
-          {...listeners}
-          className="mt-0.5 cursor-grab text-muted-foreground opacity-0 transition-opacity group-hover:opacity-60"
-        >
+        <div className="mt-0.5 cursor-grab text-muted-foreground opacity-0 transition-opacity group-hover:opacity-60">
           <GripVertical className="h-3.5 w-3.5" />
         </div>
         <div className="flex-1 space-y-2">
