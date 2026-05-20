@@ -16,6 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PageHeader } from "@/components/shared/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Play,
   Square,
@@ -23,11 +26,10 @@ import {
   Plus,
   Trash2,
   Clock,
-  Loader2,
 } from "lucide-react";
 import { formatDuration, formatDate } from "@/lib/utils";
 import { Timestamp } from "firebase/firestore";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 export default function TimeTrackerPage() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
@@ -113,7 +115,9 @@ export default function TimeTrackerPage() {
 
     const date = new Date(manualEntry.date);
     const startTime = Timestamp.fromDate(date);
-    const endTime = Timestamp.fromDate(new Date(date.getTime() + duration * 1000));
+    const endTime = Timestamp.fromDate(
+      new Date(date.getTime() + duration * 1000)
+    );
 
     await addManualEntry(workspaceId, u.uid, {
       leadId: manualEntry.leadId || null,
@@ -145,36 +149,70 @@ export default function TimeTrackerPage() {
   // Group entries by date
   const groupedEntries: Record<string, typeof entries> = {};
   for (const entry of entries) {
-    const dateStr = entry.startTime?.toDate().toLocaleDateString() || "Unknown";
+    const dateStr =
+      entry.startTime?.toDate().toLocaleDateString() || "Unknown";
     if (!groupedEntries[dateStr]) groupedEntries[dateStr] = [];
     groupedEntries[dateStr].push(entry);
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Time Tracker</h2>
-          <p className="text-muted-foreground">
-            Track time spent on leads and tasks.
-          </p>
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <div className="h-8 w-40 skeleton rounded-md" />
+          <div className="h-4 w-56 skeleton rounded-md" />
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            Total: {formatDuration(totalSeconds)}
-          </span>
-          <Button variant="outline" size="sm" onClick={() => setShowManualForm(!showManualForm)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Manual Entry
-          </Button>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-24" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-4">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 w-24" />
+            </div>
+          </CardContent>
+        </Card>
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-lg border p-4 space-y-2">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-3 w-56" />
+            </div>
+          ))}
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Time Tracker"
+        description="Track time spent on leads and tasks."
+        actions={
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">
+              Total: {formatDuration(totalSeconds)}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowManualForm(!showManualForm)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Manual Entry
+            </Button>
+          </div>
+        }
+      />
 
       {/* Timer Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Clock className="h-5 w-5" />
+      <Card className="border-primary/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Clock className="h-4 w-4 text-primary" />
             Timer
           </CardTitle>
         </CardHeader>
@@ -225,17 +263,27 @@ export default function TimeTrackerPage() {
             </div>
             <div className="flex items-center gap-2">
               <div className="min-w-[100px] text-center">
-                <span className="text-3xl font-mono font-bold tabular-nums">
+                <span
+                  className={cn(
+                    "text-3xl font-mono font-bold tabular-nums",
+                    timer.isRunning && "text-primary"
+                  )}
+                >
                   {String(Math.floor(displayElapsed / 3600)).padStart(2, "0")}:
-                  {String(Math.floor((displayElapsed % 3600) / 60)).padStart(2, "0")}:
-                  {String(displayElapsed % 60).padStart(2, "0")}
+                  {String(Math.floor((displayElapsed % 3600) / 60)).padStart(
+                    2,
+                    "0"
+                  )}
+                  :{String(displayElapsed % 60).padStart(2, "0")}
                 </span>
               </div>
               {!timer.isRunning ? (
                 <Button
                   size="icon"
-                  className="h-10 w-10 bg-green-600 hover:bg-green-700"
-                  onClick={() => startTimer(timer.leadId || undefined, timer.description)}
+                  className="h-10 w-10 bg-success hover:bg-success/90"
+                  onClick={() =>
+                    startTimer(timer.leadId || undefined, timer.description)
+                  }
                 >
                   <Play className="h-4 w-4" />
                 </Button>
@@ -268,7 +316,7 @@ export default function TimeTrackerPage() {
       {showManualForm && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Add Time Entry</CardTitle>
+            <CardTitle className="text-base">Add Time Entry</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleManualSubmit} className="space-y-4">
@@ -310,7 +358,10 @@ export default function TimeTrackerPage() {
                   placeholder="What did you work on?"
                   value={manualEntry.description}
                   onChange={(e) =>
-                    setManualEntry({ ...manualEntry, description: e.target.value })
+                    setManualEntry({
+                      ...manualEntry,
+                      description: e.target.value,
+                    })
                   }
                 />
               </div>
@@ -334,7 +385,10 @@ export default function TimeTrackerPage() {
                     max="59"
                     value={manualEntry.minutes}
                     onChange={(e) =>
-                      setManualEntry({ ...manualEntry, minutes: e.target.value })
+                      setManualEntry({
+                        ...manualEntry,
+                        minutes: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -366,29 +420,19 @@ export default function TimeTrackerPage() {
 
       {/* Time Entries */}
       <div className="space-y-4">
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : Object.keys(groupedEntries).length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Clock className="mx-auto h-12 w-12 text-muted-foreground/50" />
-              <h3 className="mt-4 text-lg font-semibold">No time entries</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Start the timer or add a manual entry to track your time.
-              </p>
-            </CardContent>
-          </Card>
+        {Object.keys(groupedEntries).length === 0 ? (
+          <EmptyState
+            icon={<Clock className="h-6 w-6" />}
+            title="No time entries"
+            description="Start the timer or add a manual entry to track your time."
+          />
         ) : (
           Object.entries(groupedEntries).map(([date, dayEntries]) => {
             const dayTotal = dayEntries.reduce((s, e) => s + e.duration, 0);
             return (
               <Card key={date}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 py-3">
-                  <CardTitle className="text-sm font-medium">
-                    {date}
-                  </CardTitle>
+                  <CardTitle className="text-sm font-medium">{date}</CardTitle>
                   <span className="text-sm font-mono text-muted-foreground">
                     {formatDuration(dayTotal)}
                   </span>
@@ -399,7 +443,7 @@ export default function TimeTrackerPage() {
                     return (
                       <div
                         key={entry.id}
-                        className="flex items-center justify-between rounded-md border p-3"
+                        className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/30"
                       >
                         <div className="flex-1">
                           <p className="text-sm font-medium">
@@ -413,10 +457,12 @@ export default function TimeTrackerPage() {
                           )}
                           <p className="text-xs text-muted-foreground">
                             {formatDate(entry.startTime?.toDate())} ·{" "}
-                            {entry.startTime?.toDate().toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {entry.startTime
+                              ?.toDate()
+                              .toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
@@ -425,7 +471,7 @@ export default function TimeTrackerPage() {
                               {formatDuration(entry.duration)}
                             </p>
                             {entry.billable && (
-                              <span className="text-xs text-green-600 dark:text-green-400">
+                              <span className="text-xs font-medium text-success">
                                 Billable
                               </span>
                             )}
@@ -450,4 +496,8 @@ export default function TimeTrackerPage() {
       </div>
     </div>
   );
+}
+
+function cn(...classes: (string | boolean | undefined | null)[]) {
+  return classes.filter(Boolean).join(" ");
 }

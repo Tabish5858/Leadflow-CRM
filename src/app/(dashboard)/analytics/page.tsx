@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { auth } from "@/lib/firebase/client";
 import { useLeadStore } from "@/lib/stores/leadStore";
+import { StatCard } from "@/components/shared/stat-card";
+import { SkeletonCardGrid } from "@/components/skeletons/skeleton-card";
+import { SkeletonChartGrid } from "@/components/skeletons/skeleton-chart";
+import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -27,19 +31,17 @@ import {
 } from "recharts";
 import { DEFAULT_PIPELINE_STAGES, LEAD_SOURCES } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
-import { Loader2, TrendingUp, Users, DollarSign, Target } from "lucide-react";
+import { TrendingUp, Users, DollarSign, Target } from "lucide-react";
 
 const COLORS = [
-  "#3b82f6",
-  "#eab308",
-  "#f97316",
-  "#a855f7",
-  "#ef4444",
-  "#22c55e",
-  "#6b7280",
-  "#06b6d4",
-  "#8b5cf6",
-  "#ec4899",
+  "hsl(212 72% 58%)",
+  "hsl(270 60% 62%)",
+  "hsl(24 94% 58%)",
+  "hsl(152 55% 42%)",
+  "hsl(0 63% 45%)",
+  "hsl(38 92% 50%)",
+  "hsl(215 16% 60%)",
+  "hsl(190 70% 45%)",
 ];
 
 const DATE_RANGES = [
@@ -48,6 +50,11 @@ const DATE_RANGES = [
   { label: "Last 90 days", days: 90 },
   { label: "All time", days: 365 },
 ];
+
+const CHART_COLORS = {
+  line: "hsl(24 94% 58%)",
+  bar: "hsl(152 55% 42%)",
+};
 
 export default function AnalyticsPage() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
@@ -107,84 +114,82 @@ export default function AnalyticsPage() {
   // KPIs
   const totalLeads = filteredLeads.length;
   const wonLeads = filteredLeads.filter((l) => l.status === "won").length;
-  const conversionRate = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0;
-  const totalValue = filteredLeads.reduce((sum, l) => sum + (l.value || 0), 0);
+  const conversionRate =
+    totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0;
+  const totalValue = filteredLeads.reduce(
+    (sum, l) => sum + (l.value || 0),
+    0
+  );
   const activeDeals = filteredLeads.filter(
     (l) => !["won", "lost"].includes(l.status)
   ).length;
 
   if (loading) {
     return (
-      <div className="flex h-[calc(100vh-8rem)] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <div className="h-8 w-32 skeleton rounded-md" />
+            <div className="h-4 w-48 skeleton rounded-md" />
+          </div>
+          <div className="h-10 w-[180px] skeleton rounded-md" />
+        </div>
+        <SkeletonCardGrid count={4} />
+        <SkeletonChartGrid />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Analytics</h2>
-          <p className="text-muted-foreground">
-            Insights into your CRM performance.
-          </p>
-        </div>
-        <Select
-          value={dateRange.toString()}
-          onValueChange={(v) => setDateRange(parseInt(v))}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {DATE_RANGES.map((range) => (
-              <SelectItem key={range.days} value={range.days.toString()}>
-                {range.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <PageHeader
+        title="Analytics"
+        description="Insights into your CRM performance."
+        actions={
+          <Select
+            value={dateRange.toString()}
+            onValueChange={(v) => setDateRange(parseInt(v))}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DATE_RANGES.map((range) => (
+                <SelectItem key={range.days} value={range.days.toString()}>
+                  {range.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
-            <Users className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalLeads}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Deals</CardTitle>
-            <Target className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeDeals}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pipeline Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{conversionRate}%</div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total Leads"
+          value={totalLeads}
+          icon={<Users className="h-5 w-5" />}
+          accentColor="info"
+        />
+        <StatCard
+          title="Active Deals"
+          value={activeDeals}
+          icon={<Target className="h-5 w-5" />}
+          accentColor="primary"
+        />
+        <StatCard
+          title="Pipeline Value"
+          value={formatCurrency(totalValue)}
+          icon={<DollarSign className="h-5 w-5" />}
+          accentColor="success"
+        />
+        <StatCard
+          title="Win Rate"
+          value={`${conversionRate}%`}
+          icon={<TrendingUp className="h-5 w-5" />}
+          accentColor="warning"
+        />
       </div>
 
       {/* Charts */}
@@ -198,21 +203,41 @@ export default function AnalyticsPage() {
             {leadsOverTimeData.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={leadsOverTimeData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-muted/30"
+                  />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      boxShadow: "var(--shadow-elevated)",
+                    }}
+                  />
                   <Line
                     type="monotone"
                     dataKey="leads"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
+                    stroke={CHART_COLORS.line}
+                    strokeWidth={2.5}
+                    dot={{ r: 3, fill: CHART_COLORS.line }}
+                    activeDot={{ r: 5 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-[250px] items-center justify-center text-muted-foreground">
+              <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
                 No data for this period
               </div>
             )}
@@ -239,14 +264,24 @@ export default function AnalyticsPage() {
                     label={({ name, value }) => `${name}: ${value}`}
                   >
                     {pipelineData.map((entry, index) => (
-                      <Cell key={index} fill={entry.color} />
+                      <Cell
+                        key={index}
+                        fill={COLORS[index % COLORS.length]}
+                      />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      boxShadow: "var(--shadow-elevated)",
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-[250px] items-center justify-center text-muted-foreground">
+              <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
                 No data for this period
               </div>
             )}
@@ -262,17 +297,39 @@ export default function AnalyticsPage() {
             {revenueData.length > 0 ? (
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-muted/30"
+                  />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
                   <Tooltip
                     formatter={(value: number) => formatCurrency(value)}
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      boxShadow: "var(--shadow-elevated)",
+                    }}
                   />
-                  <Bar dataKey="value" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    dataKey="value"
+                    fill={CHART_COLORS.bar}
+                    radius={[6, 6, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-[250px] items-center justify-center text-muted-foreground">
+              <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
                 No data for this period
               </div>
             )}
@@ -299,14 +356,24 @@ export default function AnalyticsPage() {
                     label={({ name, value }) => `${name}: ${value}`}
                   >
                     {sourceData.map((entry, index) => (
-                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                      <Cell
+                        key={index}
+                        fill={COLORS[index % COLORS.length]}
+                      />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      boxShadow: "var(--shadow-elevated)",
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-[250px] items-center justify-center text-muted-foreground">
+              <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
                 No data for this period
               </div>
             )}

@@ -20,7 +20,7 @@ import { KanbanColumn } from "./kanban-column";
 import { KanbanCard } from "./kanban-card";
 import type { Lead } from "@/types";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 export function KanbanBoard() {
   const { leads, updateStatus } = useLeadStore();

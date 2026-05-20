@@ -6,6 +6,7 @@ import type { Lead } from "@/types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -15,7 +16,8 @@ import {
 } from "@/components/ui/select";
 import { useLeadStore } from "@/lib/stores/leadStore";
 import { DEFAULT_PIPELINE_STAGES } from "@/lib/constants";
-import { cn, formatDate, formatCurrency, getInitials } from "@/lib/utils";
+import { formatCurrency, getInitials } from "@/lib/utils";
+import { StatusBadge } from "@/components/shared/status-badge";
 import {
   Mail,
   Phone,
@@ -24,12 +26,60 @@ import {
   Linkedin,
   MapPin,
   DollarSign,
-  Loader2,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
+
+type LeadStatusType =
+  | "New"
+  | "Contacted"
+  | "Qualified"
+  | "Proposal"
+  | "Negotiation"
+  | "Won"
+  | "Lost";
+
+const statusLabelMap: Record<string, LeadStatusType> = {
+  new: "New",
+  contacted: "Contacted",
+  qualified: "Qualified",
+  proposal: "Proposal",
+  negotiation: "Negotiation",
+  won: "Won",
+  lost: "Lost",
+};
 
 interface LeadDetailProps {
   leadId: string;
+}
+
+function LeadDetailSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start gap-4">
+        <Skeleton className="h-16 w-16 rounded-full" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="h-4 w-32" />
+          <div className="flex gap-2">
+            <Skeleton className="h-5 w-20 rounded-full" />
+            <Skeleton className="h-5 w-24 rounded-full" />
+          </div>
+        </div>
+      </div>
+      <Separator />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="h-4 w-4" />
+            <div className="space-y-1">
+              <Skeleton className="h-3 w-12" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function LeadDetail({ leadId }: LeadDetailProps) {
@@ -39,66 +89,59 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
 
   useEffect(() => {
     setLoading(true);
-    getLead(leadId).then((data) => {
-      setLead(data);
-      setLoading(false);
-    });
+    getLead(leadId)
+      .then((data) => {
+        setLead(data);
+      })
+      .finally(() => setLoading(false));
   }, [leadId]);
 
   const handleStatusChange = (status: string) => {
     if (!lead) return;
     updateStatus(lead.id, status);
     setLead({ ...lead, status });
-    toast.success(`Moved to ${DEFAULT_PIPELINE_STAGES.find((s) => s.id === status)?.name}`);
+    const stageName = DEFAULT_PIPELINE_STAGES.find(
+      (s) => s.id === status
+    )?.name;
+    toast.success(`Moved to ${stageName}`);
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <LeadDetailSkeleton />;
   }
 
   if (!lead) {
-    return <p className="text-center text-muted-foreground py-12">Lead not found</p>;
+    return (
+      <p className="text-center text-muted-foreground py-12">
+        Lead not found
+      </p>
+    );
   }
-
-  const statusStage = DEFAULT_PIPELINE_STAGES.find((s) => s.id === lead.status);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <Avatar className="h-16 w-16">
-          <AvatarFallback className="text-lg">
+        <Avatar className="h-16 w-16 border">
+          <AvatarFallback className="text-lg bg-primary/10 text-primary font-semibold">
             {getInitials(`${lead.firstName} ${lead.lastName}`)}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <h2 className="text-xl font-bold">
+          <h2 className="text-xl font-bold tracking-tight">
             {lead.firstName} {lead.lastName}
           </h2>
           {lead.jobTitle && (
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {lead.jobTitle} {lead.company ? `at ${lead.company}` : ""}
             </p>
           )}
           <div className="flex items-center gap-2 mt-2">
-            <Badge
-              variant="secondary"
-              className={cn(
-                statusStage?.id === "won"
-                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                  : statusStage?.id === "lost"
-                  ? "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-                  : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-              )}
-            >
-              {statusStage?.name || lead.status}
-            </Badge>
+            <StatusBadge
+              status={statusLabelMap[lead.status] ?? "New"}
+            />
             {lead.value && (
-              <Badge variant="outline">
+              <Badge variant="outline" className="font-medium">
                 {formatCurrency(lead.value, lead.currency)}
               </Badge>
             )}
@@ -129,86 +172,43 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
 
       {/* Contact Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="flex items-center gap-3">
-          <Mail className="h-4 w-4 text-muted-foreground" />
-          <div>
-            <p className="text-xs text-muted-foreground">Email</p>
-            <p className="text-sm font-medium">{lead.email}</p>
-          </div>
-        </div>
+        <InfoItem icon={<Mail className="h-4 w-4" />} label="Email" value={lead.email} />
         {lead.phone && (
-          <div className="flex items-center gap-3">
-            <Phone className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">Phone</p>
-              <p className="text-sm font-medium">{lead.phone}</p>
-            </div>
-          </div>
+          <InfoItem icon={<Phone className="h-4 w-4" />} label="Phone" value={lead.phone} />
         )}
         {lead.company && (
-          <div className="flex items-center gap-3">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">Company</p>
-              <p className="text-sm font-medium">{lead.company}</p>
-            </div>
-          </div>
+          <InfoItem icon={<Building2 className="h-4 w-4" />} label="Company" value={lead.company} />
         )}
         {lead.website && (
-          <div className="flex items-center gap-3">
-            <Globe className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">Website</p>
-              <a
-                href={lead.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-medium text-primary hover:underline"
-              >
-                {lead.website}
-              </a>
-            </div>
-          </div>
+          <InfoItem
+            icon={<Globe className="h-4 w-4" />}
+            label="Website"
+            value={lead.website}
+            isLink
+          />
         )}
         {lead.linkedin && (
-          <div className="flex items-center gap-3">
-            <Linkedin className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">LinkedIn</p>
-              <a
-                href={lead.linkedin}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-medium text-primary hover:underline"
-              >
-                Profile
-              </a>
-            </div>
-          </div>
+          <InfoItem
+            icon={<Linkedin className="h-4 w-4" />}
+            label="LinkedIn"
+            value="Profile"
+            href={lead.linkedin}
+            isLink
+          />
         )}
         {(lead.city || lead.country) && (
-          <div className="flex items-center gap-3">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">Location</p>
-              <p className="text-sm font-medium">
-                {lead.city}
-                {lead.city && lead.country ? ", " : ""}
-                {lead.country}
-              </p>
-            </div>
-          </div>
+          <InfoItem
+            icon={<MapPin className="h-4 w-4" />}
+            label="Location"
+            value={`${lead.city}${lead.city && lead.country ? ", " : ""}${lead.country}`}
+          />
         )}
         {lead.value && (
-          <div className="flex items-center gap-3">
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-xs text-muted-foreground">Deal Value</p>
-              <p className="text-sm font-medium">
-                {formatCurrency(lead.value, lead.currency)}
-              </p>
-            </div>
-          </div>
+          <InfoItem
+            icon={<DollarSign className="h-4 w-4" />}
+            label="Deal Value"
+            value={formatCurrency(lead.value, lead.currency)}
+          />
         )}
       </div>
 
@@ -218,7 +218,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           <Separator />
           <div>
             <h3 className="text-sm font-medium mb-2">Notes</h3>
-            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap rounded-lg bg-muted/30 p-3">
               {lead.notes}
             </p>
           </div>
@@ -245,8 +245,59 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
       {/* Metadata */}
       <Separator />
       <div className="text-xs text-muted-foreground space-y-1">
-        <p>Created: {formatDate(lead.createdAt?.toDate())}</p>
-        <p>Updated: {formatDate(lead.updatedAt?.toDate())}</p>
+        <p>
+          Created:{" "}
+          {lead.createdAt?.toDate().toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </p>
+        <p>
+          Updated:{" "}
+          {lead.updatedAt?.toDate().toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function InfoItem({
+  icon,
+  label,
+  value,
+  href,
+  isLink,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  href?: string;
+  isLink?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+        {icon}
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        {isLink ? (
+          <a
+            href={href ?? value}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            {value}
+          </a>
+        ) : (
+          <p className="text-sm font-medium">{value}</p>
+        )}
       </div>
     </div>
   );

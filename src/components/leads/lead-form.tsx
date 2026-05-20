@@ -15,9 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DEFAULT_PIPELINE_STAGES, LEAD_SOURCES, NICHES } from "@/lib/constants";
-import { Loader2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 interface LeadFormProps {
   onSuccess: () => void;
@@ -223,8 +222,7 @@ export function LeadForm({ onSuccess, userId, workspaceId, defaultValues }: Lead
           Cancel
         </Button>
         <Button type="submit" disabled={submitting}>
-          {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Create Lead
+          {submitting ? "Creating..." : "Create Lead"}
         </Button>
       </div>
     </form>

@@ -36,8 +36,8 @@ export function KanbanCard({ lead, isDragging }: KanbanCardProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group rounded-md border bg-card p-3 shadow-sm transition-shadow hover:shadow-md cursor-grab active:cursor-grabbing",
-        dragging && "shadow-lg ring-2 ring-primary ring-offset-2"
+        "group rounded-lg border bg-card p-3 shadow-sm transition-all hover:shadow-md hover:border-primary/20 cursor-grab active:cursor-grabbing",
+        dragging && "shadow-lg ring-2 ring-primary/30 ring-offset-2 ring-offset-background"
       )}
     >
       {/* Header */}
@@ -45,14 +45,14 @@ export function KanbanCard({ lead, isDragging }: KanbanCardProps) {
         <div
           {...attributes}
           {...listeners}
-          className="mt-1 cursor-grab text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+          className="mt-0.5 cursor-grab text-muted-foreground opacity-0 transition-opacity group-hover:opacity-60"
         >
-          <GripVertical className="h-4 w-4" />
+          <GripVertical className="h-3.5 w-3.5" />
         </div>
         <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2">
-            <Avatar className="h-7 w-7">
-              <AvatarFallback className="text-[10px]">
+            <Avatar className="h-7 w-7 border">
+              <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-medium">
                 {getInitials(`${lead.firstName} ${lead.lastName}`)}
               </AvatarFallback>
             </Avatar>
@@ -62,7 +62,7 @@ export function KanbanCard({ lead, isDragging }: KanbanCardProps) {
               </p>
               {lead.company && (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Building2 className="h-3 w-3" />
+                  <Building2 className="h-3 w-3 shrink-0" />
                   <span className="truncate">{lead.company}</span>
                 </div>
               )}
@@ -71,7 +71,7 @@ export function KanbanCard({ lead, isDragging }: KanbanCardProps) {
 
           {/* Value */}
           {lead.value && lead.value > 0 && (
-            <div className="flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
+            <div className="flex items-center gap-1 text-xs font-semibold text-success">
               <DollarSign className="h-3 w-3" />
               {formatCurrency(lead.value, lead.currency)}
             </div>
@@ -81,7 +81,11 @@ export function KanbanCard({ lead, isDragging }: KanbanCardProps) {
           {lead.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {lead.tags.slice(0, 2).map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0">
+                <Badge
+                  key={tag}
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0"
+                >
                   {tag}
                 </Badge>
               ))}

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   LayoutDashboard,
   Users,
@@ -22,9 +23,9 @@ import {
   Settings,
   Zap,
   LogOut,
-  Loader2,
   Moon,
   Sun,
+  ChevronRight,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -38,6 +39,36 @@ const navItems = [
   { href: "/automations", label: "Automations", icon: Zap },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
+
+function SidebarSkeleton() {
+  return (
+    <aside className="flex w-64 flex-col border-r bg-card">
+      <div className="flex h-16 items-center gap-3 px-6">
+        <Skeleton className="h-8 w-8 rounded-lg" />
+        <Skeleton className="h-5 w-24" />
+      </div>
+      <Separator />
+      <nav className="flex-1 space-y-1 p-3">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-md px-3 py-2">
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+        ))}
+      </nav>
+      <Separator />
+      <div className="p-3 space-y-2">
+        <div className="flex items-center gap-3 px-3 py-2">
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <div className="flex-1 space-y-1">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -76,10 +107,23 @@ export default function DashboardLayout({
     router.push("/login");
   };
 
+  const currentPage = navItems.find((item) => item.href === pathname);
+
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex h-screen">
+        <SidebarSkeleton />
+        <main className="flex-1 overflow-auto">
+          <div className="p-6 space-y-6">
+            <Skeleton className="h-8 w-48" />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-32 w-full" />
+              ))}
+            </div>
+            <Skeleton className="h-96 w-full" />
+          </div>
+        </main>
       </div>
     );
   }
@@ -88,14 +132,18 @@ export default function DashboardLayout({
     <div className="flex h-screen">
       {/* Sidebar */}
       <aside className="flex w-64 flex-col border-r bg-card">
-        <div className="flex h-16 items-center gap-2 px-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
+        {/* Logo */}
+        <div className="flex h-16 items-center gap-3 px-6">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-sm shadow-sm">
             LF
           </div>
-          <span className="text-lg font-bold">LeadFlow</span>
+          <span className="text-lg font-bold tracking-tight">LeadFlow</span>
         </div>
+
         <Separator />
-        <nav className="flex-1 space-y-1 p-3">
+
+        {/* Navigation */}
+        <nav className="flex-1 space-y-0.5 p-3">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -103,23 +151,30 @@ export default function DashboardLayout({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all",
                   isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                 )}
               >
-                <item.icon className="h-4 w-4" />
-                {item.label}
+                <item.icon className="h-4 w-4 shrink-0" />
+                <span className="flex-1">{item.label}</span>
+                {isActive && (
+                  <ChevronRight className="h-3.5 w-3.5 text-primary" />
+                )}
               </Link>
             );
           })}
         </nav>
+
         <Separator />
-        <div className="p-3 space-y-2">
+
+        {/* Footer */}
+        <div className="p-3 space-y-1">
+          {/* Theme Toggle */}
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
           >
             {theme === "dark" ? (
               <Sun className="h-4 w-4" />
@@ -128,10 +183,12 @@ export default function DashboardLayout({
             )}
             {theme === "dark" ? "Light Mode" : "Dark Mode"}
           </button>
-          <div className="flex items-center gap-3 px-3 py-2">
-            <Avatar className="h-8 w-8">
+
+          {/* User Info */}
+          <div className="flex items-center gap-3 rounded-md px-3 py-2">
+            <Avatar className="h-8 w-8 border">
               <AvatarImage src={user?.photoURL || undefined} />
-              <AvatarFallback>
+              <AvatarFallback className="text-xs bg-primary/10 text-primary">
                 {user?.displayName?.charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>
@@ -144,10 +201,12 @@ export default function DashboardLayout({
               </p>
             </div>
           </div>
+
+          {/* Sign Out */}
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-3 text-muted-foreground"
+            className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4" />
@@ -157,14 +216,30 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background px-6">
-          <h1 className="text-xl font-semibold">
-            {navItems.find((item) => item.href === pathname)?.label ||
-              "Dashboard"}
-          </h1>
+      <main className="flex flex-1 flex-col overflow-hidden">
+        {/* Header */}
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between border-b bg-background/80 px-6 backdrop-blur-sm">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>LeadFlow</span>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="font-medium text-foreground">
+              {currentPage?.label || "Dashboard"}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Avatar className="h-8 w-8 border sm:hidden">
+              <AvatarImage src={user?.photoURL || undefined} />
+              <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                {user?.displayName?.charAt(0) || "U"}
+              </AvatarFallback>
+            </Avatar>
+          </div>
         </header>
-        <div className="p-6">{children}</div>
+
+        {/* Page Content */}
+        <div className="flex-1 overflow-auto">
+          <div className="p-6 page-enter">{children}</div>
+        </div>
       </main>
     </div>
   );

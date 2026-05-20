@@ -8,9 +8,8 @@ import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "@/components/ui/sonner";
 
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
@@ -20,8 +19,12 @@ export default function RegisterPage() {
     password: "",
   });
 
-  const handleRegister = async (e?: React.FormEvent | React.MouseEvent) => {
-    if (e) e.preventDefault();
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.email || !formData.password) {
+      toast.error("Please fill in all fields");
+      return;
+    }
     if (formData.password.length < 8) {
       toast.error("Password must be at least 8 characters");
       return;
@@ -57,7 +60,7 @@ export default function RegisterPage() {
       });
 
       // Create default workspace
-      const workspaceId = cred.user.uid; // Use user ID as workspace ID for simplicity
+      const workspaceId = cred.user.uid;
       await setDoc(doc(db, "workspaces", workspaceId), {
         id: workspaceId,
         name: `${formData.name}'s Workspace`,
@@ -86,83 +89,140 @@ export default function RegisterPage() {
       });
 
       toast.success("Account created successfully");
-      // Use setTimeout to ensure toast renders before navigation
       setTimeout(() => {
         window.location.href = "/dashboard";
       }, 500);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Registration failed";
+      const message =
+        error instanceof Error ? error.message : "Registration failed";
       toast.error(message);
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
-          <CardDescription>
-            Get started with LeadFlow — it&apos;s free and open-source
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" noValidate>
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                placeholder="John Doe"
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                required
-              />
+    <div className="flex min-h-screen">
+      {/* Left Panel — Branding */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center bg-gradient-to-br from-primary/10 via-background to-primary/5 p-12">
+        <div className="mx-auto max-w-md space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold shadow-sm">
+              LF
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                required
-              />
+            <span className="text-xl font-bold tracking-tight">LeadFlow</span>
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Start managing your leads today.
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            Free, open-source CRM that grows with your business. No credit card
+            required.
+          </p>
+          <div className="space-y-3 pt-4">
+            {[
+              "Unlimited leads & pipelines",
+              "Built-in time tracking",
+              "Real-time analytics",
+              "100% open source",
+            ].map((feature) => (
+              <div key={feature} className="flex items-center gap-3">
+                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-success/15">
+                  <div className="h-2 w-2 rounded-full bg-success" />
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {feature}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel — Form */}
+      <div className="flex flex-1 items-center justify-center p-6 sm:p-12">
+        <Card className="w-full max-w-md border-0 shadow-none bg-transparent">
+          <CardContent className="space-y-6">
+            {/* Mobile Logo */}
+            <div className="flex items-center gap-3 lg:hidden">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-sm shadow-sm">
+                LF
+              </div>
+              <span className="text-lg font-bold tracking-tight">
+                LeadFlow
+              </span>
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-                required
-                minLength={8}
-              />
-              <p className="text-xs text-muted-foreground">
-                Must be at least 8 characters
+              <h2 className="text-2xl font-bold tracking-tight">
+                Create an account
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Get started with LeadFlow — it&apos;s free and open-source
               </p>
             </div>
-            <Button type="button" className="w-full" disabled={loading} onClick={handleRegister}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Account
-            </Button>
-          </form>
 
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <Link href="/login" className="text-primary hover:underline">
-              Sign in
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+            <form onSubmit={handleRegister} className="space-y-4" noValidate>
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  placeholder="John Doe"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  required
+                  autoComplete="name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  required
+                  autoComplete="email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Must be at least 8 characters
+                </p>
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Creating account..." : "Create Account"}
+              </Button>
+            </form>
+
+            <p className="text-center text-sm text-muted-foreground">
+              Already have an account?{" "}
+              <Link
+                href="/login"
+                className="font-medium text-primary hover:underline"
+              >
+                Sign in
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

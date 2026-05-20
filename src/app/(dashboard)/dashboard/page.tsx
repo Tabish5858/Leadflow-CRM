@@ -3,88 +3,114 @@
 import { useEffect, useState } from "react";
 import { auth } from "@/lib/firebase/client";
 import { getLeadStats } from "@/lib/firebase/firestore";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, TrendingUp, DollarSign, Target } from "lucide-react";
+import { StatCard } from "@/components/shared/stat-card";
+import { SkeletonCardGrid } from "@/components/skeletons/skeleton-card";
+import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
+import { Button } from "@/components/ui/button";
+import { Users, TrendingUp, DollarSign, Target, Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
-interface KPI {
-  label: string;
-  value: string;
-  icon: React.ElementType;
-  color: string;
+interface Stats {
+  total: number;
+  totalValue: number;
+  byStatus: Record<string, number>;
 }
 
 export default function DashboardPage() {
-  const [kpis, setKpis] = useState<KPI[]>([
-    { label: "Total Leads", value: "—", icon: Users, color: "text-blue-500" },
-    { label: "Active Deals", value: "—", icon: Target, color: "text-orange-500" },
-    { label: "Pipeline Value", value: "—", icon: DollarSign, color: "text-green-500" },
-    { label: "Conversion Rate", value: "—", icon: TrendingUp, color: "text-purple-500" },
-  ]);
+  const router = useRouter();
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (!user) return;
-      getLeadStats(user.uid).then((stats) => {
-        const activeDeals =
-          (stats.byStatus["new"] || 0) +
-          (stats.byStatus["contacted"] || 0) +
-          (stats.byStatus["qualified"] || 0) +
-          (stats.byStatus["proposal"] || 0) +
-          (stats.byStatus["negotiation"] || 0);
-        const won = stats.byStatus["won"] || 0;
-        const conversionRate =
-          stats.total > 0 ? Math.round((won / stats.total) * 100) : 0;
-
-        setKpis([
-          { label: "Total Leads", value: stats.total.toString(), icon: Users, color: "text-blue-500" },
-          { label: "Active Deals", value: activeDeals.toString(), icon: Target, color: "text-orange-500" },
-          { label: "Pipeline Value", value: formatCurrency(stats.totalValue), icon: DollarSign, color: "text-green-500" },
-          { label: "Conversion Rate", value: `${conversionRate}%`, icon: TrendingUp, color: "text-purple-500" },
-        ]);
-      });
+      getLeadStats(user.uid)
+        .then((data) => {
+          setStats(data);
+        })
+        .finally(() => setLoading(false));
     });
     return () => unsubscribe();
   }, []);
 
+  const activeDeals = stats
+    ? (stats.byStatus["new"] || 0) +
+      (stats.byStatus["contacted"] || 0) +
+      (stats.byStatus["qualified"] || 0) +
+      (stats.byStatus["proposal"] || 0) +
+      (stats.byStatus["negotiation"] || 0)
+    : 0;
+
+  const conversionRate =
+    stats && stats.total > 0
+      ? Math.round(((stats.byStatus["won"] || 0) / stats.total) * 100)
+      : 0;
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <div className="h-8 w-48 skeleton rounded-md" />
+          <div className="h-4 w-72 skeleton rounded-md" />
+        </div>
+        <SkeletonCardGrid count={4} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-        <p className="text-muted-foreground">
-          Welcome back! Here&apos;s an overview of your CRM.
-        </p>
+      <PageHeader
+        title="Dashboard"
+        description="Welcome back! Here&apos;s an overview of your CRM."
+        actions={
+          <Button onClick={() => router.push("/leads")}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Lead
+          </Button>
+        }
+      />
+
+      {/* KPI Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total Leads"
+          value={stats?.total ?? 0}
+          icon={<Users className="h-5 w-5" />}
+          accentColor="info"
+        />
+        <StatCard
+          title="Active Deals"
+          value={activeDeals}
+          icon={<Target className="h-5 w-5" />}
+          accentColor="primary"
+        />
+        <StatCard
+          title="Pipeline Value"
+          value={formatCurrency(stats?.totalValue ?? 0)}
+          icon={<DollarSign className="h-5 w-5" />}
+          accentColor="success"
+        />
+        <StatCard
+          title="Conversion Rate"
+          value={`${conversionRate}%`}
+          icon={<TrendingUp className="h-5 w-5" />}
+          accentColor="warning"
+        />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((kpi) => (
-          <Card key={kpi.label}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{kpi.label}</CardTitle>
-              <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{kpi.value}</div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Empty State */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Getting Started</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-lg border-2 border-dashed p-8 text-center">
-            <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
-            <h3 className="mt-4 text-lg font-semibold">No leads yet</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Start by adding your first lead to get started.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Empty State / Getting Started */}
+      {stats?.total === 0 && (
+        <EmptyState
+          icon={<Users className="h-6 w-6" />}
+          title="No leads yet"
+          description="Start building your pipeline by adding your first lead. Track deals, manage contacts, and close more sales."
+          actionLabel="Add Your First Lead"
+          onAction={() => router.push("/leads")}
+        />
+      )}
     </div>
   );
 }
