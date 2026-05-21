@@ -264,13 +264,13 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                 {(() => {
                   const currentStage = stages.find((s) => s.id === lead.status);
                   return (
-                    <span className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5">
                       <span
                         className="inline-block h-2 w-2 rounded-full"
                         style={{ backgroundColor: currentStage?.color || "#94a3b8" }}
                       />
                       {currentStage?.name || lead.status}
-                    </span>
+                    </div>
                   );
                 })()}
               </SelectTrigger>

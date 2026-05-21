@@ -410,13 +410,13 @@ export default function LeadsPage() {
                           {(() => {
                             const stage = stages.find((s) => s.id === lead.status);
                             return (
-                              <span className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5">
                                 <span
                                   className="inline-block h-2 w-2 rounded-full"
                                   style={{ backgroundColor: stage?.color || "#94a3b8" }}
                                 />
-                                {stage?.name || lead.status}
-                              </span>
+                                <p>{stage?.name || lead.status}</p>
+                              </div>
                             );
                           })()}
                         </SelectTrigger>
@@ -439,8 +439,8 @@ export default function LeadsPage() {
                       {lead.value
                         ? formatCurrency(lead.value, lead.currency)
                         : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
+                          <span className="text-muted-foreground">—</span>
+                        )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground hidden xl:table-cell">
                       {formatDate(lead.createdAt?.toDate())}
