@@ -6,5 +6,9 @@
   "observability": {
     "enabled": true
   },
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "routes": [
+    { "pattern": "crm.tabishbinishfaq.dev/*", "zone_name": "tabishbinishfaq.dev" }
+  ]
 }
