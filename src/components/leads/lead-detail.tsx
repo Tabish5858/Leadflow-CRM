@@ -152,6 +152,10 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
 
   const handleStatusChange = async (status: string) => {
     if (!lead) return;
+    if (status === "__add_new__") {
+      setNewStatusDialogOpen(true);
+      return;
+    }
     const fromStatus = lead.status;
     updateStatus(lead.id, status);
     setLead({ ...lead, status });
@@ -286,8 +290,6 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                 <SelectItem
                   value="__add_new__"
                   className="text-primary font-medium"
-                  onSelect={(e) => e.preventDefault()}
-                  onClick={() => setNewStatusDialogOpen(true)}
                 >
                   + Add new status
                 </SelectItem>
