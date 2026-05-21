@@ -131,6 +131,23 @@ export interface Attachment {
   uploadedAt: Timestamp;
 }
 
+// ─── Document (Cloudinary) ───────────────────────────────────────────────────
+
+export interface Document {
+  id: string;
+  workspaceId: string;
+  leadId: string;
+  fileName: string;
+  fileType: string;
+  mimeType: string;
+  fileSize: number;
+  cloudinaryPublicId: string;
+  cloudinaryUrl: string;
+  cloudinaryResourceType: string;
+  uploadedBy: string;
+  createdAt: Timestamp;
+}
+
 // ─── Activity ────────────────────────────────────────────────────────────────
 
 export interface Activity {
@@ -246,4 +263,53 @@ export interface Notification {
   taskId: string | null;
   read: boolean;
   createdAt: Timestamp;
+}
+
+// ─── Audit Log ───────────────────────────────────────────────────────────────
+
+export type AuditAction =
+  | "lead_created"
+  | "lead_updated"
+  | "lead_deleted"
+  | "status_changed"
+  | "email_sent"
+  | "document_uploaded"
+  | "document_deleted"
+  | "task_created"
+  | "task_completed"
+  | "user_login"
+  | "user_logout"
+  | "settings_changed"
+  | "note_added"
+  | "call_logged"
+  | "meeting_logged"
+  | "member_added"
+  | "member_removed"
+  | "member_role_changed"
+  | "pipeline_changed"
+  | "custom_field_changed"
+  | "workspace_created"
+  | "workspace_deleted";
+
+export interface AuditLog {
+  id: string;
+  workspaceId: string;
+  userId: string;
+  userName: string;
+  action: AuditAction;
+  entityType: "lead" | "document" | "task" | "user" | "workspace" | "settings" | "member" | "pipeline" | "custom_field";
+  entityId: string;
+  entityName: string | null;
+  oldValue: Record<string, unknown> | null;
+  newValue: Record<string, unknown> | null;
+  timestamp: Timestamp;
+  metadata?: Record<string, unknown>;
+}
+
+export interface AuditFilters {
+  dateFrom?: Date;
+  dateTo?: Date;
+  userId?: string;
+  action?: AuditAction;
+  leadSearch?: string;
 }
