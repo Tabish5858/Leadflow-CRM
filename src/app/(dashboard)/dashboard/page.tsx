@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Users, TrendingUp, DollarSign, Target, Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { UpcomingEvents } from "@/components/dashboard/upcoming-events";
 
 interface Stats {
   total: number;
@@ -98,6 +99,9 @@ export default function DashboardPage() {
           accentColor="warning"
         />
       </div>
+
+      {/* Upcoming Events */}
+      <UpcomingEvents />
 
       {/* Empty State / Getting Started */}
       {stats?.total === 0 && (

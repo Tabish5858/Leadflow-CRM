@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getLead } from "@/lib/firebase/firestore";
 import { logStatusChange } from "@/lib/firebase/activities";
 import type { Lead } from "@/types";
@@ -22,9 +22,12 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { DEFAULT_PIPELINE_STAGES } from "@/lib/constants";
 import { formatCurrency, getInitials } from "@/lib/utils";
 import { StatusBadge } from "@/components/shared/status-badge";
+import { ScoreBadge } from "@/components/leads/score-badge";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { EmailComposer, EmailHistory } from "@/components/leads/email-composer";
 import { sendEmail, getEmailsForLead, type EmailRecord } from "@/lib/firebase/emails";
+import { getEmailEventsForLead, type EmailEvent } from "@/lib/email-tracking";
+import { calculateLeadScore } from "@/lib/lead-scoring";
 import {
   Mail,
   Phone,
@@ -35,8 +38,11 @@ import {
   DollarSign,
   Clock,
   User,
+  FileText,
+  Calendar,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
+import { DocumentManager } from "@/components/leads/document-manager";
 
 type LeadStatusType =
   | "New"
@@ -99,6 +105,8 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emails, setEmails] = useState<EmailRecord[]>([]);
   const [loadingEmails, setLoadingEmails] = useState(false);
+  const [emailEvents, setEmailEvents] = useState<EmailEvent[]>([]);
+  const [addingToCalendar, setAddingToCalendar] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -112,13 +120,24 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   useEffect(() => {
     if (leadId) {
       setLoadingEmails(true);
-      getEmailsForLead(leadId)
-        .then(setEmails)
+      Promise.all([getEmailsForLead(leadId), getEmailEventsForLead(leadId)])
+        .then(([emailRecords, events]) => {
+          setEmails(emailRecords);
+          setEmailEvents(events);
+        })
         .finally(() => setLoadingEmails(false));
     }
   }, [leadId]);
 
-  const handleSendEmail = async (data: { to: string; subject: string; body: string }) => {
+  const stages = activeWorkspace?.pipeline?.stages || DEFAULT_PIPELINE_STAGES;
+
+  const scoreData = useMemo(() => {
+    if (!lead) return null;
+    const breakdown = calculateLeadScore(lead, emails, stages);
+    return { score: breakdown.total, breakdown };
+  }, [lead, emails, stages]);
+
+  const handleSendEmail = async (data: { to: string; subject: string; body: string; trackOpens?: boolean; trackClicks?: boolean }) => {
     if (!activeWorkspace || !user || !lead) return;
     await sendEmail({
       workspaceId: activeWorkspace.id,
@@ -127,10 +146,15 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
       subject: data.subject,
       body: data.body,
       createdBy: user.id,
+      trackOpens: data.trackOpens,
+      trackClicks: data.trackClicks,
     });
-    // Refresh emails
-    const updated = await getEmailsForLead(leadId);
-    setEmails(updated);
+    const [updatedEmails, updatedEvents] = await Promise.all([
+      getEmailsForLead(leadId),
+      getEmailEventsForLead(leadId),
+    ]);
+    setEmails(updatedEmails);
+    setEmailEvents(updatedEvents);
   };
 
   const handleStatusChange = async (status: string) => {
@@ -151,6 +175,38 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     const stages = activeWorkspace?.pipeline?.stages || DEFAULT_PIPELINE_STAGES;
     const stageName = stages.find((s) => s.id === status)?.name;
     toast.success(`Moved to ${stageName}`);
+  };
+
+  const handleAddToCalendar = async () => {
+    if (!lead?.nextFollowUpAt || !user) return;
+    setAddingToCalendar(true);
+    try {
+      const res = await fetch("/api/calendar/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          leadId: lead.id,
+          followUpDate: lead.nextFollowUpAt.toDate().toISOString(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success("Event added to Google Calendar");
+      } else {
+        if (data.error?.includes("not connected")) {
+          toast.error("Connect Google Calendar in Settings first");
+        } else {
+          toast.error(data.error || "Failed to add to calendar");
+        }
+      }
+    } catch {
+      toast.error("Failed to add to calendar");
+    } finally {
+      setAddingToCalendar(false);
+    }
   };
 
   if (loading) {
@@ -192,6 +248,13 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                 {formatCurrency(lead.value, lead.currency)}
               </Badge>
             )}
+            {scoreData && (
+              <ScoreBadge
+                score={scoreData.score}
+                breakdown={scoreData.breakdown}
+                size="md"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -215,6 +278,35 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         </Select>
       </div>
 
+      {/* Follow-up Calendar Button */}
+      {lead.nextFollowUpAt && (
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Follow-up scheduled</p>
+            <p className="text-xs text-muted-foreground">
+              {lead.nextFollowUpAt.toDate().toLocaleDateString("en-US", {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAddToCalendar}
+            disabled={addingToCalendar}
+          >
+            <Calendar className="mr-2 h-4 w-4" />
+            {addingToCalendar ? "Adding..." : "Add to Calendar"}
+          </Button>
+        </div>
+      )}
+
       <Separator />
 
       {/* Tabs: Details, Activity & Emails */}
@@ -231,6 +323,10 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           <TabsTrigger value="emails">
             <Mail className="h-3.5 w-3.5" />
             Emails {emails.length > 0 && `(${emails.length})`}
+          </TabsTrigger>
+          <TabsTrigger value="documents">
+            <FileText className="h-3.5 w-3.5" />
+            Documents
           </TabsTrigger>
         </TabsList>
 
@@ -407,16 +503,44 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               </div>
             ) : (
               <EmailHistory
-                emails={emails.map((e) => ({
-                  id: e.id,
-                  subject: e.subject,
-                  to: e.to,
-                  status: e.status,
-                  sentAt: e.sentAt?.toDate() || null,
-                }))}
+                emails={emails.map((e) => {
+                  const events = emailEvents.filter((ev) => ev.emailId === e.id);
+                  const openEvents = events.filter((ev) => ev.type === "open");
+                  const clickEvents = events.filter((ev) => ev.type === "click");
+                  const lastOpened = openEvents.length > 0
+                    ? openEvents[openEvents.length - 1].timestamp.toDate()
+                    : undefined;
+                  const clickedUrls = [...new Set(clickEvents.map((ev) => ev.url).filter(Boolean))] as string[];
+
+                  return {
+                    id: e.id,
+                    subject: e.subject,
+                    to: e.to,
+                    status: e.status,
+                    sentAt: e.sentAt?.toDate() || null,
+                    tracking: e.trackingEnabled
+                      ? {
+                          openCount: openEvents.length,
+                          lastOpenedAt: lastOpened,
+                          clickCount: clickEvents.length,
+                          clickedUrls,
+                        }
+                      : null,
+                  };
+                })}
               />
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="documents" className="mt-4">
+          {activeWorkspace && user && (
+            <DocumentManager
+              leadId={lead.id}
+              workspaceId={activeWorkspace.id}
+              userId={user.id}
+            />
+          )}
         </TabsContent>
       </Tabs>
 

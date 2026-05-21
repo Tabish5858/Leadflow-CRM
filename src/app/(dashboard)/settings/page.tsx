@@ -44,6 +44,7 @@ import {
   ListFilter,
   UserCog,
   Pencil,
+  Plug,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import {
@@ -60,6 +61,7 @@ import {
 import type { WorkspaceMember, PipelineStage, CustomField } from "@/types";
 import { PipelineEditor } from "@/components/settings/pipeline-editor";
 import { CustomFieldsEditor } from "@/components/settings/custom-fields-editor";
+import { CalendarConnection } from "@/components/settings/calendar-connection";
 import { useLeadStore } from "@/lib/stores/leadStore";
 import {
   DropdownMenu,
@@ -67,12 +69,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
+import { FileText } from "lucide-react";
 
-type Tab = "workspace" | "members" | "pipeline" | "custom-fields" | "preferences";
+type Tab = "workspace" | "members" | "pipeline" | "custom-fields" | "preferences" | "integrations";
 
 export default function SettingsPage() {
   const { user, activeWorkspace, workspaces, switchWorkspace, refreshWorkspaces } = useWorkspace();
   const { firebaseUser } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("workspace");
   const [workspaceName, setWorkspaceName] = useState("");
   const [savingName, setSavingName] = useState(false);
@@ -283,6 +288,7 @@ export default function SettingsPage() {
     { id: "pipeline", label: "Pipeline", icon: <KanbanSquare className="h-4 w-4" /> },
     { id: "custom-fields", label: "Custom Fields", icon: <ListFilter className="h-4 w-4" /> },
     { id: "preferences", label: "Preferences", icon: <Shield className="h-4 w-4" /> },
+    { id: "integrations", label: "Integrations", icon: <Plug className="h-4 w-4" /> },
   ];
 
   return (
@@ -290,21 +296,32 @@ export default function SettingsPage() {
       <PageHeader title="Settings" description="Manage your workspace and preferences." />
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 rounded-lg bg-muted p-1 w-fit">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-              activeTab === tab.id
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex items-center gap-2">
+        <div className="flex gap-1 rounded-lg bg-muted p-1 w-fit">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all ${
+                activeTab === tab.id
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-2"
+          onClick={() => router.push("/settings/audit-log")}
+        >
+          <FileText className="mr-2 h-4 w-4" />
+          Audit Log
+        </Button>
       </div>
 
       {/* Workspace Tab */}
@@ -723,6 +740,13 @@ export default function SettingsPage() {
               </p>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Integrations Tab */}
+      {activeTab === "integrations" && (
+        <div className="space-y-6">
+          <CalendarConnection />
         </div>
       )}
 
