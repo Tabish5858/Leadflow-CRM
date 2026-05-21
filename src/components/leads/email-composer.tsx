@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -21,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, Send, Save, FileText, Loader2 } from "lucide-react";
+import { Mail, Send, Save, FileText, Loader2, Eye, MousePointer, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 
 const EMAIL_TEMPLATES = [
@@ -88,7 +89,7 @@ interface EmailComposerProps {
   leadEmail?: string;
   leadName?: string;
   leadCompany?: string;
-  onSend: (data: { to: string; subject: string; body: string }) => Promise<void>;
+  onSend: (data: { to: string; subject: string; body: string; trackOpens?: boolean; trackClicks?: boolean }) => Promise<void>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -106,6 +107,8 @@ export function EmailComposer({
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [trackOpens, setTrackOpens] = useState(true);
+  const [trackClicks, setTrackClicks] = useState(true);
 
   const handleTemplateSelect = (templateId: string) => {
     const template = EMAIL_TEMPLATES.find((t) => t.id === templateId);
@@ -113,7 +116,6 @@ export function EmailComposer({
       let subject = template.subject;
       let body = template.body;
 
-      // Replace placeholders
       subject = subject
         .replace("{{company}}", leadCompany || "your company")
         .replace("{{firstName}}", leadName?.split(" ")[0] || "there");
@@ -145,7 +147,13 @@ export function EmailComposer({
 
     setSending(true);
     try {
-      await onSend({ to: to.trim(), subject: subject.trim(), body: body.trim() });
+      await onSend({
+        to: to.trim(),
+        subject: subject.trim(),
+        body: body.trim(),
+        trackOpens,
+        trackClicks,
+      });
       toast.success("Email sent successfully");
       handleClose();
     } catch {
@@ -165,6 +173,8 @@ export function EmailComposer({
     setSubject("");
     setBody("");
     setSelectedTemplate("");
+    setTrackOpens(true);
+    setTrackClicks(true);
     onOpenChange(false);
   };
 
@@ -235,6 +245,33 @@ export function EmailComposer({
             />
           </div>
 
+          {/* Tracking Options */}
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <p className="text-xs font-medium text-muted-foreground">Tracking</p>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="track-opens"
+                checked={trackOpens}
+                onCheckedChange={(checked) => setTrackOpens(checked as boolean)}
+              />
+              <Label htmlFor="track-opens" className="text-sm font-normal flex items-center gap-1.5">
+                <Eye className="h-3.5 w-3.5" />
+                Track opens
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="track-clicks"
+                checked={trackClicks}
+                onCheckedChange={(checked) => setTrackClicks(checked as boolean)}
+              />
+              <Label htmlFor="track-clicks" className="text-sm font-normal flex items-center gap-1.5">
+                <MousePointer className="h-3.5 w-3.5" />
+                Track clicks
+              </Label>
+            </div>
+          </div>
+
           {/* Preview */}
           {subject && body && (
             <div className="rounded-lg border bg-muted/30 p-4">
@@ -272,6 +309,13 @@ export function EmailComposer({
   );
 }
 
+interface TrackingStats {
+  openCount: number;
+  lastOpenedAt?: Date;
+  clickCount: number;
+  clickedUrls: string[];
+}
+
 interface EmailHistoryProps {
   emails: Array<{
     id: string;
@@ -279,6 +323,7 @@ interface EmailHistoryProps {
     to: string;
     status: string;
     sentAt: Date | null;
+    tracking?: TrackingStats | null;
   }>;
 }
 
@@ -290,19 +335,104 @@ export function EmailHistory({ emails }: EmailHistoryProps) {
   return (
     <div className="space-y-3">
       {emails.map((email) => (
-        <div key={email.id} className="rounded-lg border p-3 space-y-1">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">{email.subject}</p>
-            <Badge variant={email.status === "sent" ? "default" : "secondary"} className="text-xs">
-              {email.status}
-            </Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            To: {email.to}
-            {email.sentAt && ` • ${email.sentAt.toLocaleDateString()}`}
-          </p>
-        </div>
+        <EmailHistoryItem key={email.id} email={email} />
       ))}
+    </div>
+  );
+}
+
+function EmailHistoryItem({
+  email,
+}: {
+  email: {
+    id: string;
+    subject: string;
+    to: string;
+    status: string;
+    sentAt: Date | null;
+    tracking?: TrackingStats | null;
+  };
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const tracking = email.tracking;
+  const hasTracking = tracking && (tracking.openCount > 0 || tracking.clickCount > 0);
+
+  return (
+    <div className="rounded-lg border p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{email.subject}</p>
+          {hasTracking && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {tracking.openCount > 0 && (
+                <Badge variant="secondary" className="text-xs gap-1">
+                  <Eye className="h-3 w-3" />
+                  {tracking.openCount}
+                </Badge>
+              )}
+              {tracking.clickCount > 0 && (
+                <Badge variant="secondary" className="text-xs gap-1">
+                  <MousePointer className="h-3 w-3" />
+                  {tracking.clickCount}
+                </Badge>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge variant={email.status === "sent" ? "default" : "secondary"} className="text-xs">
+            {email.status}
+          </Badge>
+          {hasTracking && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={expanded ? "Collapse details" : "Expand details"}
+            >
+              {expanded ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        To: {email.to}
+        {email.sentAt && ` • ${email.sentAt.toLocaleDateString()}`}
+      </p>
+
+      {expanded && hasTracking && (
+        <div className="mt-2 pt-2 border-t space-y-2 text-xs">
+          {tracking.openCount > 0 && (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Eye className="h-3.5 w-3.5" />
+              <span>
+                Opened {tracking.openCount} time{tracking.openCount !== 1 ? "s" : ""}
+                {tracking.lastOpenedAt && ` • Last: ${tracking.lastOpenedAt.toLocaleString()}`}
+              </span>
+            </div>
+          )}
+          {tracking.clickCount > 0 && tracking.clickedUrls.length > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <MousePointer className="h-3.5 w-3.5" />
+                <span>
+                  Clicked {tracking.clickCount} time{tracking.clickCount !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <ul className="ml-5 space-y-0.5">
+                {tracking.clickedUrls.map((url, idx) => (
+                  <li key={idx} className="text-primary truncate" title={url}>
+                    {url}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
