@@ -25,6 +25,8 @@ import {
   Moon,
   Sun,
   ChevronRight,
+  Menu,
+  X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/workspace-context";
@@ -77,6 +79,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
   const { user, activeWorkspace, loading: wsLoading } = useWorkspace();
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -128,14 +131,35 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="flex w-64 flex-col border-r bg-card">
-        {/* Logo */}
-        <div className="flex h-16 items-center gap-3 px-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-sm shadow-sm">
-            LF
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card transition-transform duration-200 lg:static lg:translate-x-0",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        {/* Logo + Close */}
+        <div className="flex h-16 items-center justify-between gap-3 px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-sm shadow-sm">
+              LF
+            </div>
+            <span className="text-lg font-bold tracking-tight">LeadFlow</span>
           </div>
-          <span className="text-lg font-bold tracking-tight">LeadFlow</span>
+          <button
+            className="lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X className="h-5 w-5 text-muted-foreground" />
+          </button>
         </div>
 
         <Separator />
@@ -151,6 +175,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => setSidebarOpen(false)}
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all",
                   isActive
@@ -219,17 +244,25 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <main className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between border-b bg-background/80 px-6 backdrop-blur-sm">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>LeadFlow</span>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span className="font-medium text-foreground">
-              {activeWorkspace?.name || "Workspace"}
-            </span>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span className="font-medium text-foreground">
-              {currentPage?.label || "Dashboard"}
-            </span>
+        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm lg:px-6">
+          <div className="flex items-center gap-2">
+            <button
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="hidden sm:inline">LeadFlow</span>
+              <ChevronRight className="h-3.5 w-3.5 hidden sm:inline" />
+              <span className="font-medium text-foreground">
+                {activeWorkspace?.name || "Workspace"}
+              </span>
+              <ChevronRight className="h-3.5 w-3.5 hidden sm:inline" />
+              <span className="font-medium text-foreground">
+                {currentPage?.label || "Dashboard"}
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Avatar className="h-8 w-8 border sm:hidden">
@@ -243,7 +276,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
         {/* Page Content */}
         <div className="flex-1 overflow-auto">
-          <div className="p-6 page-enter">{children}</div>
+          <div className="p-4 page-enter sm:p-6">{children}</div>
         </div>
       </main>
     </div>

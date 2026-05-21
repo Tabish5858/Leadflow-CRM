@@ -22,7 +22,7 @@ export function KanbanColumn({ stage, leads }: KanbanColumnProps) {
   const totalValue = leads.reduce((sum, lead) => sum + (lead.value || 0), 0);
 
   return (
-    <div className="flex w-72 shrink-0 flex-col rounded-xl bg-card/50 border">
+    <div className="flex w-full shrink-0 flex-col rounded-xl bg-card/50 border lg:w-72">
       {/* Column Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center gap-2.5">
