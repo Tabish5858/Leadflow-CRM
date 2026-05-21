@@ -54,9 +54,9 @@ export async function POST(req: NextRequest) {
       from: FROM_EMAIL,
       provider: "Brevo",
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Brevo test error:", error);
-    const message = error.message || error.toString() || "Unknown error";
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
       { status: "error", message },
       { status: 500 }

@@ -42,9 +42,9 @@ export async function POST(req: NextRequest) {
       success: true,
       messageId: result.messageId,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Brevo email error:", error);
-    const message = error.message || error.toString() || "Failed to send email";
+    const message = error instanceof Error ? error.message : "Failed to send email";
     return NextResponse.json(
       { error: message },
       { status: 500 }
