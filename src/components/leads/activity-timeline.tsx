@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { subscribeToLeadActivities, logNote } from "@/lib/firebase/activities";
 import type { Activity } from "@/types";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,9 +19,12 @@ import {
   Plus,
   Send,
   Clock,
+  FileText,
+  Trash2,
+  CheckCircle,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getInitials } from "@/lib/utils";
 import { toast } from "@/components/ui/sonner";
 
 const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
@@ -33,6 +36,12 @@ const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
   status_change: <ArrowRightLeft className="h-3.5 w-3.5" />,
   task: <Clock className="h-3.5 w-3.5" />,
   system: <Clock className="h-3.5 w-3.5" />,
+  document_uploaded: <FileText className="h-3.5 w-3.5" />,
+  document_deleted: <Trash2 className="h-3.5 w-3.5" />,
+  task_created: <Plus className="h-3.5 w-3.5" />,
+  task_completed: <CheckCircle className="h-3.5 w-3.5" />,
+  lead_created: <UserPlus className="h-3.5 w-3.5" />,
+  lead_updated: <ArrowRightLeft className="h-3.5 w-3.5" />,
 };
 
 const ACTIVITY_COLORS: Record<string, string> = {
@@ -44,6 +53,12 @@ const ACTIVITY_COLORS: Record<string, string> = {
   status_change: "bg-gray-500",
   task: "bg-cyan-500",
   system: "bg-gray-400",
+  document_uploaded: "bg-emerald-500",
+  document_deleted: "bg-red-500",
+  task_created: "bg-blue-500",
+  task_completed: "bg-green-500",
+  lead_created: "bg-indigo-500",
+  lead_updated: "bg-amber-500",
 };
 
 function formatRelativeTime(date: Date): string {
@@ -81,7 +96,7 @@ interface ActivityTimelineProps {
   userName: string;
 }
 
-export function ActivityTimeline({ leadId, userId, userName }: ActivityTimelineProps) {
+export function ActivityTimeline({ leadId, userId, userName: _userName }: ActivityTimelineProps) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [noteText, setNoteText] = useState("");
