@@ -151,13 +151,14 @@ export default function LeadsPage() {
         description={`${leads.length} total lead${leads.length !== 1 ? "s" : ""}`}
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowCsvImport(true)}>
+            <Button variant="outline" size="sm" onClick={() => setShowCsvImport(true)} className="hidden sm:flex">
               <Upload className="mr-2 h-4 w-4" />
               Import CSV
             </Button>
-            <Button onClick={() => setShowCreateDialog(true)}>
+            <Button size="sm" onClick={() => setShowCreateDialog(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Lead
+              <span className="hidden sm:inline">Add Lead</span>
+              <span className="sm:hidden">Add</span>
             </Button>
           </div>
         }
