@@ -271,22 +271,22 @@ export default function AnalyticsPage() {
                 <LineChart data={leadsOverTimeData}>
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    className="stroke-muted/30"
+                    className="stroke-white"
                   />
                   <XAxis
                     dataKey="date"
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 11 }}
                     tickLine={false}
                     axisLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                    tick={{ fontSize: 11 }}
                     tickLine={false}
                     axisLine={false}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
+                      backgroundColor: "black",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
                       boxShadow: "var(--shadow-elevated)",
@@ -340,7 +340,7 @@ export default function AnalyticsPage() {
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
+                      backgroundColor: "white",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
                       boxShadow: "var(--shadow-elevated)",
