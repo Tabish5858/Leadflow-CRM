@@ -21,6 +21,7 @@ import { MessageThread } from "@/components/messages/message-thread";
 import { MessageInput } from "@/components/messages/message-input";
 import { NewConversationDialog } from "@/components/messages/new-conversation-dialog";
 import { NewMemberConversationDialog } from "@/components/messages/new-member-conversation-dialog";
+import { CreateMeetingDialog } from "@/components/messages/create-meeting-dialog";
 import {
   subscribeToConversations,
   subscribeToMessages,
@@ -33,7 +34,7 @@ import {
   fixConversationNames,
 } from "@/lib/firebase/messages";
 import { getWorkspaceMembers } from "@/lib/firebase/workspaces";
-import { Search, Plus, Mail, Users, Video, Paperclip, Loader2 } from "lucide-react";
+import { Search, Plus, Mail, Users, Video } from "lucide-react";
 import { Timestamp } from "firebase/firestore";
 import { toast } from "@/components/ui/sonner";
 import { getInitials } from "@/lib/utils";
@@ -100,8 +101,9 @@ export default function MessagesPage() {
   const [deleteConvTarget, setDeleteConvTarget] = useState<Conversation | null>(null);
   const [deletingConv, setDeletingConv] = useState(false);
 
-  // Google Meet creation state
-  const [creatingMeet, setCreatingMeet] = useState(false);
+  // Google Meet dialog state
+  const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
+  const [meetingAttendees, setMeetingAttendees] = useState<{ email: string; name?: string }[]>([]);
 
   // File upload state
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -283,54 +285,38 @@ export default function MessagesPage() {
     }
   }, [deleteConvTarget, selected]);
 
-  // ─── Send Google Meet link (real, via Calendar API) ──────────────
+  // ─── Open meeting dialog (modal handles the creation flow) ─────────
 
-  const handleSendMeetLink = useCallback(async () => {
+  const handleOpenMeetingDialog = useCallback(() => {
     if (!selected || !user || !activeWorkspace) return;
 
-    setCreatingMeet(true);
-    try {
-      const attendees: { email: string; name?: string }[] = [];
+    const attendees: { email: string; name?: string }[] = [];
 
-      if (selected.type === "lead" && selected.leadEmail) {
-        attendees.push({ email: selected.leadEmail, name: selected.leadName });
-      } else if (selected.type === "member") {
-        const otherId = selected.participantIds?.find((id) => id !== user.id);
-        const otherMember = workspaceMembers.find((m) => m.userId === otherId);
-        if (otherMember) {
-          attendees.push({ email: otherMember.email, name: otherMember.displayName });
-        }
+    if (selected.type === "lead" && selected.leadEmail) {
+      attendees.push({ email: selected.leadEmail, name: selected.leadName });
+    } else if (selected.type === "member") {
+      const otherId = selected.participantIds?.find((id) => id !== user.id);
+      const otherMember = workspaceMembers.find((m) => m.userId === otherId);
+      if (otherMember) {
+        attendees.push({ email: otherMember.email, name: otherMember.displayName });
       }
+    }
 
-      if (attendees.length === 0) {
-        toast.error("No attendees found for this conversation");
-        return;
-      }
+    if (attendees.length === 0) {
+      toast.error("No attendees found for this conversation");
+      return;
+    }
 
-      const res = await fetch("/api/meetings/instant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id,
-          workspaceId: activeWorkspace.id,
-          attendees,
-          conversationId: selected.id,
-          leadId: selected.leadId,
-        }),
-      });
+    setMeetingAttendees(attendees);
+    setMeetingDialogOpen(true);
+  }, [selected, user, activeWorkspace, workspaceMembers]);
 
-      const data = await res.json();
+  // ─── Called by CreateMeetingDialog after meeting is created ─────────
 
-      if (!res.ok) {
-        if (data.needsCalendarAuth) {
-          toast.error("Please connect Google Calendar in Settings > Integrations");
-        } else {
-          toast.error(data.error || "Failed to create meeting");
-        }
-        return;
-      }
+  const handleMeetingCreated = useCallback(
+    async (meetLink: string, calendarEventUrl?: string) => {
+      if (!selected || !user || !activeWorkspace) return;
 
-      // Send the meeting card as a message
       await sendMessage({
         workspaceId: activeWorkspace.id,
         conversationId: selected.id,
@@ -338,19 +324,21 @@ export default function MessagesPage() {
         senderName: user.displayName || "Unknown",
         body: "Google Meet",
         meetingCard: {
-          meetLink: data.meetLink,
-          calendarEventUrl: data.calendarEventUrl,
+          meetLink,
+          calendarEventUrl,
           status: "active",
         },
       });
+    },
+    [selected, user, activeWorkspace]
+  );
 
-      toast.success("Google Meet created");
-    } catch {
-      toast.error("Failed to create meeting");
-    } finally {
-      setCreatingMeet(false);
-    }
-  }, [selected, user, activeWorkspace, workspaceMembers]);
+  // ─── Clear pending file ──────────────────────────────────────────────
+
+  const handleClearPendingFile = useCallback(() => {
+    setPendingFile(null);
+    setUploadingFile(false);
+  }, []);
 
   // ─── Send message ────────────────────────────────────────────────────
 
@@ -363,13 +351,17 @@ export default function MessagesPage() {
       formData.append("file", file);
       formData.append("workspaceId", activeWorkspace?.id || "");
       formData.append("leadId", selected?.leadId || "");
+      formData.append("userId", user?.id || "");
 
       const res = await fetch("/api/documents/upload", {
         method: "POST",
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Upload failed");
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({ error: "Upload failed" }));
+        throw new Error(errBody.error || "Upload failed");
+      }
 
       const data = await res.json();
 
@@ -386,7 +378,7 @@ export default function MessagesPage() {
       setUploadingFile(false);
       setPendingFile(null);
     }
-  }, [activeWorkspace, selected]);
+  }, [activeWorkspace, selected, user]);
 
   // Listen for file selection from MessageInput
   useEffect(() => {
@@ -394,34 +386,38 @@ export default function MessagesPage() {
       const file = (e as CustomEvent<File>).detail;
       if (!file || !user || !activeWorkspace) return;
 
-      const attachment = await uploadAndAttachFile(file);
-      if (!attachment) return;
+      try {
+        const attachment = await uploadAndAttachFile(file);
+        if (!attachment) return;
 
-      // Create conversation if in draft mode
-      let convoId = selected?.id;
-      if (draftMember && !convoId) {
-        convoId = await createConversation({
+        // Create conversation if in draft mode
+        let convoId = selected?.id;
+        if (draftMember && !convoId) {
+          convoId = await createConversation({
+            workspaceId: activeWorkspace.id,
+            type: "member",
+            participantIds: [user.id, draftMember.userId],
+            participantNames: [user.displayName || "You", draftMember.displayName],
+          });
+          setDraftMember(null);
+        }
+
+        if (!convoId) {
+          toast.error("Select a conversation first");
+          return;
+        }
+
+        await sendMessage({
           workspaceId: activeWorkspace.id,
-          type: "member",
-          participantIds: [user.id, draftMember.userId],
-          participantNames: [user.displayName || "You", draftMember.displayName],
+          conversationId: convoId,
+          senderId: user.id,
+          senderName: user.displayName || "Unknown",
+          body: "",
+          attachment,
         });
-        setDraftMember(null);
+      } catch {
+        toast.error("Failed to upload file. Try again.");
       }
-
-      if (!convoId) {
-        toast.error("Select a conversation first");
-        return;
-      }
-
-      await sendMessage({
-        workspaceId: activeWorkspace.id,
-        conversationId: convoId,
-        senderId: user.id,
-        senderName: user.displayName || "Unknown",
-        body: "",
-        attachment,
-      });
     };
 
     window.addEventListener("message-file-selected", handler);
@@ -665,7 +661,7 @@ export default function MessagesPage() {
         </div>
 
         {/* ─── Message Thread (Right) ───────────────────────────────────── */}
-        <div className="flex flex-col rounded-lg border bg-card lg:col-span-2">
+        <div className="flex flex-col overflow-hidden rounded-lg border bg-card lg:col-span-2">
           {selected ? (
             <>
               {/* Conversation header */}
@@ -706,7 +702,7 @@ export default function MessagesPage() {
                     variant="ghost"
                     size="icon"
                     className="shrink-0"
-                    onClick={handleSendMeetLink}
+                    onClick={handleOpenMeetingDialog}
                     title="Send Google Meet link"
                   >
                     <Video className="h-4 w-4" />
@@ -715,6 +711,9 @@ export default function MessagesPage() {
                     <MessageInput
                       onSend={handleSendMessage}
                       placeholder={`Message ${getConversationName(selected, user?.id || "", memberMap).name.split(" ")[0]}...`}
+                      uploading={uploadingFile}
+                      pendingFile={pendingFile}
+                      onClearFile={handleClearPendingFile}
                     />
                   </div>
                 </div>
@@ -754,6 +753,9 @@ export default function MessagesPage() {
                 <MessageInput
                   onSend={handleSendMessage}
                   placeholder={`Message ${draftMember.displayName.split(" ")[0]}...`}
+                  uploading={uploadingFile}
+                  pendingFile={pendingFile}
+                  onClearFile={handleClearPendingFile}
                 />
               </div>
             </>
@@ -793,6 +795,19 @@ export default function MessagesPage() {
       </div>
 
       {/* Dialogs */}
+      {user && activeWorkspace && selected && (
+        <CreateMeetingDialog
+          open={meetingDialogOpen}
+          onOpenChange={setMeetingDialogOpen}
+          userId={user.id}
+          workspaceId={activeWorkspace.id}
+          conversationId={selected.id}
+          leadId={selected.leadId}
+          attendees={meetingAttendees}
+          onMeetingCreated={handleMeetingCreated}
+        />
+      )}
+
       {activeWorkspace && (
         <>
           <NewConversationDialog

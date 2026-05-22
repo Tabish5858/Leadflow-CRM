@@ -32,9 +32,11 @@ export async function GET(req: NextRequest) {
     cookieStore.delete("calendar_oauth_state");
 
     let userId: string;
+    let redirectTo = "/settings";
     try {
       const decoded = JSON.parse(Buffer.from(state, "base64").toString());
       userId = decoded.userId;
+      redirectTo = decoded.redirectTo || "/settings";
     } catch {
       return NextResponse.redirect(
         new URL("/settings?calendar_error=invalid_state", req.url)
@@ -45,14 +47,14 @@ export async function GET(req: NextRequest) {
 
     if (!tokens.access_token) {
       return NextResponse.redirect(
-        new URL("/settings?calendar_error=token_exchange_failed", req.url)
+        new URL(`${redirectTo}?calendar_error=token_exchange_failed`, req.url)
       );
     }
 
     await saveCalendarTokens(userId, tokens, "");
 
     return NextResponse.redirect(
-      new URL("/settings?calendar_connected=true", req.url)
+      new URL(`${redirectTo}?calendar_connected=true`, req.url)
     );
   } catch (error) {
     console.error("Google OAuth callback error:", error);

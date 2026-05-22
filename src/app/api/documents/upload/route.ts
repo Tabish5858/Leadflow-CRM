@@ -13,9 +13,9 @@ export async function POST(req: NextRequest) {
     const workspaceId = formData.get("workspaceId") as string;
     const userId = formData.get("userId") as string;
 
-    if (!file || !leadId || !workspaceId || !userId) {
+    if (!file || !workspaceId || !userId) {
       return NextResponse.json(
-        { error: "file, leadId, workspaceId, and userId are required" },
+        { error: "file, workspaceId, and userId are required" },
         { status: 400 }
       );
     }
@@ -52,9 +52,8 @@ export async function POST(req: NextRequest) {
     });
 
     // Store metadata in Firestore
-    const docRef = await addDoc(collection(db, DOCUMENTS_COLLECTION), {
+    const docData: Record<string, unknown> = {
       workspaceId,
-      leadId,
       fileName: file.name,
       fileType: getFileType(file.type),
       mimeType: file.type,
@@ -64,7 +63,9 @@ export async function POST(req: NextRequest) {
       cloudinaryResourceType: result.resource_type,
       uploadedBy: userId,
       createdAt: Timestamp.now(),
-    });
+    };
+    if (leadId) docData.leadId = leadId;
+    const docRef = await addDoc(collection(db, DOCUMENTS_COLLECTION), docData);
 
     return NextResponse.json({
       success: true,

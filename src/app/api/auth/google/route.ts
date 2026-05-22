@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 export async function GET(req: NextRequest) {
   try {
     const userId = req.nextUrl.searchParams.get("userId");
+    const redirectTo = req.nextUrl.searchParams.get("redirectTo") || "/settings";
 
     if (!userId) {
       return NextResponse.json(
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const state = Buffer.from(JSON.stringify({ userId })).toString("base64");
+    const state = Buffer.from(JSON.stringify({ userId, redirectTo })).toString("base64");
 
     const cookieStore = await cookies();
     cookieStore.set("calendar_oauth_state", state, {

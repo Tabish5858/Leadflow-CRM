@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Pencil, Trash2, X, Check, Smile, Image as ImageIcon, File as FileIcon, Download } from "lucide-react";
+import { Pencil, Trash2, X, Check, Smile, File as FileIcon, Download } from "lucide-react";
 import type { Message } from "@/types";
 import { MeetingCard } from "@/components/messages/meeting-card";
 
@@ -48,6 +48,24 @@ export function MessageThread({
   const [editBody, setEditBody] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+
+  const handleDownload = useCallback(async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // Fallback: open in new tab
+      window.open(url, "_blank");
+    }
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -162,7 +180,7 @@ export function MessageThread({
   // ─── Messages ───────────────────────────────────────────────────────
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#efeae2] px-4 py-2 dark:bg-[#0b141a]">
+    <div className="flex-1 overflow-y-auto min-h-0 bg-[#efeae2] px-4 py-2 dark:bg-[#0b141a]">
       {messages.map((msg, idx) => {
         const isOwn = msg.senderId === currentUserId;
         const isFirstInGroup = idx === 0 || messages[idx - 1].senderId !== msg.senderId || isDifferentDay(msg, messages[idx - 1]);
@@ -257,28 +275,63 @@ export function MessageThread({
 
                       {/* File attachment */}
                       {msg.attachment && (
-                        <div className="mb-2 max-w-[260px]">
-                          <a
-                            href={msg.attachment.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-3 rounded-lg border bg-white/60 p-2.5 transition-colors hover:bg-white/80 dark:bg-white/5 dark:hover:bg-white/10"
-                          >
-                            {msg.attachment.type === "image" ? (
-                              <ImageIcon className="h-6 w-6 shrink-0 text-blue-500" />
-                            ) : (
-                              <FileIcon className="h-6 w-6 shrink-0 text-muted-foreground" />
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-[12px] font-medium text-foreground">
-                                {msg.attachment.name}
-                              </p>
-                              <p className="text-[10px] text-muted-foreground">
-                                {(msg.attachment.size / 1024).toFixed(0)} KB
-                              </p>
+                        <div className="mb-2 max-w-[280px]">
+                          {msg.attachment.type === "image" ? (
+                            <div className="group relative">
+                              <a
+                                href={msg.attachment.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <img
+                                  src={msg.attachment.url}
+                                  alt={msg.attachment.name}
+                                  className="w-full max-h-64 rounded-lg border object-cover transition-opacity group-hover:opacity-90"
+                                />
+                              </a>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleDownload(msg.attachment!.url, msg.attachment!.name);
+                                }}
+                                className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 hover:bg-black/70"
+                                title="Download"
+                              >
+                                <Download className="h-4 w-4" />
+                              </button>
                             </div>
-                            <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
-                          </a>
+                          ) : (
+                            <div className="group relative">
+                              <a
+                                href={msg.attachment.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 rounded-lg border bg-white/60 p-2.5 pr-10 transition-colors hover:bg-white/80 dark:bg-white/5 dark:hover:bg-white/10"
+                              >
+                                <FileIcon className="h-6 w-6 shrink-0 text-muted-foreground" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-[12px] font-medium text-foreground">
+                                    {msg.attachment.name}
+                                  </p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {(msg.attachment.size / 1024).toFixed(0)} KB
+                                  </p>
+                                </div>
+                              </a>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleDownload(msg.attachment!.url, msg.attachment!.name);
+                                }}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/50 text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 hover:bg-black/70"
+                                title="Download"
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
 
