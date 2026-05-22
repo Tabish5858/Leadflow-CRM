@@ -172,6 +172,36 @@ export interface Activity {
   metadata?: Record<string, unknown>;
 }
 
+// ─── Message ─────────────────────────────────────────────────────────────────
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  workspaceId: string;
+  senderId: string;
+  senderName: string;
+  body: string;
+  createdAt: Timestamp;
+}
+
+export interface Conversation {
+  id: string;
+  workspaceId: string;
+  type?: "lead" | "member";
+  /** Lead-specific — set when type is "lead" */
+  leadId?: string;
+  leadName?: string;
+  leadEmail?: string;
+  /** Member-specific — set when type is "member" */
+  participantIds: string[];
+  participantNames: string[];
+  /** Common */
+  lastMessage: string;
+  lastMessageAt: Timestamp;
+  unreadCount: number;
+  createdAt: Timestamp;
+}
+
 // ─── Task ────────────────────────────────────────────────────────────────────
 
 export interface Task {

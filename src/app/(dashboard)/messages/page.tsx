@@ -1,97 +1,380 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
-import { getConversations, getMessages, sendMessage, createConversation, type Conversation, type Message } from "@/lib/firebase/messages";
-import { Mail, Send, Search, Plus, MessageSquare } from "lucide-react";
+import { ConversationList } from "@/components/messages/conversation-list";
+import { MessageThread } from "@/components/messages/message-thread";
+import { MessageInput } from "@/components/messages/message-input";
+import { NewConversationDialog } from "@/components/messages/new-conversation-dialog";
+import { NewMemberConversationDialog } from "@/components/messages/new-member-conversation-dialog";
+import {
+  subscribeToConversations,
+  subscribeToMessages,
+  sendMessage,
+  createConversation,
+  fixConversationNames,
+} from "@/lib/firebase/messages";
+import { getWorkspaceMembers } from "@/lib/firebase/workspaces";
+import { Search, Plus, Mail, Users } from "lucide-react";
+import { Timestamp } from "firebase/firestore";
 import { toast } from "@/components/ui/sonner";
 import { getInitials } from "@/lib/utils";
+import type { Conversation, Message, WorkspaceMember } from "@/types";
+
+/** Show the OTHER participant's name for member conversations. */
+function getConversationName(
+  conv: Conversation,
+  currentUserId: string,
+  memberMap: Map<string, string>
+): { name: string; detail: string; isMember: boolean } {
+  const isMember = conv.type === "member" || (!conv.type && !(conv.leadName || conv.leadEmail));
+  if (isMember) {
+    const ids = conv.participantIds || [];
+    const names = conv.participantNames || [];
+    // Try index-aligned lookup first
+    const idx = ids.findIndex((id) => id !== currentUserId);
+    if (idx >= 0 && names[idx]) {
+      return { name: names[idx], detail: "Workspace member", isMember: true };
+    }
+    // Fallback: look up by userId from workspace members
+    const otherId = ids.find((id) => id !== currentUserId);
+    if (otherId && memberMap.has(otherId)) {
+      return { name: memberMap.get(otherId)!, detail: "Workspace member", isMember: true };
+    }
+    return { name: names[0] || "Team Member", detail: "Workspace member", isMember: true };
+  }
+  return {
+    name: conv.leadName || "Unknown",
+    detail: conv.leadEmail || "",
+    isMember: false,
+  };
+}
 
 export default function MessagesPage() {
   const { activeWorkspace, user } = useWorkspace();
   const { firebaseUser } = useAuth();
+
+  // Conversations
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loadingConversations, setLoadingConversations] = useState(true);
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const [convsLoading, setConvsLoading] = useState(true);
+  const [convsError, setConvsError] = useState<string | null>(null);
+
+  // Selected conversation
+  const [selected, setSelected] = useState<Conversation | null>(null);
+
+  // Workspace members (for member list without conversations)
+  const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMember[]>([]);
+
+  // Draft member (clicked a member without an existing conversation)
+  const [draftMember, setDraftMember] = useState<WorkspaceMember | null>(null);
+
+  // Messages for selected conversation
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loadingMessages, setLoadingMessages] = useState(false);
-  const [newMessage, setNewMessage] = useState("");
+  const [msgsLoading, setMsgsLoading] = useState(false);
+  const [msgsError, setMsgsError] = useState<string | null>(null);
+
+  // Search & dialogs
   const [searchQuery, setSearchQuery] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [newConvOpen, setNewConvOpen] = useState(false);
+  const [newMemberOpen, setNewMemberOpen] = useState(false);
+
+  // ─── Subscribe to conversations (real-time) ─────────────────────────
 
   useEffect(() => {
     if (!activeWorkspace) return;
-    setLoadingConversations(true);
-    getConversations(activeWorkspace.id)
-      .then(setConversations)
-      .catch(() => toast.error("Failed to load conversations"))
-      .finally(() => setLoadingConversations(false));
+
+    setConvsLoading(true);
+    setConvsError(null);
+
+    const unsub = subscribeToConversations(
+      activeWorkspace.id,
+      (convs) => {
+        setConversations(convs);
+        setConvsLoading(false);
+        setConvsError(null);
+      },
+      (err) => {
+        setConvsError(err.message || "Failed to load conversations");
+        setConvsLoading(false);
+        toast.error("Failed to load conversations");
+      }
+    );
+
+    return () => unsub();
   }, [activeWorkspace]);
 
-  useEffect(() => {
-    if (!selectedConversation) return;
-    setLoadingMessages(true);
-    getMessages(selectedConversation.id)
-      .then(setMessages)
-      .catch(() => toast.error("Failed to load messages"))
-      .finally(() => setLoadingMessages(false));
-  }, [selectedConversation]);
+  // ─── Fetch workspace members (once) ──────────────────────────────────
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (!activeWorkspace) return;
+    getWorkspaceMembers(activeWorkspace.id)
+      .then(setWorkspaceMembers)
+      .catch(() => toast.error("Failed to load workspace members"));
+  }, [activeWorkspace]);
 
-  const handleSelectConversation = async (conv: Conversation) => {
-    setSelectedConversation(conv);
-    const msgs = await getMessages(conv.id);
-    setMessages(msgs);
-  };
+  // ─── Fix old conversations with misaligned participantNames ──────────
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || !user) return;
+  const [migrated, setMigrated] = useState(false);
 
-    try {
-      await sendMessage({
-        conversationId: selectedConversation.id,
-        senderId: user.id,
-        senderName: user.displayName || "You",
-        body: newMessage.trim(),
-      });
+  useEffect(() => {
+    if (migrated || conversations.length === 0 || workspaceMembers.length === 0) return;
 
-      const updated = await getMessages(selectedConversation.id);
-      setMessages(updated);
-      setNewMessage("");
+    const memberMapForMigration = new Map(workspaceMembers.map((m) => [m.userId, m.displayName]));
+    fixConversationNames(conversations, memberMapForMigration)
+      .then((count) => {
+        if (count > 0) {
+          // Migration complete — names synced
+        }
+      })
+      .catch(() => {})
+      .finally(() => setMigrated(true));
+  }, [migrated, conversations, workspaceMembers]);
 
-      // Refresh conversations list
-      if (activeWorkspace) {
-        const convs = await getConversations(activeWorkspace.id);
-        setConversations(convs);
-      }
-    } catch {
-      toast.error("Failed to send message");
+  // ─── Subscribe to messages for selected conversation (real-time) ──────
+
+  useEffect(() => {
+    if (!selected) {
+      setMessages([]);
+      setMsgsLoading(false);
+      setMsgsError(null);
+      return;
     }
-  };
 
-  const filteredConversations = conversations.filter(
-    (c) =>
-      c.leadName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.leadEmail.toLowerCase().includes(searchQuery.toLowerCase())
+    setMsgsLoading(true);
+    setMsgsError(null);
+
+    const unsub = subscribeToMessages(
+      selected.id,
+      (msgs) => {
+        setMessages(msgs);
+        setMsgsLoading(false);
+        setMsgsError(null);
+      },
+      (err) => {
+        setMsgsError(err.message || "Failed to load messages");
+        setMsgsLoading(false);
+        toast.error("Failed to load messages");
+      }
+    );
+
+    return () => unsub();
+  }, [selected]);
+
+  // ─── Auto-detect newly created member conversation ───────────────────
+
+  useEffect(() => {
+    if (!draftMember || !user) return;
+    // When onSnapshot delivers conversations, check if one was created for this member
+    const match = conversations.find(
+      (c) =>
+        c.type === "member" &&
+        c.participantIds?.includes(user.id) &&
+        c.participantIds?.includes(draftMember.userId)
+    );
+    if (match && !selected) {
+      setSelected(match);
+      setDraftMember(null);
+    }
+  }, [conversations, draftMember, selected, user]);
+
+  // ─── Select conversation (no double-fetch — snapshot handles it) ──────
+
+  const handleSelectConversation = useCallback((conv: Conversation) => {
+    setSelected(conv);
+    setDraftMember(null);
+  }, []);
+
+  // ─── Select member (show draft until first message creates convo) ──────
+
+  const handleSelectMember = useCallback(
+    (member: WorkspaceMember) => {
+      // Check if conversation already exists
+      const existing = conversations.find(
+        (c) =>
+          c.type === "member" &&
+          c.participantIds?.includes(user?.id || "") &&
+          c.participantIds?.includes(member.userId)
+      );
+      if (existing) {
+        setSelected(existing);
+        setDraftMember(null);
+        return;
+      }
+      // No conversation yet — enter draft mode
+      setSelected(null);
+      setDraftMember(member);
+      setMessages([]);
+    },
+    [conversations, user]
   );
+
+  // ─── Send message ────────────────────────────────────────────────────
+
+  const handleSendMessage = useCallback(
+    async (body: string) => {
+      if (!user || !activeWorkspace) return;
+
+      // Draft mode — create conversation + send first message
+      if (draftMember && !selected) {
+        const convoId = await createConversation({
+          workspaceId: activeWorkspace.id,
+          type: "member",
+          participantIds: [user.id, draftMember.userId],
+          participantNames: [user.displayName || "You", draftMember.displayName],
+        });
+        // The onSnapshot will pick up the new conversation.
+        // We need to send the message immediately — but sendMessage needs conversationId.
+        // Send message to the new conversation, then the onSnapshot subscription
+        // will kick in when 'selected' is set.
+
+        // Wait briefly for the conversation to appear in onSnapshot,
+        // then select it and send the message
+        // Actually — send the message now with the known convoId
+        await sendMessage({
+          workspaceId: activeWorkspace.id,
+          conversationId: convoId,
+          senderId: user.id,
+          senderName: user.displayName || "Unknown",
+          body,
+        });
+        // Clear draft and wait for onSnapshot to pick up the new conversation
+        setDraftMember(null);
+        setMessages([
+          {
+            id: "temp",
+            conversationId: convoId,
+            workspaceId: activeWorkspace.id,
+            senderId: user.id,
+            senderName: user.displayName || "Unknown",
+            body,
+            createdAt: Timestamp.now(),
+          },
+        ]);
+        // onSnapshot will update conversations list, and our auto-detect
+        // useEffect will select the right one
+        return;
+      }
+
+      if (!selected) return;
+
+      await sendMessage({
+        workspaceId: activeWorkspace.id,
+        conversationId: selected.id,
+        senderId: user.id,
+        senderName: user.displayName || "Unknown",
+        body,
+      });
+    },
+    [selected, draftMember, user, activeWorkspace]
+  );
+
+  // ─── Create new lead conversation ─────────────────────────────────────
+
+  const handleCreateConversation = useCallback(
+    async (lead: { id: string; firstName: string; lastName: string; email: string }) => {
+      if (!activeWorkspace) return;
+      const leadName = `${lead.firstName} ${lead.lastName}`;
+      await createConversation({
+        workspaceId: activeWorkspace.id,
+        type: "lead",
+        leadId: lead.id,
+        leadName,
+        leadEmail: lead.email,
+      });
+      toast.success(`Conversation started with ${leadName}`);
+    },
+    [activeWorkspace]
+  );
+
+  // ─── Create new member conversation ───────────────────────────────────
+
+  const handleCreateMemberConversation = useCallback(
+    async (member: { userId: string; displayName: string; email: string }) => {
+      if (!activeWorkspace || !user) return;
+      // Check if conversation already exists between these two members
+      const existing = conversations.find(
+        (c) =>
+          c.type === "member" &&
+          c.participantIds?.includes(user.id) &&
+          c.participantIds?.includes(member.userId)
+      );
+      if (existing) {
+        setSelected(existing);
+        setDraftMember(null);
+        setNewMemberOpen(false);
+        toast.info(`Already have a conversation with ${member.displayName}`);
+        return;
+      }
+      await createConversation({
+        workspaceId: activeWorkspace.id,
+        type: "member",
+        participantIds: [user.id, member.userId],
+        participantNames: [user.displayName || "You", member.displayName],
+      });
+      toast.success(`Conversation started with ${member.displayName}`);
+    },
+    [activeWorkspace, user, conversations]
+  );
+
+  // ─── Search filter ───────────────────────────────────────────────────
+
+  // ─── Member name lookup map ──────────────────────────────────────────
+
+  const memberMap = useMemo(
+    () => new Map(workspaceMembers.map((m) => [m.userId, m.displayName])),
+    [workspaceMembers]
+  );
+
+  // ─── Filtered data ────────────────────────────────────────────────────
+
+  const filteredConversations = conversations.filter((c) => {
+    const { name, detail } = getConversationName(c, user?.id || "", memberMap);
+    const q = searchQuery.toLowerCase();
+    return (
+      name.toLowerCase().includes(q) ||
+      detail.toLowerCase().includes(q) ||
+      (c.lastMessage || "").toLowerCase().includes(q)
+    );
+  });
+
+  // Members without an existing conversation (exclude current user)
+  const membersWithoutConvo = workspaceMembers.filter(
+    (m) =>
+      m.userId !== user?.id &&
+      !filteredConversations.some(
+        (c) =>
+          c.type === "member" &&
+          c.participantIds?.includes(m.userId) &&
+          c.participantIds?.includes(user?.id || "")
+      )
+  );
+
+  // If search is active, filter members too
+  const filteredMembers = searchQuery
+    ? membersWithoutConvo.filter(
+        (m) =>
+          m.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          m.email.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : membersWithoutConvo;
+
+  // ─── No workspace state ──────────────────────────────────────────────
 
   if (!activeWorkspace) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Messages" description="Communication log and outreach tracking." />
+        <PageHeader
+          title="Messages"
+          description="Real-time messaging with leads and team members."
+        />
         <div className="flex items-center justify-center py-12">
-          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-64 w-full rounded-lg" />
         </div>
       </div>
     );
@@ -99,14 +382,15 @@ export default function MessagesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Messages"
-        description="Communication log and outreach tracking."
-      />
+        <PageHeader
+          title="Messages"
+          description="Real-time messaging with leads and team members."
+        />
 
       <div className="grid h-[calc(100vh-12rem)] grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Conversation List */}
-        <div className="rounded-lg border bg-card lg:col-span-1">
+        {/* ─── Conversation List (Left) ─────────────────────────────────── */}
+        <div className="flex flex-col rounded-lg border bg-card lg:col-span-1">
+          {/* Search bar */}
           <div className="border-b p-3">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -119,144 +403,170 @@ export default function MessagesPage() {
             </div>
           </div>
 
-          <div className="overflow-y-auto" style={{ height: "calc(100% - 4rem)" }}>
-            {loadingConversations ? (
-              <div className="space-y-1 p-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full" />
-                ))}
-              </div>
-            ) : filteredConversations.length === 0 ? (
-              <EmptyState
-                icon={<MessageSquare className="h-8 w-8 text-muted-foreground/50" />}
-                title="No conversations"
-                description="Conversations will appear here when you message leads."
-              />
-            ) : (
-              <div className="space-y-1 p-2">
-                {filteredConversations.map((conv) => (
-                  <button
-                    key={conv.id}
-                    onClick={() => handleSelectConversation(conv)}
-                    className={`flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors hover:bg-muted/50 ${
-                      selectedConversation?.id === conv.id ? "bg-muted" : ""
-                    }`}
-                  >
-                    <Avatar className="h-10 w-10 border">
-                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                        {getInitials(conv.leadName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 overflow-hidden">
-                      <div className="flex items-center justify-between">
-                        <p className="truncate text-sm font-medium">{conv.leadName}</p>
-                        {conv.lastMessageAt && (
-                          <span className="text-xs text-muted-foreground">
-                            {conv.lastMessageAt.toDate().toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {conv.lastMessage || "No messages yet"}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+          {/* List */}
+          <div className="flex-1 overflow-y-auto">
+            <ConversationList
+              conversations={filteredConversations}
+              members={filteredMembers}
+              selectedId={selected?.id ?? (draftMember ? `member_${draftMember.userId}` : null)}
+              currentUserId={user?.id || ""}
+              memberMap={memberMap}
+              onSelectConversation={handleSelectConversation}
+              onSelectMember={handleSelectMember}
+              loading={convsLoading}
+              error={convsError}
+            />
+          </div>
+
+          {/* Action buttons */}
+          <div className="border-t p-2 space-y-1.5">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setNewConvOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Message Lead
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() => setNewMemberOpen(true)}
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Message Member
+            </Button>
           </div>
         </div>
 
-        {/* Message View */}
-        <div className="rounded-lg border bg-card lg:col-span-2">
-          {selectedConversation ? (
-            <div className="flex h-full flex-col">
-              {/* Header */}
-              <div className="border-b p-4">
+        {/* ─── Message Thread (Right) ───────────────────────────────────── */}
+        <div className="flex flex-col rounded-lg border bg-card lg:col-span-2">
+          {selected ? (
+            <>
+              {/* Conversation header */}
+              <div className="border-b px-4 py-3">
+                {(() => {
+                  const { name, detail, isMember } = getConversationName(selected, user?.id || "", memberMap);
+                  return (
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-9 w-9 border">
+                        <AvatarFallback className={`text-xs ${isMember ? "bg-amber-500/10 text-amber-600" : "bg-primary/10 text-primary"}`}>
+                          {getInitials(name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{detail}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Messages */}
+              <MessageThread
+                messages={messages}
+                currentUserId={user?.id ?? ""}
+                loading={msgsLoading}
+                error={msgsError}
+              />
+
+              {/* Input */}
+              <div className="border-t p-4">
+                <MessageInput
+                  onSend={handleSendMessage}
+                  placeholder={`Message ${getConversationName(selected, user?.id || "", memberMap).name.split(" ")[0]}...`}
+                />
+              </div>
+            </>
+          ) : draftMember ? (
+            /* Draft mode — member selected, no conversation yet */
+            <>
+              <div className="border-b px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10 border">
-                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                      {getInitials(selectedConversation.leadName)}
+                  <Avatar className="h-9 w-9 border">
+                    <AvatarFallback className="text-xs bg-amber-500/10 text-amber-600">
+                      {getInitials(draftMember.displayName)}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <p className="font-medium">{selectedConversation.leadName}</p>
-                    <p className="text-xs text-muted-foreground">{selectedConversation.leadEmail}</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {draftMember.displayName}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {draftMember.email}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {loadingMessages ? (
-                  <div className="space-y-3">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                      <Skeleton key={i} className={`h-16 ${i % 2 === 0 ? "ml-auto w-3/4" : "mr-auto w-3/4"}`} />
-                    ))}
-                  </div>
-                ) : messages.length === 0 ? (
-                  <div className="flex h-full items-center justify-center">
-                    <p className="text-sm text-muted-foreground">No messages yet. Start the conversation!</p>
-                  </div>
-                ) : (
-                  messages.map((msg) => {
-                    const isOwn = msg.senderId === user?.id;
-                    return (
-                      <div key={msg.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
-                        <div
-                          className={`max-w-[75%] rounded-lg px-4 py-2 ${
-                            isOwn
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
-                          }`}
-                        >
-                          {!isOwn && (
-                            <p className="mb-1 text-xs font-medium">{msg.senderName}</p>
-                          )}
-                          <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
-                          <p className={`mt-1 text-xs ${isOwn ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                            {msg.createdAt?.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Input */}
-              <div className="border-t p-4">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }}
-                  className="flex gap-2"
-                >
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1"
-                  />
-                  <Button type="submit" disabled={!newMessage.trim()}>
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </form>
-              </div>
-            </div>
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <EmptyState
-                icon={<Mail className="h-12 w-12 text-muted-foreground/50" />}
-                title="Select a conversation"
-                description="Choose a conversation from the list to view messages."
+              <MessageThread
+                messages={[]}
+                currentUserId={user?.id || ""}
+                loading={false}
+                error={null}
               />
+
+              <div className="border-t p-4">
+                <MessageInput
+                  onSend={handleSendMessage}
+                  placeholder={`Message ${draftMember.displayName.split(" ")[0]}...`}
+                />
+              </div>
+            </>
+          ) : (
+            /* Empty state — no conversation selected */
+            <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted/50">
+                <Mail className="h-8 w-8 text-muted-foreground/40" />
+              </div>
+              <h3 className="mt-4 text-sm font-medium text-foreground">
+                Select a conversation
+              </h3>
+              <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+                Choose a conversation from the list, message a lead, or start a chat with a team member.
+              </p>
+              <div className="mt-4 flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNewConvOpen(true)}
+                >
+                  <Plus className="mr-2 h-3.5 w-3.5" />
+                  Message Lead
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setNewMemberOpen(true)}
+                >
+                  <Users className="mr-2 h-3.5 w-3.5" />
+                  Message Member
+                </Button>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Dialogs */}
+      {activeWorkspace && (
+        <>
+          <NewConversationDialog
+            open={newConvOpen}
+            onOpenChange={setNewConvOpen}
+            workspaceId={activeWorkspace.id}
+            onCreateConversation={handleCreateConversation}
+          />
+          <NewMemberConversationDialog
+            open={newMemberOpen}
+            onOpenChange={setNewMemberOpen}
+            workspaceId={activeWorkspace.id}
+            currentUserId={user?.id || ""}
+            onCreateConversation={handleCreateMemberConversation}
+          />
+        </>
+      )}
     </div>
   );
 }
