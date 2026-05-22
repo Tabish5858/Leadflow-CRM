@@ -51,7 +51,6 @@ import {
   Check,
   Palette,
   UserCircle,
-  Camera,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import {

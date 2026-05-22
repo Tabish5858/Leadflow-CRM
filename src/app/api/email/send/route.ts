@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { addTrackingPixel, rewriteLinks } from "@/lib/email-tracking";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.FROM_EMAIL || "noreply@leadflow.app";
 const FROM_NAME = process.env.FROM_NAME || "LeadFlow CRM";
 const EMAILS_COLLECTION = "emails";
@@ -72,7 +70,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Send via Resend
+    // Send via Resend (lazy init to avoid crashes when env var is missing at build time)
+    const { Resend } = await import("resend");
+    const resend = new Resend(process.env.RESEND_API_KEY);
     const recipients = Array.isArray(to) ? to : [to];
     const result = await resend.emails.send({
       from: `${FROM_NAME} <${FROM_EMAIL}>`,
