@@ -21,17 +21,6 @@ const WORKSPACES_COLLECTION = "workspaces";
 const USERS_COLLECTION = "users";
 const INVITES_COLLECTION = "workspace_invites";
 
-// ─── Generate Invite Code ────────────────────────────────────────────────────
-
-function generateInviteCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let result = "";
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
 // ─── Default Pipeline ────────────────────────────────────────────────────────
 
 export const DEFAULT_PIPELINE_STAGES = [
@@ -51,8 +40,6 @@ export async function createWorkspace(
   name: string
 ): Promise<string> {
   const workspaceId = crypto.randomUUID();
-  const inviteCode = generateInviteCode();
-
   await addDoc(collection(db, WORKSPACES_COLLECTION), {
     id: workspaceId,
     name,
@@ -68,7 +55,6 @@ export async function createWorkspace(
     updatedAt: Timestamp.now(),
     ownerId: userId,
     memberIds: [userId],
-    inviteCode,
   });
 
   return workspaceId;
@@ -121,12 +107,6 @@ export async function updateWorkspaceName(
   name: string
 ): Promise<void> {
   await updateWorkspace(workspaceId, { name });
-}
-
-export async function regenerateInviteCode(workspaceId: string): Promise<string> {
-  const newCode = generateInviteCode();
-  await updateWorkspace(workspaceId, { inviteCode: newCode });
-  return newCode;
 }
 
 // ─── Delete Workspace ────────────────────────────────────────────────────────
@@ -324,6 +304,19 @@ export async function getPendingInvites(
   const q = query(
     invitesRef,
     where("email", "==", email.toLowerCase()),
+    where("status", "==", "pending")
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as (WorkspaceInvite & { id: string })[];
+}
+
+export async function getPendingInvitesForWorkspace(
+  workspaceId: string
+): Promise<(WorkspaceInvite & { id: string })[]> {
+  const invitesRef = collection(db, INVITES_COLLECTION);
+  const q = query(
+    invitesRef,
+    where("workspaceId", "==", workspaceId),
     where("status", "==", "pending")
   );
   const snapshot = await getDocs(q);

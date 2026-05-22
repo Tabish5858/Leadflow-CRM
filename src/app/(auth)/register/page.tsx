@@ -7,14 +7,6 @@ import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { DEFAULT_PIPELINE_STAGES } from "@/lib/firebase/workspaces";
 
-function generateInviteCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let result = "";
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,7 +82,6 @@ export default function RegisterPage() {
         updatedAt: Timestamp.now(),
         ownerId: cred.user.uid,
         memberIds: [cred.user.uid],
-        inviteCode: generateInviteCode(),
       });
 
       toast.success("Account created successfully");

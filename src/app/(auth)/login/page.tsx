@@ -11,14 +11,6 @@ import {
 import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 import { DEFAULT_PIPELINE_STAGES } from "@/lib/firebase/workspaces";
 
-function generateInviteCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let result = "";
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -103,7 +95,6 @@ export default function LoginPage() {
           updatedAt: Timestamp.now(),
           ownerId: result.user.uid,
           memberIds: [result.user.uid],
-          inviteCode: generateInviteCode(),
         });
       }
       toast.success("Logged in with Google");

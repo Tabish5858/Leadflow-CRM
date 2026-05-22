@@ -35,17 +35,18 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Building2,
   Users,
-  Copy,
   Trash2,
   LogOut,
   Shield,
   Crown,
-  MoreHorizontal,
   KanbanSquare,
   ListFilter,
   UserCog,
   Pencil,
   Plug,
+  Mail,
+  Clock,
+  XCircle,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import {
@@ -55,11 +56,12 @@ import {
   removeMemberFromWorkspace,
   leaveWorkspace,
   deleteWorkspace,
-  regenerateInviteCode,
   createInvite,
+  cancelInvite,
+  getPendingInvitesForWorkspace,
   updateMemberRole,
 } from "@/lib/firebase/workspaces";
-import type { WorkspaceMember, PipelineStage, CustomField } from "@/types";
+import type { WorkspaceMember, WorkspaceInvite, PipelineStage, CustomField } from "@/types";
 
 // Dynamically loaded tab content — only loaded when user clicks the tab
 const PipelineEditor = dynamic(() => import("@/components/settings/pipeline-editor").then((mod) => mod.PipelineEditor), {
@@ -97,7 +99,7 @@ export default function SettingsPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"admin" | "member" | "viewer">("member");
   const [inviting, setInviting] = useState(false);
-  const [inviteCode, setInviteCode] = useState("");
+  const [pendingInvites, setPendingInvites] = useState<(WorkspaceInvite & { id: string })[]>([]);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -112,7 +114,6 @@ export default function SettingsPage() {
   useEffect(() => {
     if (activeWorkspace) {
       setWorkspaceName(activeWorkspace.name);
-      setInviteCode(activeWorkspace.inviteCode || "");
       setPipelineStages(activeWorkspace.pipeline?.stages || []);
       setCustomFields(activeWorkspace.customFields || []);
     }
@@ -121,10 +122,10 @@ export default function SettingsPage() {
   useEffect(() => {
     if (activeTab === "members" && activeWorkspace) {
       setLoadingMembers(true);
-      getWorkspaceMembers(activeWorkspace.id)
-        .then(setMembers)
-        .catch(() => toast.error("Failed to load members"))
-        .finally(() => setLoadingMembers(false));
+      Promise.all([
+        getWorkspaceMembers(activeWorkspace.id).then(setMembers).catch(() => toast.error("Failed to load members")),
+        getPendingInvitesForWorkspace(activeWorkspace.id).then(setPendingInvites).catch(() => toast.error("Failed to load invites")),
+      ]).finally(() => setLoadingMembers(false));
     }
     if (activeTab === "pipeline" && activeWorkspace) {
       refreshStats(activeWorkspace.id);
@@ -150,23 +151,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleCopyInviteCode = () => {
-    if (!inviteCode) return;
-    navigator.clipboard.writeText(inviteCode);
-    toast.success("Invite code copied to clipboard");
-  };
-
-  const handleRegenerateCode = async () => {
-    if (!activeWorkspace) return;
-    try {
-      const newCode = await regenerateInviteCode(activeWorkspace.id);
-      setInviteCode(newCode);
-      toast.success("New invite code generated");
-    } catch {
-      toast.error("Failed to regenerate invite code");
-    }
-  };
-
   const handleInvite = async () => {
     if (!activeWorkspace || !firebaseUser || !inviteEmail.trim()) {
       toast.error("Please enter an email address");
@@ -174,13 +158,55 @@ export default function SettingsPage() {
     }
     setInviting(true);
     try {
-      await createInvite(activeWorkspace.id, inviteEmail.trim(), firebaseUser.uid, inviteRole);
+      const inviteId = await createInvite(activeWorkspace.id, inviteEmail.trim(), firebaseUser.uid, inviteRole);
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+      const acceptUrl = `${baseUrl}/invite/accept?inviteId=${inviteId}`;
+      const workspaceName = activeWorkspace.name;
+      const inviterName = user?.displayName || "A team member";
+
+      // Send actual invitation email via Resend
+      await fetch("/api/email/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: inviteEmail.trim(),
+          subject: `You're invited to join ${workspaceName} on LeadFlow CRM`,
+          html: `
+            <div style="font-family: system-ui, sans-serif; max-width: 480px; margin: 0 auto;">
+              <h2 style="color: #111827;">You&apos;re invited!</h2>
+              <p style="color: #374151;">${inviterName} has invited you to join <strong>${workspaceName}</strong> on LeadFlow CRM.</p>
+              <p style="color: #374151;">Your role will be: <strong>${inviteRole}</strong></p>
+              <div style="margin: 24px 0;">
+                <a href="${acceptUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Accept Invitation</a>
+              </div>
+              <p style="color: #6b7280; font-size: 14px;">This invitation expires in 7 days. If you don't have an account, you'll be prompted to create one.</p>
+            </div>
+          `,
+          workspaceId: activeWorkspace.id,
+          createdBy: firebaseUser.uid,
+        }),
+      });
+
       toast.success(`Invite sent to ${inviteEmail}`);
       setInviteEmail("");
+      // Refresh pending invites list
+      const updated = await getPendingInvitesForWorkspace(activeWorkspace.id);
+      setPendingInvites(updated);
     } catch {
       toast.error("Failed to send invite");
     } finally {
       setInviting(false);
+    }
+  };
+
+  const handleCancelInvite = async (inviteId: string, email: string) => {
+    if (!activeWorkspace) return;
+    try {
+      await cancelInvite(inviteId);
+      toast.success(`Invite to ${email} cancelled`);
+      setPendingInvites((prev) => prev.filter((i) => i.id !== inviteId));
+    } catch {
+      toast.error("Failed to cancel invite");
     }
   };
 
@@ -357,31 +383,6 @@ export default function SettingsPage() {
                   {savingName ? "Saving..." : "Save"}
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Invite Code</CardTitle>
-              <CardDescription>
-                Share this code with team members so they can join your workspace.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <code className="rounded-md bg-muted px-4 py-2 text-lg font-mono font-bold tracking-wider">
-                  {inviteCode || "N/A"}
-                </code>
-                <Button variant="outline" size="icon" onClick={handleCopyInviteCode}>
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleRegenerateCode}>
-                  Regenerate
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Invite codes expire after 7 days. Regenerating will invalidate the old code.
-              </p>
             </CardContent>
           </Card>
 
@@ -571,23 +572,6 @@ export default function SettingsPage() {
                              {member.role}
                            </span>
                          )}
-                         {!isOwner && member.userId !== activeWorkspace.ownerId && (
-                           <DropdownMenu>
-                             <DropdownMenuTrigger asChild>
-                               <Button variant="ghost" size="icon" className="h-8 w-8">
-                                 <MoreHorizontal className="h-4 w-4" />
-                               </Button>
-                             </DropdownMenuTrigger>
-                             <DropdownMenuContent align="end">
-                               <DropdownMenuItem
-                                 className="text-destructive"
-                                 onClick={() => handleRemoveMember(member.userId)}
-                               >
-                                 Remove from workspace
-                               </DropdownMenuItem>
-                             </DropdownMenuContent>
-                           </DropdownMenu>
-                         )}
                        </div>
                     </div>
                   ))}
@@ -595,6 +579,54 @@ export default function SettingsPage() {
                )}
             </CardContent>
           </Card>
+
+          {/* Pending Invites */}
+          {pendingInvites.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-500" />
+                  Pending Invites ({pendingInvites.length})
+                </CardTitle>
+                <CardDescription>
+                  Invitations that haven&apos;t been accepted yet.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  {pendingInvites.map((invite) => (
+                    <div
+                      key={invite.id}
+                      className="flex items-center justify-between rounded-lg p-3 transition-colors hover:bg-muted/30"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10 border">
+                          <AvatarFallback className="text-xs bg-amber-500/10 text-amber-600">
+                            <Mail className="h-4 w-4" />
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium">{invite.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Role: {invite.role} &middot; Expires {invite.expiresAt.toDate().toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleCancelInvite(invite.id, invite.email)}
+                      >
+                        <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                        Cancel
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>

@@ -43,7 +43,6 @@ export interface Workspace {
   updatedAt: Timestamp;
   ownerId: string;
   memberIds: string[];
-  inviteCode: string | null;
 }
 
 export interface WorkspaceMember {
