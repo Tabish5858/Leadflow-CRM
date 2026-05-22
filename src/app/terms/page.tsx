@@ -75,7 +75,7 @@ export default function TermsOfServicePage() {
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Disclaimers</h2>
           <p>
-            The service is provided on an "as is" and "as available" basis
+            The service is provided on an &quot;as is&quot; and &quot;as available&quot; basis
             without warranties of any kind. To the extent permitted by law, we
             are not liable for indirect, incidental, or consequential damages.
           </p>
