@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useAccent, ACCENT_OPTIONS, type AccentColor } from "@/contexts/accent-context";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +48,8 @@ import {
   Mail,
   Clock,
   XCircle,
+  Check,
+  Palette,
 } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import {
@@ -108,6 +111,7 @@ export default function SettingsPage() {
 
   const isOwner = activeWorkspace?.ownerId === user?.id;
   const { stats, refreshStats } = useLeadStore();
+  const { accent, setAccent } = useAccent();
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
   const [savingPipeline, setSavingPipeline] = useState(false);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
@@ -701,6 +705,46 @@ export default function SettingsPage() {
       {/* Preferences Tab */}
       {activeTab === "preferences" && (
         <div className="space-y-6">
+          {/* Accent Theme Picker */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Palette className="h-4 w-4" />
+                Accent Color
+              </CardTitle>
+              <CardDescription>
+                Choose a primary accent color for the interface. Applied instantly.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-6 gap-3 sm:grid-cols-9">
+                {ACCENT_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setAccent(option.value as AccentColor)}
+                    className="group relative flex flex-col items-center gap-1.5"
+                    title={option.label}
+                  >
+                    <div
+                      className="relative flex h-9 w-9 items-center justify-center rounded-lg transition-transform hover:scale-110"
+                      style={{ backgroundColor: option.hex }}
+                    >
+                      {accent === option.value && (
+                        <Check className="h-4 w-4 text-white drop-shadow-md" />
+                      )}
+                      {accent === option.value && (
+                        <span className="absolute -inset-0.5 rounded-lg ring-2 ring-ring ring-offset-2 ring-offset-background" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground group-hover:text-foreground transition-colors">
+                      {option.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Regional Settings</CardTitle>
