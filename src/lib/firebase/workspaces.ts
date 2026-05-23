@@ -322,6 +322,11 @@ export async function acceptInvite(
     if (Object.keys(updates).length > 0) {
       batch.update(userRef, updates);
     }
+
+    // Set per-workspace role if not already set
+    if (!(userData.workspaceRoles || {})[invite.workspaceId]) {
+      batch.set(userRef, { workspaceRoles: { ...(userData.workspaceRoles || {}), [invite.workspaceId]: invite.role } }, { merge: true });
+    }
   }
 
   await batch.commit();

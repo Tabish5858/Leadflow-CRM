@@ -59,6 +59,7 @@ export default function RegisterPage() {
         },
         workspaceIds: [workspaceId],
         activeWorkspaceId: workspaceId,
+        workspaceRoles: { [workspaceId]: "owner" },
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
         lastActiveAt: Timestamp.now(),
