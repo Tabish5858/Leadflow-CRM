@@ -95,6 +95,7 @@ function getConversationName(
 export default function MessagesPage() {
   const { activeWorkspace, user } = useWorkspace();
   const { firebaseUser } = useAuth();
+  const isAdminOrOwner = user?.role === "owner" || user?.role === "admin";
 
   // Conversations
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -731,15 +732,17 @@ export default function MessagesPage() {
                   className="pl-8"
                 />
               </div>
-              <TooltipButton
-                tooltip="New group chat"
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 shrink-0"
-                onClick={() => setNewGroupOpen(true)}
-              >
-                <Plus className="h-4 w-4" />
-              </TooltipButton>
+              {isAdminOrOwner && (
+                <TooltipButton
+                  tooltip="New group chat"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => setNewGroupOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                </TooltipButton>
+              )}
             </div>
           </div>
 

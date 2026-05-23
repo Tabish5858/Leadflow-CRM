@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useLeadStore } from "@/lib/stores/leadStore";
 import { StatCard } from "@/components/shared/stat-card";
@@ -9,6 +9,15 @@ import { SkeletonChartGrid } from "@/components/skeletons/skeleton-chart";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -31,12 +40,37 @@ import {
   Bar,
 } from "recharts";
 import { DEFAULT_PIPELINE_STAGES, LEAD_SOURCES } from "@/lib/constants";
-import type { PipelineStage } from "@/types";
+import type { PipelineStage, AnalyticsCardConfig, AnalyticsCardType } from "@/types";
 import { formatCurrency } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Users, DollarSign, Target, Mail, Phone, Download } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  Users,
+  DollarSign,
+  Target,
+  Mail,
+  Phone,
+  Download,
+  Pencil,
+  X,
+  Plus,
+  ChevronUp,
+  ChevronDown,
+  BarChart3,
+  PieChartIcon,
+  LineChartIcon,
+  ListOrdered,
+  Filter,
+  Layers,
+  Trash2,
+} from "lucide-react";
 import { ExportButton } from "@/components/shared/export-button";
 import type { AnalyticsMetrics } from "@/lib/export";
 import { RequireModuleAccess } from "@/components/shared/require-module-access";
+import { getAnalyticsCards, AVAILABLE_METRICS } from "@/lib/analytics-cards";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase/client";
+import { toast } from "sonner";
 
 const COLORS = [
   "hsl(212 72% 58%)",
@@ -61,19 +95,120 @@ const CHART_COLORS = {
   bar: "hsl(152 55% 42%)",
 };
 
+// ─── Metric → KPI config ────────────────────────────────────────────────────
+
+interface KpiDef {
+  value: (ctx: MetricCtx) => string | number;
+  icon: React.ReactNode;
+  accent: "info" | "primary" | "success" | "warning" | "default";
+}
+
+interface MetricCtx {
+  totalLeads: number;
+  activeDeals: number;
+  wonLeads: number;
+  lostLeads: number;
+  totalValue: number;
+  wonValue: number;
+  conversionRate: number;
+  avgDealSize: number;
+}
+
+const KPI_DEFS: Record<string, KpiDef> = {
+  total_leads: {
+    value: (c) => c.totalLeads,
+    icon: <Users className="h-5 w-5" />,
+    accent: "info",
+  },
+  active_deals: {
+    value: (c) => c.activeDeals,
+    icon: <Target className="h-5 w-5" />,
+    accent: "primary",
+  },
+  pipeline_value: {
+    value: (c) => formatCurrency(c.totalValue),
+    icon: <DollarSign className="h-5 w-5" />,
+    accent: "success",
+  },
+  win_rate: {
+    value: (c) => `${c.conversionRate}%`,
+    icon: <TrendingUp className="h-5 w-5" />,
+    accent: "warning",
+  },
+  won_leads: {
+    value: (c) => `${c.wonLeads}`,
+    icon: <Target className="h-5 w-5" />,
+    accent: "success",
+  },
+  lost_leads: {
+    value: (c) => `${c.lostLeads}`,
+    icon: <TrendingDown className="h-5 w-5" />,
+    accent: "warning",
+  },
+  avg_deal_size: {
+    value: (c) => formatCurrency(c.avgDealSize),
+    icon: <DollarSign className="h-5 w-5" />,
+    accent: "primary",
+  },
+  won_value: {
+    value: (c) => formatCurrency(c.wonValue),
+    icon: <DollarSign className="h-5 w-5" />,
+    accent: "success",
+  },
+  conversion_rate: {
+    value: (c) => `${c.conversionRate}%`,
+    icon: <TrendingUp className="h-5 w-5" />,
+    accent: "primary",
+  },
+};
+
+// ─── Card type → icon ───────────────────────────────────────────────────────
+
+const CARD_TYPE_ICONS: Record<AnalyticsCardType, React.ReactNode> = {
+  kpi: <BarChart3 className="h-4 w-4" />,
+  line_chart: <LineChartIcon className="h-4 w-4" />,
+  pie_chart: <PieChartIcon className="h-4 w-4" />,
+  bar_chart: <BarChart3 className="h-4 w-4" />,
+  funnel: <Filter className="h-4 w-4" />,
+  top_leads: <ListOrdered className="h-4 w-4" />,
+  summary: <Layers className="h-4 w-4" />,
+};
+
+const CARD_TYPE_LABELS: Record<AnalyticsCardType, string> = {
+  kpi: "KPI Card",
+  line_chart: "Line Chart",
+  pie_chart: "Pie Chart",
+  bar_chart: "Bar Chart",
+  funnel: "Funnel",
+  top_leads: "Top Leads",
+  summary: "Summary",
+};
+
+// ─── Page ───────────────────────────────────────────────────────────────────
+
 export default function AnalyticsPage() {
-  const { activeWorkspace } = useWorkspace();
+  const { activeWorkspace, user } = useWorkspace();
   const { leads, loading, initialize } = useLeadStore();
   const [dateRange, setDateRange] = useState(30);
+  const [editMode, setEditMode] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   const stages: PipelineStage[] = activeWorkspace?.pipeline?.stages || DEFAULT_PIPELINE_STAGES;
+  const isAdmin = user?.role === "owner" || user?.role === "admin";
+
+  // Cards from workspace config
+  const activeCards = useMemo(
+    () => getAnalyticsCards(activeWorkspace?.analyticsCards),
+    [activeWorkspace?.analyticsCards]
+  );
 
   useEffect(() => {
     if (!activeWorkspace) return;
     initialize(activeWorkspace.id);
   }, [activeWorkspace?.id, initialize, activeWorkspace]);
 
-  // Filter leads by date range
+  // ─── Date filter ───────────────────────────────────────────────────────
+
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - dateRange);
   const filteredLeads = useMemo(
@@ -81,7 +216,8 @@ export default function AnalyticsPage() {
     [leads, cutoff]
   );
 
-  // Leads over time
+  // ─── Derived data ──────────────────────────────────────────────────────
+
   const leadsOverTimeData = useMemo(() => {
     const leadsOverTime: Record<string, number> = {};
     for (const lead of filteredLeads) {
@@ -93,7 +229,17 @@ export default function AnalyticsPage() {
       .map(([date, count]) => ({ date, leads: count }));
   }, [filteredLeads]);
 
-  // Pipeline distribution
+  const valueOverTimeData = useMemo(() => {
+    const valueOverTime: Record<string, number> = {};
+    for (const lead of filteredLeads) {
+      const date = lead.createdAt?.toDate().toLocaleDateString() || "Unknown";
+      valueOverTime[date] = (valueOverTime[date] || 0) + (lead.value || 0);
+    }
+    return Object.entries(valueOverTime)
+      .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
+      .map(([date, value]) => ({ date, value }));
+  }, [filteredLeads]);
+
   const pipelineData = useMemo(() =>
     stages.map((stage) => ({
       name: stage.name,
@@ -103,7 +249,6 @@ export default function AnalyticsPage() {
     [filteredLeads, stages]
   );
 
-  // Revenue by stage
   const revenueData = useMemo(() =>
     stages.map((stage) => ({
       name: stage.name,
@@ -114,7 +259,6 @@ export default function AnalyticsPage() {
     [filteredLeads, stages]
   );
 
-  // Lead sources
   const sourceData = useMemo(() =>
     LEAD_SOURCES.map((source) => ({
       name: source.replace(/_/g, " "),
@@ -127,19 +271,22 @@ export default function AnalyticsPage() {
   const totalLeads = filteredLeads.length;
   const wonLeads = filteredLeads.filter((l) => l.status === "won").length;
   const lostLeads = filteredLeads.filter((l) => l.status === "lost").length;
-  const conversionRate =
-    totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0;
-  const totalValue = filteredLeads.reduce(
-    (sum, l) => sum + (l.value || 0),
-    0
-  );
-  const activeDeals = filteredLeads.filter(
-    (l) => !["won", "lost"].includes(l.status)
-  ).length;
-  const wonValue = filteredLeads
-    .filter((l) => l.status === "won")
-    .reduce((sum, l) => sum + (l.value || 0), 0);
+  const conversionRate = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0;
+  const totalValue = filteredLeads.reduce((sum, l) => sum + (l.value || 0), 0);
+  const activeDeals = filteredLeads.filter((l) => !["won", "lost"].includes(l.status)).length;
+  const wonValue = filteredLeads.filter((l) => l.status === "won").reduce((sum, l) => sum + (l.value || 0), 0);
   const avgDealSize = wonLeads > 0 ? wonValue / wonLeads : 0;
+
+  const metricCtx: MetricCtx = {
+    totalLeads,
+    activeDeals,
+    wonLeads,
+    lostLeads,
+    totalValue,
+    wonValue,
+    conversionRate,
+    avgDealSize,
+  };
 
   const analyticsMetrics: AnalyticsMetrics = {
     totalLeads,
@@ -154,7 +301,7 @@ export default function AnalyticsPage() {
     generatedAt: new Date().toLocaleDateString(),
   };
 
-  // Top leads by value
+  // Top leads
   const topLeads = useMemo(() =>
     [...filteredLeads]
       .filter((l) => l.value && l.value > 0)
@@ -163,7 +310,7 @@ export default function AnalyticsPage() {
     [filteredLeads]
   );
 
-  // Leads by niche/industry
+  // Industry breakdown
   const nicheChartData = useMemo(() => {
     const nicheData = filteredLeads.reduce<Record<string, number>>((acc, lead) => {
       const niche = lead.niche || "Unknown";
@@ -176,17 +323,362 @@ export default function AnalyticsPage() {
       .slice(0, 6);
   }, [filteredLeads]);
 
-  // Conversion funnel
+  // Funnel
   const funnelData = useMemo(() =>
     stages.map((stage) => ({
       name: stage.name,
       count: filteredLeads.filter((l) => l.status === stage.id).length,
-      value: filteredLeads
-        .filter((l) => l.status === stage.id)
-        .reduce((sum, l) => sum + (l.value || 0), 0),
+      value: filteredLeads.filter((l) => l.status === stage.id).reduce((sum, l) => sum + (l.value || 0), 0),
     })),
     [filteredLeads, stages]
   );
+
+  // Custom field data (for custom field charts)
+  const getCustomFieldData = useCallback((fieldId: string) => {
+    const field = activeWorkspace?.customFields?.find((f) => f.id === fieldId);
+    if (!field) return [];
+    const counts: Record<string, number> = {};
+    for (const lead of filteredLeads) {
+      const val = lead.customFields?.[fieldId];
+      if (val === undefined || val === null || val === "") continue;
+      const key = String(val);
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [filteredLeads, activeWorkspace]);
+
+  // ─── Save cards to workspace ──────────────────────────────────────────
+
+  const saveCards = useCallback(
+    async (cards: AnalyticsCardConfig[]) => {
+      if (!activeWorkspace) return;
+      try {
+        await updateDoc(doc(db, "workspaces", activeWorkspace.id), {
+          analyticsCards: cards,
+        });
+      } catch (err) {
+        console.error("Failed to save analytics cards:", err);
+        toast.error("Failed to save layout");
+      }
+    },
+    [activeWorkspace]
+  );
+
+  const handleReorder = useCallback(
+    (cardId: string, direction: "up" | "down") => {
+      const cards = getAnalyticsCards(activeWorkspace?.analyticsCards);
+      const idx = cards.findIndex((c) => c.id === cardId);
+      if (idx < 0) return;
+      const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= cards.length) return;
+      // Swap
+      [cards[idx], cards[targetIdx]] = [cards[targetIdx], cards[idx]];
+      // Re-assign orders
+      const updated = cards.map((c, i) => ({ ...c, order: i }));
+      saveCards(updated);
+    },
+    [activeWorkspace, saveCards]
+  );
+
+  const handleRemove = useCallback(
+    (cardId: string) => {
+      const cards = getAnalyticsCards(activeWorkspace?.analyticsCards);
+      const filtered = cards.filter((c) => c.id !== cardId);
+      const updated = filtered.map((c, i) => ({ ...c, order: i }));
+      saveCards(updated);
+      toast.success("Card removed");
+    },
+    [activeWorkspace, saveCards]
+  );
+
+  const handleAddCard = useCallback(
+    (metric: string, customFieldId?: string) => {
+      const cards = getAnalyticsCards(activeWorkspace?.analyticsCards);
+      const option = AVAILABLE_METRICS.find((m) => m.value === metric);
+      if (!option) return;
+      const newCard: AnalyticsCardConfig = {
+        id: `card-${Date.now()}`,
+        type: option.cardType,
+        title: customFieldId
+          ? activeWorkspace?.customFields?.find((f) => f.id === customFieldId)?.name || "Custom Field"
+          : option.label,
+        metric,
+        customFieldId,
+        order: cards.length,
+      };
+      saveCards([...cards, newCard]);
+      setAddDialogOpen(false);
+      toast.success("Card added");
+    },
+    [activeWorkspace, saveCards]
+  );
+
+  // ─── Render a single card ─────────────────────────────────────────────
+
+  const renderCardContent = useCallback(
+    (card: AnalyticsCardConfig) => {
+      // --- KPI ---
+      if (card.type === "kpi") {
+        const def = KPI_DEFS[card.metric];
+        if (!def) return <div className="p-4 text-sm text-muted-foreground">Unknown KPI: {card.metric}</div>;
+        return (
+          <StatCard
+            title={card.title}
+            value={def.value(metricCtx)}
+            icon={def.icon}
+            accentColor={def.accent}
+          />
+        );
+      }
+
+      // --- Line Chart ---
+      if (card.type === "line_chart") {
+        const chartData = card.metric === "value_over_time" ? valueOverTimeData : leadsOverTimeData;
+        return (
+          <Card>
+            <CardHeader><CardTitle className="text-base">{card.title}</CardTitle></CardHeader>
+            <CardContent>
+              {chartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-white" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "black",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        boxShadow: "var(--shadow-elevated)",
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey={card.metric === "value_over_time" ? "value" : "leads"}
+                      stroke={CHART_COLORS.line}
+                      strokeWidth={2.5}
+                      dot={{ r: 3, fill: CHART_COLORS.line }}
+                      activeDot={{ r: 5 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
+                  No data for this period
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      }
+
+      // --- Pie Chart ---
+      if (card.type === "pie_chart") {
+        let pieData: { name: string; value: number; color?: string }[] = [];
+        if (card.metric === "pipeline_distribution") pieData = pipelineData;
+        else if (card.metric === "lead_sources") pieData = sourceData;
+        else if (card.customFieldId) pieData = getCustomFieldData(card.customFieldId);
+
+        return (
+          <Card>
+            <CardHeader><CardTitle className="text-base">{card.title}</CardTitle></CardHeader>
+            <CardContent>
+              {pieData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%" cy="50%"
+                      innerRadius={60} outerRadius={90}
+                      paddingAngle={2}
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: ${value}`}
+                      fill="hsl(var(--foreground))"
+                      fontSize={11}
+                    >
+                      {pieData.map((_entry, index) => (
+                        <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        boxShadow: "var(--shadow-elevated)",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
+                  No data for this period
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      }
+
+      // --- Bar Chart ---
+      if (card.type === "bar_chart") {
+        let barData: { name: string; value: number }[] = [];
+        if (card.metric === "revenue_by_stage") barData = revenueData;
+        else if (card.metric === "industry_breakdown") barData = nicheChartData;
+        else if (card.customFieldId) barData = getCustomFieldData(card.customFieldId);
+
+        return (
+          <Card>
+            <CardHeader><CardTitle className="text-base">{card.title}</CardTitle></CardHeader>
+            <CardContent>
+              {barData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={barData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      formatter={card.metric === "revenue_by_stage" ? (value: number) => formatCurrency(value) : undefined}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        boxShadow: "var(--shadow-elevated)",
+                      }}
+                    />
+                    <Bar dataKey="value" fill={CHART_COLORS.bar} radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
+                  No data for this period
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      }
+
+      // --- Funnel ---
+      if (card.type === "funnel") {
+        return (
+          <Card>
+            <CardHeader><CardTitle className="text-base">{card.title}</CardTitle></CardHeader>
+            <CardContent>
+              {funnelData.length > 0 ? (
+                <div className="space-y-3">
+                  {funnelData.map((stage, index) => {
+                    const maxCount = Math.max(...funnelData.map((s) => s.count), 1);
+                    const width = (stage.count / maxCount) * 100;
+                    return (
+                      <div key={stage.name} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium">{stage.name}</span>
+                          <span className="text-muted-foreground">
+                            {stage.count} leads • {formatCurrency(stage.value)}
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted">
+                          <div className="h-2 rounded-full transition-all" style={{ width: `${width}%`, backgroundColor: COLORS[index % COLORS.length] }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+                  No data for this period
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      }
+
+      // --- Top Leads ---
+      if (card.type === "top_leads") {
+        return (
+          <Card>
+            <CardHeader><CardTitle className="text-base">{card.title}</CardTitle></CardHeader>
+            <CardContent>
+              {topLeads.length > 0 ? (
+                <div className="space-y-3">
+                  {topLeads.map((lead, index) => (
+                    <div key={lead.id} className="flex items-center justify-between rounded-lg p-2 hover:bg-muted/30">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
+                          {index + 1}
+                        </span>
+                        <div>
+                          <p className="text-sm font-medium">{lead.firstName} {lead.lastName}</p>
+                          <p className="text-xs text-muted-foreground">{lead.company || "No company"}</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-medium">{formatCurrency(lead.value || 0)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+                  No leads with value data
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      }
+
+      // --- Summary ---
+      if (card.type === "summary") {
+        return (
+          <Card>
+            <CardHeader><CardTitle className="text-base">{card.title}</CardTitle></CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Total Leads</span>
+                  <span className="text-lg font-bold">{totalLeads}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Won Deals</span>
+                  <span className="text-lg font-bold text-green-600">{wonLeads}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Lost Deals</span>
+                  <span className="text-lg font-bold text-red-600">{lostLeads}</span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Conversion Rate</span>
+                  <span className="text-lg font-bold">{conversionRate}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Won Revenue</span>
+                  <span className="text-lg font-bold">{formatCurrency(wonValue)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Avg Deal Size</span>
+                  <span className="text-lg font-bold">{formatCurrency(avgDealSize)}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      }
+
+      return null;
+    },
+    [
+      metricCtx, leadsOverTimeData, valueOverTimeData, pipelineData, revenueData,
+      sourceData, topLeads, nicheChartData, funnelData, getCustomFieldData,
+      totalLeads, wonLeads, lostLeads, conversionRate, wonValue, avgDealSize,
+      totalValue, activeDeals
+    ]
+  );
+
+  // ─── Loading ──────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -210,396 +702,271 @@ export default function AnalyticsPage() {
         <PageHeader
           title="Analytics"
           description="Insights into your CRM performance."
-        actions={
-          <div className="flex items-center gap-2">
-            <ExportButton type="analytics" data={analyticsMetrics} />
-            <Select
-              value={dateRange.toString()}
-              onValueChange={(v) => setDateRange(parseInt(v))}
+          actions={
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <Button
+                  variant={editMode ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setEditMode(!editMode)}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  {editMode ? "Done" : "Edit Cards"}
+                </Button>
+              )}
+              <ExportButton type="analytics" data={analyticsMetrics} />
+              <Select
+                value={dateRange.toString()}
+                onValueChange={(v) => setDateRange(parseInt(v))}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DATE_RANGES.map((range) => (
+                    <SelectItem key={range.days} value={range.days.toString()}>
+                      {range.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          }
+        />
+
+        {/* ─── Card grid ────────────────────────────────────────────────── */}
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {activeCards.map((card) => {
+            const isKpi = card.type === "kpi";
+            if (!isKpi) return null;
+            return (
+              <div key={card.id} className="relative group/card">
+                {editMode && (
+                  <div className="absolute -top-2 -right-2 z-10 flex gap-0.5">
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-6 w-6 rounded-full shadow"
+                      onClick={() => handleReorder(card.id, "up")}
+                      disabled={card.order === 0}
+                    >
+                      <ChevronUp className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-6 w-6 rounded-full shadow"
+                      onClick={() => handleReorder(card.id, "down")}
+                      disabled={card.order === activeCards.length - 1}
+                    >
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="h-6 w-6 rounded-full shadow"
+                      onClick={() => handleRemove(card.id)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+                {renderCardContent(card)}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Non-KPI cards (2-col grid) */}
+        <div className="grid gap-4 md:grid-cols-2">
+          {activeCards.map((card) => {
+            if (card.type === "kpi") return null;
+            return (
+              <div key={card.id} className="relative group/card">
+                {editMode && (
+                  <div className="absolute -top-2 -right-2 z-10 flex gap-0.5">
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-6 w-6 rounded-full shadow"
+                      onClick={() => handleReorder(card.id, "up")}
+                      disabled={card.order === 0}
+                    >
+                      <ChevronUp className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-6 w-6 rounded-full shadow"
+                      onClick={() => handleReorder(card.id, "down")}
+                      disabled={card.order === activeCards.length - 1}
+                    >
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="h-6 w-6 rounded-full shadow"
+                      onClick={() => handleRemove(card.id)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+                {renderCardContent(card)}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ─── Add Card button (edit mode) ──────────────────────────────── */}
+
+        {editMode && (
+          <Button
+            variant="outline"
+            className="w-full border-dashed py-8"
+            onClick={() => setAddDialogOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Card
+          </Button>
+        )}
+
+        {/* ─── Add Card Dialog ──────────────────────────────────────────── */}
+
+        <AddCardDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          customFields={activeWorkspace?.customFields || []}
+          existingCards={activeCards}
+          onAdd={handleAddCard}
+        />
+      </div>
+    </RequireModuleAccess>
+  );
+}
+
+// ─── Add Card Dialog ─────────────────────────────────────────────────────────
+
+function AddCardDialog({
+  open,
+  onOpenChange,
+  customFields,
+  existingCards,
+  onAdd,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  customFields: { id: string; name: string; type: string }[];
+  existingCards: AnalyticsCardConfig[];
+  onAdd: (metric: string, customFieldId?: string) => void;
+}) {
+  const [selectedMetric, setSelectedMetric] = useState("");
+  const [selectedCustomField, setSelectedCustomField] = useState("");
+  const [filterType, setFilterType] = useState<AnalyticsCardType | "all">("all");
+
+  const selectableFields = customFields.filter(
+    (f) => f.type === "select" || f.type === "multiselect"
+  );
+
+  const filteredMetrics = AVAILABLE_METRICS.filter((m) => {
+    if (filterType !== "all" && m.cardType !== filterType) return false;
+    // Hide if already on page
+    if (existingCards.find((c) => c.metric === m.value)) return false;
+    return true;
+  });
+
+  const option = AVAILABLE_METRICS.find((m) => m.value === selectedMetric);
+  const isCustomFieldChart = option && (option.cardType === "bar_chart" || option.cardType === "pie_chart");
+  const canAdd = selectedMetric && (!isCustomFieldChart || selectedCustomField);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Analytics Card</DialogTitle>
+          <DialogDescription>
+            Select a card type and metric to add to your dashboard.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2">
+          {/* Type filter */}
+          <div className="flex flex-wrap gap-1.5">
+            <Badge
+              variant={filterType === "all" ? "default" : "outline"}
+              className="cursor-pointer"
+              onClick={() => { setFilterType("all"); setSelectedMetric(""); }}
             >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
+              All
+            </Badge>
+            {(Object.keys(CARD_TYPE_LABELS) as AnalyticsCardType[]).map((type) => (
+              <Badge
+                key={type}
+                variant={filterType === type ? "default" : "outline"}
+                className="cursor-pointer"
+                onClick={() => { setFilterType(type); setSelectedMetric(""); }}
+              >
+                {CARD_TYPE_ICONS[type]}
+                <span className="ml-1">{CARD_TYPE_LABELS[type]}</span>
+              </Badge>
+            ))}
+          </div>
+
+          {/* Metric select */}
+          <Select value={selectedMetric} onValueChange={(v) => { setSelectedMetric(v); setSelectedCustomField(""); }}>
+            <SelectTrigger>
+              <SelectValue placeholder="Pick a metric..." />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredMetrics.map((m) => (
+                <SelectItem key={m.value} value={m.value}>
+                  <span className="flex items-center gap-2">
+                    <span className="text-muted-foreground">{CARD_TYPE_ICONS[m.cardType]}</span>
+                    {m.label}
+                    {m.isBuiltIn && <Badge variant="secondary" className="ml-1 text-[10px] px-1 py-0">built-in</Badge>}
+                  </span>
+                </SelectItem>
+              ))}
+              {filteredMetrics.length === 0 && (
+                <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                  No metrics available. Try another filter.
+                </div>
+              )}
+            </SelectContent>
+          </Select>
+
+          {/* Custom field picker (for pie/bar charts) */}
+          {isCustomFieldChart && selectableFields.length > 0 && (
+            <Select value={selectedCustomField} onValueChange={setSelectedCustomField}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pick a custom field..." />
               </SelectTrigger>
               <SelectContent>
-                {DATE_RANGES.map((range) => (
-                  <SelectItem key={range.days} value={range.days.toString()}>
-                    {range.label}
-                  </SelectItem>
+                {selectableFields.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        }
-      />
+          )}
+          {isCustomFieldChart && selectableFields.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              No select/multiselect custom fields available. Create one in Settings → Custom Fields.
+            </p>
+          )}
 
-      {/* KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Leads"
-          value={totalLeads}
-          icon={<Users className="h-5 w-5" />}
-          accentColor="info"
-        />
-        <StatCard
-          title="Active Deals"
-          value={activeDeals}
-          icon={<Target className="h-5 w-5" />}
-          accentColor="primary"
-        />
-        <StatCard
-          title="Pipeline Value"
-          value={formatCurrency(totalValue)}
-          icon={<DollarSign className="h-5 w-5" />}
-          accentColor="success"
-        />
-        <StatCard
-          title="Win Rate"
-          value={`${conversionRate}%`}
-          icon={<TrendingUp className="h-5 w-5" />}
-          accentColor="warning"
-        />
-      </div>
-
-      {/* Charts */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Leads Over Time */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Leads Over Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {leadsOverTimeData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={leadsOverTimeData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    className="stroke-white"
-                  />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "black",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      boxShadow: "var(--shadow-elevated)",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="leads"
-                    stroke={CHART_COLORS.line}
-                    strokeWidth={2.5}
-                    dot={{ r: 3, fill: CHART_COLORS.line }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
-                No data for this period
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Pipeline Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Pipeline Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {pipelineData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={pipelineData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                    fill="hsl(var(--foreground))"
-                    fontSize={11}
-                  >
-                    {pipelineData.map((entry, index) => (
-                      <Cell
-                        key={index}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "white",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      boxShadow: "var(--shadow-elevated)",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
-                No data for this period
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Revenue by Stage */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Revenue by Stage</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {revenueData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={revenueData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    className="stroke-muted/30"
-                  />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      boxShadow: "var(--shadow-elevated)",
-                    }}
-                  />
-                  <Bar
-                    dataKey="value"
-                    fill={CHART_COLORS.bar}
-                    radius={[6, 6, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
-                No data for this period
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Lead Sources */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Lead Sources</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {sourceData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={sourceData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value}`}
-                    fill="hsl(var(--foreground))"
-                    fontSize={11}
-                  >
-                    {sourceData.map((entry, index) => (
-                      <Cell
-                        key={index}
-                        fill={COLORS[index % COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--card))",
-                      border: "1px solid hsl(var(--border))",
-                      borderRadius: "8px",
-                      boxShadow: "var(--shadow-elevated)",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
-                No data for this period
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Advanced Reporting */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Conversion Funnel */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Conversion Funnel</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {funnelData.length > 0 ? (
-              <div className="space-y-3">
-                {funnelData.map((stage, index) => {
-                  const maxCount = Math.max(...funnelData.map((s) => s.count), 1);
-                  const width = (stage.count / maxCount) * 100;
-                  return (
-                    <div key={stage.name} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">{stage.name}</span>
-                        <span className="text-muted-foreground">
-                          {stage.count} leads • {formatCurrency(stage.value)}
-                        </span>
-                      </div>
-                      <div className="h-2 rounded-full bg-muted">
-                        <div
-                          className="h-2 rounded-full transition-all"
-                          style={{
-                            width: `${width}%`,
-                            backgroundColor: COLORS[index % COLORS.length],
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
-                No data for this period
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Top Leads by Value */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Top Leads by Value</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {topLeads.length > 0 ? (
-              <div className="space-y-3">
-                {topLeads.map((lead, index) => (
-                  <div key={lead.id} className="flex items-center justify-between rounded-lg p-2 hover:bg-muted/30">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium">
-                        {index + 1}
-                      </span>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {lead.firstName} {lead.lastName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {lead.company || "No company"}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-sm font-medium">
-                      {formatCurrency(lead.value || 0)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
-                No leads with value data
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Industry Breakdown */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Industry Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {nicheChartData.length > 0 ? (
-              <div className="space-y-3">
-                {nicheChartData.map((niche) => (
-                  <div key={niche.name} className="flex items-center justify-between">
-                    <span className="text-sm">{niche.name}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-24 rounded-full bg-muted">
-                        <div
-                          className="h-2 rounded-full bg-primary"
-                          style={{ width: `${(niche.value / totalLeads) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium">{niche.value}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
-                No industry data available
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Summary Metrics */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Summary Metrics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Total Leads</span>
-                <span className="text-lg font-bold">{totalLeads}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Won Deals</span>
-                <span className="text-lg font-bold text-green-600">{wonLeads}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Lost Deals</span>
-                <span className="text-lg font-bold text-red-600">{lostLeads}</span>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Conversion Rate</span>
-                <span className="text-lg font-bold">{conversionRate}%</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Won Revenue</span>
-                <span className="text-lg font-bold">{formatCurrency(wonValue)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Avg Deal Size</span>
-                <span className="text-lg font-bold">{formatCurrency(avgDealSize)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-    </RequireModuleAccess>
+          {/* Add button */}
+          <Button
+            className="w-full"
+            disabled={!canAdd}
+            onClick={() => onAdd(selectedMetric, selectedCustomField || undefined)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Card
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -45,6 +45,29 @@ export interface Workspace {
   ownerId: string;
   memberIds: string[];
   modulePermissions?: ModulePermissionsByRole;
+  analyticsCards?: AnalyticsCardConfig[];
+}
+
+// ─── Analytics Cards ────────────────────────────────────────────────────────
+
+export type AnalyticsCardType =
+  | "kpi"
+  | "line_chart"
+  | "pie_chart"
+  | "bar_chart"
+  | "funnel"
+  | "top_leads"
+  | "summary";
+
+export interface AnalyticsCardConfig {
+  id: string;
+  type: AnalyticsCardType;
+  title: string;
+  /** Metric key — e.g. "total_leads", "leads_over_time", "pipeline_distribution" */
+  metric: string;
+  /** For custom field charts (select/multiselect types) */
+  customFieldId?: string;
+  order: number;
 }
 
 export type ModuleId =
