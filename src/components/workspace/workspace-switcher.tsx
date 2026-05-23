@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useWorkspace } from "@/contexts/workspace-context";
+import { canCreateWorkspace } from "@/lib/workspace-permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -40,7 +41,7 @@ function getWorkspaceInitials(name: string): string {
 }
 
 export function WorkspaceSwitcher() {
-  const { workspaces, activeWorkspace, switchWorkspace, createNewWorkspace } = useWorkspace();
+  const { workspaces, activeWorkspace, switchWorkspace, createNewWorkspace, user } = useWorkspace();
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -121,13 +122,15 @@ export function WorkspaceSwitcher() {
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem
-              onClick={() => setCreateOpen(true)}
-              className="gap-2 cursor-pointer text-primary"
-            >
-              <Plus className="h-4 w-4" />
-              Create Workspace
-            </DropdownMenuItem>
+            {canCreateWorkspace(user?.email) && (
+              <DropdownMenuItem
+                onClick={() => setCreateOpen(true)}
+                className="gap-2 cursor-pointer text-primary"
+              >
+                <Plus className="h-4 w-4" />
+                Create Workspace
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

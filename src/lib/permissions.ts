@@ -24,15 +24,21 @@ export function getEffectivePermissions(
   }
 
   if (role === "member") {
-    return permissions?.member
+    const perms: ModulePermissionsMap = permissions?.member
       ? { ...DEFAULT_MEMBER_PERMISSIONS, ...permissions.member }
       : { ...DEFAULT_MEMBER_PERMISSIONS };
+    // Members always need access to their own settings
+    perms.settings = true;
+    return perms;
   }
 
   if (role === "viewer") {
-    return permissions?.viewer
+    const perms: ModulePermissionsMap = permissions?.viewer
       ? { ...DEFAULT_VIEWER_PERMISSIONS, ...permissions.viewer }
       : { ...DEFAULT_VIEWER_PERMISSIONS };
+    // Viewers always need access to their own settings
+    perms.settings = true;
+    return perms;
   }
 
   // Unknown role — no access

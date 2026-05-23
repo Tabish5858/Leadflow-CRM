@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/lib/toast";
+import { canCreateWorkspace } from "@/lib/workspace-permissions";
 
 export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
@@ -31,6 +32,14 @@ export default function RegisterPage() {
       toast.error("Password must be at least 8 characters");
       return;
     }
+
+    if (!canCreateWorkspace(formData.email)) {
+      toast.error(
+        "This is a private LeadFlow instance. Please use the open-source version at github.com/Tabish5858/leadflow to host your own."
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       const cred = await createUserWithEmailAndPassword(

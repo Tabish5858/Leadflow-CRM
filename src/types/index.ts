@@ -106,7 +106,7 @@ export const DEFAULT_MEMBER_PERMISSIONS: ModulePermissionsMap = {
   time_tracker: true,
   messages: true,
   automations: false,
-  settings: false,
+  settings: true,
 };
 
 export const DEFAULT_VIEWER_PERMISSIONS: ModulePermissionsMap = {
@@ -117,7 +117,7 @@ export const DEFAULT_VIEWER_PERMISSIONS: ModulePermissionsMap = {
   time_tracker: false,
   messages: false,
   automations: false,
-  settings: false,
+  settings: true,
 };
 
 export interface WorkspaceMember {

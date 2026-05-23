@@ -19,6 +19,7 @@ import {
   setActiveWorkspace,
   getUserWorkspaces,
 } from "@/lib/firebase/workspaces";
+import { canCreateWorkspace } from "@/lib/workspace-permissions";
 
 const LOCAL_STORAGE_KEY = "leadflow_active_workspace";
 
@@ -170,6 +171,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   const createNewWorkspace = useCallback(async (name: string): Promise<string> => {
     if (!user) throw new Error("No user");
+    if (!canCreateWorkspace(user.email)) {
+      throw new Error("You are not authorized to create workspaces on this instance.");
+    }
 
     const workspaceId = await createWorkspace(user.id, name);
 

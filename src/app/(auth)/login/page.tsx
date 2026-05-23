@@ -6,6 +6,7 @@ import {
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signOut,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 import Link from "next/link";
@@ -17,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/lib/toast";
+import { canCreateWorkspace } from "@/lib/workspace-permissions";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -69,6 +71,19 @@ export default function LoginPage() {
       const userRef = doc(db, "users", result.user.uid);
       const userSnap = await getDoc(userRef);
       if (!userSnap.exists()) {
+        const email = result.user.email;
+
+        // Only whitelisted emails may create workspaces.
+        // Non-whitelisted users must be invited by an existing workspace owner.
+        if (!canCreateWorkspace(email)) {
+          await signOut(auth);
+          toast.error(
+            "This is a private LeadFlow instance. Ask a workspace owner to invite you, or use the open-source version at github.com/Tabish5858/leadflow."
+          );
+          setLoading(false);
+          return;
+        }
+
         const workspaceId = crypto.randomUUID();
         await setDoc(userRef, {
           id: result.user.uid,
