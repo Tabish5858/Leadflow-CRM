@@ -194,7 +194,10 @@ export default function AnalyticsPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   const stages: PipelineStage[] = activeWorkspace?.pipeline?.stages || DEFAULT_PIPELINE_STAGES;
-  const isAdmin = user?.role === "owner" || user?.role === "admin";
+  const isAdmin = 
+    user?.role === "owner" || 
+    user?.role === "admin" || 
+    activeWorkspace?.ownerId === user?.id;
 
   // Cards from workspace config
   const activeCards = useMemo(

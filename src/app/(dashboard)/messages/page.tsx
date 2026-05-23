@@ -95,7 +95,10 @@ function getConversationName(
 export default function MessagesPage() {
   const { activeWorkspace, user } = useWorkspace();
   const { firebaseUser } = useAuth();
-  const isAdminOrOwner = user?.role === "owner" || user?.role === "admin";
+  const isAdminOrOwner = 
+    user?.role === "owner" || 
+    user?.role === "admin" || 
+    activeWorkspace?.ownerId === user?.id;
 
   // Conversations
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -791,7 +794,11 @@ export default function MessagesPage() {
               <div className="flex items-center justify-between border-b px-4 py-3">
                 {(() => {
                   const { name, detail, isMember, isGroup } = getConversationName(selected, user?.id || "", memberMap);
-                  const canManage = isGroup && (user?.role === "owner" || user?.role === "admin");
+                  const canManage = isGroup && (
+                    user?.role === "owner" || 
+                    user?.role === "admin" || 
+                    activeWorkspace?.ownerId === user?.id
+                  );
                   return (
                     <>
                       <div className="flex items-center gap-3 min-w-0">
