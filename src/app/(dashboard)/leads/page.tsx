@@ -13,6 +13,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { LeadFilters } from "@/components/leads/lead-filters";
 import {
@@ -27,6 +30,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { SortableColumnHeader } from "@/components/leads/sortable-column-header";
 import { SelectFieldCell } from "@/components/leads/select-field-cell";
+import { InlineEditCell } from "@/components/leads/inline-edit-cell";
 import { ColumnReorderItem } from "@/components/leads/column-reorder-item";
 import { useColumnResize } from "@/lib/hooks/use-column-resize";
 import { ScoreBadge } from "@/components/leads/score-badge";
@@ -100,6 +104,7 @@ export default function LeadsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [selectedLead, setSelectedLead] = useState<string | null>(null);
+  const [deleteConfirmLeadId, setDeleteConfirmLeadId] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [sortBy, setSortBy] = useState<string>("created");
   const [emails, setEmails] = useState<EmailRecord[]>([]);
@@ -335,6 +340,17 @@ export default function LeadsPage() {
   const handleStatusChange = (leadId: string, status: string) => {
     useLeadStore.getState().updateStatus(leadId, status);
     toast.success("Status updated");
+  };
+
+  const handleDeleteFromActions = async (leadId: string) => {
+    try {
+      await useLeadStore.getState().removeLead(leadId);
+      toast.success("Lead deleted");
+    } catch {
+      toast.error("Failed to delete lead");
+    } finally {
+      setDeleteConfirmLeadId(null);
+    }
   };
 
   const handleCreateSuccess = () => {
@@ -604,10 +620,9 @@ export default function LeadsPage() {
                       <tr
                         key={lead.id}
                         className={cn(
-                          "border-b last:border-b-0 transition-colors hover:bg-muted/30 cursor-pointer",
+                          "border-b last:border-b-0 transition-colors hover:bg-muted/30",
                           selectedIds.has(lead.id) && "bg-muted/50"
                         )}
-                        onClick={() => setSelectedLead(lead.id)}
                       >
                         {renderColumnIds.map((colId) => {
                           if (colId === "checkbox") {
@@ -640,18 +655,13 @@ export default function LeadsPage() {
                                       <ExternalLink className="mr-2 h-4 w-4" />
                                       View Details
                                     </DropdownMenuItem>
-                                    {stages
-                                      .filter((s) => s.id !== lead.status)
-                                      .map((stage) => (
-                                        <DropdownMenuItem
-                                          key={stage.id}
-                                          onClick={() =>
-                                            handleStatusChange(lead.id, stage.id)
-                                          }
-                                        >
-                                          Move to {stage.name}
-                                        </DropdownMenuItem>
-                                      ))}
+                                    <DropdownMenuItem
+                                      onClick={() => setDeleteConfirmLeadId(lead.id)}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </td>
@@ -667,9 +677,18 @@ export default function LeadsPage() {
                                     </AvatarFallback>
                                   </Avatar>
                                   <div>
-                                    <p className="font-medium text-sm">
-                                      {lead.firstName} {lead.lastName}
-                                    </p>
+                                    <div className="font-medium text-sm">
+                                      <InlineEditCell
+                                        type="name"
+                                        firstName={lead.firstName}
+                                        lastName={lead.lastName}
+                                        onSave={async (val) => {
+                                          const { firstName, lastName } = val as { firstName: string; lastName: string };
+                                          const { updateLead } = await import("@/lib/firebase/firestore");
+                                          await updateLead(lead.id, { firstName, lastName });
+                                        }}
+                                      />
+                                    </div>
                                     <p className="text-xs text-muted-foreground">
                                       {lead.email}
                                     </p>
@@ -681,9 +700,16 @@ export default function LeadsPage() {
                           if (colId === "company") {
                             return (
                               <td key="company" className="px-4 py-3 text-sm hidden md:table-cell">
-                                {lead.company || (
-                                  <span className="text-muted-foreground">—</span>
-                                )}
+                                <InlineEditCell
+                                  type="text"
+                                  value={lead.company}
+                                  placeholder="—"
+                                  onSave={async (val) => {
+                                    const v = val as string | null;
+                                    const { updateLead } = await import("@/lib/firebase/firestore");
+                                    await updateLead(lead.id, { company: v });
+                                  }}
+                                />
                               </td>
                             );
                           }
@@ -725,11 +751,17 @@ export default function LeadsPage() {
                           if (colId === "value") {
                             return (
                               <td key="value" className="px-4 py-3 text-sm font-medium hidden lg:table-cell">
-                                {lead.value
-                                  ? formatCurrency(lead.value, lead.currency)
-                                  : (
-                                    <span className="text-muted-foreground">—</span>
-                                  )}
+                                <InlineEditCell
+                                  type="number"
+                                  value={lead.value}
+                                  displayValue={lead.value ? formatCurrency(lead.value, lead.currency) : undefined}
+                                  placeholder="—"
+                                  onSave={async (val) => {
+                                    const v = val as number | null;
+                                    const { updateLead } = await import("@/lib/firebase/firestore");
+                                    await updateLead(lead.id, { value: v });
+                                  }}
+                                />
                               </td>
                             );
                           }
@@ -759,6 +791,21 @@ export default function LeadsPage() {
                             if (!cf) return null;
                             const rawValue = lead.customFields?.[cf.id];
                             const isSelectType = cf.type === "select" || cf.type === "multiselect";
+
+                            const saveCustomField = async (newVal: unknown) => {
+                              const { updateLead } = await import("@/lib/firebase/firestore");
+                              const current = useLeadStore.getState().leads.find((l) => l.id === lead.id);
+                              const merged = { ...(current?.customFields || {}), [cf.id]: newVal };
+                              await updateLead(lead.id, { customFields: merged });
+                            };
+
+                            const inlineType = cf.type === "number" ? "number" :
+                              cf.type === "date" ? "date" :
+                              cf.type === "email" ? "email" :
+                              cf.type === "url" ? "url" :
+                              cf.type === "checkbox" ? "checkbox" :
+                              "text";
+
                             return (
                               <td key={colId} className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
                                 {isSelectType ? (
@@ -767,10 +814,27 @@ export default function LeadsPage() {
                                     value={rawValue}
                                     leadId={lead.id}
                                   />
-                                ) : rawValue != null ? (
-                                  <span>{String(rawValue)}</span>
+                                ) : inlineType === "checkbox" ? (
+                                  <InlineEditCell
+                                    type="checkbox"
+                                    checked={!!rawValue}
+                                    onSave={saveCustomField}
+                                  />
+                                ) : inlineType === "date" ? (
+                                  <InlineEditCell
+                                    type="date"
+                                    value={rawValue ? String(rawValue) : null}
+                                    displayValue={rawValue ? String(rawValue) : undefined}
+                                    placeholder="—"
+                                    onSave={saveCustomField}
+                                  />
                                 ) : (
-                                  <span className="text-muted-foreground/50">—</span>
+                                  <InlineEditCell
+                                    type={inlineType as "text" | "number" | "email" | "url"}
+                                    value={rawValue != null ? String(rawValue) : null}
+                                    placeholder="—"
+                                    onSave={saveCustomField}
+                                  />
                                 )}
                               </td>
                             );
@@ -807,6 +871,30 @@ export default function LeadsPage() {
       >
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           {selectedLead && <LeadDetail leadId={selectedLead} />}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteConfirmLeadId} onOpenChange={(open) => !open && setDeleteConfirmLeadId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete lead</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this lead? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" size="sm">Cancel</Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => deleteConfirmLeadId && handleDeleteFromActions(deleteConfirmLeadId)}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

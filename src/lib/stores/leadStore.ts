@@ -101,7 +101,6 @@ export const useLeadStore = create<LeadState>((set, get) => ({
   },
 
   editLead: async (id: string, data: Partial<LeadFormData>) => {
-    set({ loading: true, error: null });
     try {
       const updateData: Partial<Lead> = {};
       if (data.firstName !== undefined) updateData.firstName = data.firstName;
@@ -123,22 +122,19 @@ export const useLeadStore = create<LeadState>((set, get) => ({
       if (data.notes !== undefined) updateData.notes = data.notes || null;
 
       await updateLead(id, updateData);
-      set({ loading: false });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to update lead";
-      set({ error: message, loading: false });
+      set({ error: message });
       throw error;
     }
   },
 
   removeLead: async (id: string) => {
-    set({ loading: true, error: null });
     try {
       await deleteLead(id);
-      set({ loading: false });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to delete lead";
-      set({ error: message, loading: false });
+      set({ error: message });
       throw error;
     }
   },
@@ -156,13 +152,11 @@ export const useLeadStore = create<LeadState>((set, get) => ({
   },
 
   updateStatus: async (id: string, status: string) => {
-    set({ loading: true, error: null });
     try {
       await updateLead(id, { status });
-      set({ loading: false });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to update status";
-      set({ error: message, loading: false });
+      set({ error: message });
       throw error;
     }
   },
