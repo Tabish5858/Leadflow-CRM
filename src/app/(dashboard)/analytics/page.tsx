@@ -405,6 +405,26 @@ export default function AnalyticsPage() {
   const handleAddCard = useCallback(
     (metric: string, customFieldId?: string) => {
       const cards = getAnalyticsCards(activeWorkspace?.analyticsCards);
+
+      // Custom field chart metrics not in AVAILABLE_METRICS — handle directly
+      if (metric === "__custom_field_bar__" || metric === "__custom_field_pie__") {
+        const cfName = customFieldId
+          ? activeWorkspace?.customFields?.find((f) => f.id === customFieldId)?.name
+          : undefined;
+        const newCard: AnalyticsCardConfig = {
+          id: `card-${Date.now()}`,
+          type: metric === "__custom_field_bar__" ? "bar_chart" : "pie_chart",
+          title: cfName || "Custom Field",
+          metric,
+          customFieldId: customFieldId || undefined,
+          order: cards.length,
+        };
+        saveCards([...cards, newCard]);
+        setAddDialogOpen(false);
+        toast.success("Card added");
+        return;
+      }
+
       const option = AVAILABLE_METRICS.find((m) => m.value === metric);
       if (!option) return;
       const newCard: AnalyticsCardConfig = {
@@ -414,7 +434,7 @@ export default function AnalyticsPage() {
           ? activeWorkspace?.customFields?.find((f) => f.id === customFieldId)?.name || "Custom Field"
           : option.label,
         metric,
-        customFieldId,
+        customFieldId: customFieldId || undefined,
         order: cards.length,
       };
       saveCards([...cards, newCard]);
