@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { subscribeToLeadActivities, logNote } from "@/lib/firebase/activities";
+import { subscribeToLeadActivities } from "@/lib/firebase/activities";
 import type { Activity } from "@/types";
-import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -17,7 +14,6 @@ import {
   StickyNote,
   ArrowRightLeft,
   Plus,
-  Send,
   Clock,
   FileText,
   Trash2,
@@ -25,7 +21,6 @@ import {
   UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "@/lib/toast";
 
 const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
   call: <Phone className="h-3.5 w-3.5" />,
@@ -99,9 +94,6 @@ interface ActivityTimelineProps {
 export function ActivityTimeline({ leadId, userId, userName: _userName }: ActivityTimelineProps) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
-  const [noteText, setNoteText] = useState("");
-  const [addingNote, setAddingNote] = useState(false);
-
   useEffect(() => {
     setLoading(true);
     const unsubscribe = subscribeToLeadActivities(leadId, (acts) => {
@@ -110,20 +102,6 @@ export function ActivityTimeline({ leadId, userId, userName: _userName }: Activi
     });
     return () => unsubscribe();
   }, [leadId]);
-
-  const handleAddNote = async () => {
-    if (!noteText.trim()) return;
-    setAddingNote(true);
-    try {
-      await logNote(leadId, "", userId, noteText.trim());
-      setNoteText("");
-      toast.success("Note added");
-    } catch {
-      toast.error("Failed to add note");
-    } finally {
-      setAddingNote(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -147,40 +125,12 @@ export function ActivityTimeline({ leadId, userId, userName: _userName }: Activi
 
   return (
     <div className="space-y-4">
-      {/* Add Note */}
-      <div className="space-y-2">
-        <Textarea
-          placeholder="Add a note..."
-          value={noteText}
-          onChange={(e) => setNoteText(e.target.value)}
-          className="min-h-[80px] resize-none"
-        />
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            onClick={handleAddNote}
-            disabled={addingNote || !noteText.trim()}
-          >
-            {addingNote ? (
-              "Adding..."
-            ) : (
-              <>
-                <Send className="mr-1.5 h-3.5 w-3.5" />
-                Add Note
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      <Separator />
-
       {/* Timeline */}
       {dates.length === 0 ? (
         <div className="py-8 text-center">
           <StickyNote className="mx-auto mb-3 h-8 w-8 text-muted-foreground/50" />
           <p className="text-sm text-muted-foreground">
-            No activities yet. Add a note or log an interaction.
+            No activities yet.
           </p>
         </div>
       ) : (

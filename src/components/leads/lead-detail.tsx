@@ -26,6 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useLeadStore } from "@/lib/stores/leadStore";
 import { useWorkspace } from "@/contexts/workspace-context";
@@ -50,6 +51,8 @@ import {
   User,
   FileText,
   Calendar,
+  Pencil,
+  Save,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { DocumentManager } from "@/components/leads/document-manager";
@@ -101,6 +104,8 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [newStatusDialogOpen, setNewStatusDialogOpen] = useState(false);
   const [newStatusName, setNewStatusName] = useState("");
   const [newStatusColor, setNewStatusColor] = useState("#3b82f6");
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -229,6 +234,24 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     }
   };
 
+  const handleSaveNotes = async () => {
+    if (!lead) return;
+    try {
+      const { updateLead } = await import("@/lib/firebase/firestore");
+      await updateLead(lead.id, { notes: notesDraft || null });
+      setLead({ ...lead, notes: notesDraft || null });
+      setEditingNotes(false);
+      toast.success("Notes saved");
+    } catch {
+      toast.error("Failed to save notes");
+    }
+  };
+
+  const startEditingNotes = () => {
+    setNotesDraft(lead?.notes || "");
+    setEditingNotes(true);
+  };
+
   if (loading) {
     return <LeadDetailSkeleton />;
   }
@@ -345,12 +368,16 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
 
       <Separator />
 
-      {/* Tabs: Details, Activity & Emails */}
+      {/* Tabs: Details, Activity, Notes, Emails, Documents */}
       <Tabs defaultValue="details">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="details">
             <User className="h-3.5 w-3.5" />
             Details
+          </TabsTrigger>
+          <TabsTrigger value="notes">
+            <FileText className="h-3.5 w-3.5" />
+            Notes
           </TabsTrigger>
           <TabsTrigger value="activity">
             <Clock className="h-3.5 w-3.5" />
@@ -408,19 +435,6 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               />
             )}
           </div>
-
-          {/* Notes */}
-          {lead.notes && (
-            <>
-              <Separator className="my-4" />
-              <div>
-                <h3 className="text-sm font-medium mb-2">Notes</h3>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap rounded-lg bg-muted/30 p-3">
-                  {lead.notes}
-                </p>
-              </div>
-            </>
-          )}
 
           {/* Custom Fields */}
           {activeWorkspace?.customFields && activeWorkspace.customFields.length > 0 && (
@@ -517,12 +531,78 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           </div>
         </TabsContent>
 
+        <TabsContent value="notes" className="mt-4">
+          <div className="space-y-3">
+            {editingNotes ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={notesDraft}
+                  onChange={(e) => setNotesDraft(e.target.value)}
+                  placeholder="Add notes about this lead..."
+                  className="min-h-[150px] resize-y"
+                  autoFocus
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingNotes(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveNotes}
+                    disabled={!notesDraft.trim() && !lead.notes}
+                  >
+                    <Save className="mr-1.5 h-3.5 w-3.5" />
+                    Save
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                {lead.notes ? (
+                  <div className="relative group">
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap rounded-lg bg-muted/30 p-3">
+                      {lead.notes}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={startEditingNotes}
+                      className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted transition-opacity"
+                    >
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <FileText className="mx-auto h-8 w-8 mb-2 opacity-50" />
+                    <p className="text-sm">No notes yet</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      onClick={startEditingNotes}
+                    >
+                      <FileText className="mr-1.5 h-3.5 w-3.5" />
+                      Add Notes
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
         <TabsContent value="activity" className="mt-4">
-          <ActivityTimeline
-            leadId={lead.id}
-            userId={user?.id || ""}
-            userName={user?.displayName || "User"}
-          />
+          <div className="max-h-[400px] overflow-y-auto pr-1">
+            <ActivityTimeline
+              leadId={lead.id}
+              userId={user?.id || ""}
+              userName={user?.displayName || "User"}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="emails" className="mt-4">

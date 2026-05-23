@@ -82,7 +82,11 @@ export function DocumentManager({
 
   const fetchDocuments = useCallback(async () => {
     try {
-      const res = await fetch(`/api/documents/list?leadId=${leadId}`);
+      const res = await fetch(`/api/documents/list?leadId=${leadId}&workspaceId=${workspaceId}`);
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error || `Server error (${res.status})`);
+      }
       const data = await res.json();
       if (data.success) {
         setDocuments(
@@ -94,12 +98,13 @@ export function DocumentManager({
           }))
         );
       }
-    } catch {
-      toast.error("Failed to load documents");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to load documents";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, [leadId]);
+  }, [leadId, workspaceId]);
 
   useEffect(() => {
     fetchDocuments();
@@ -131,6 +136,7 @@ export function DocumentManager({
             };
             return updated;
           });
+          toast.error(`${file.name}: exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit`);
           continue;
         }
 
@@ -144,6 +150,7 @@ export function DocumentManager({
             };
             return updated;
           });
+          toast.error(`${file.name}: file type not supported`);
           continue;
         }
 
@@ -172,7 +179,12 @@ export function DocumentManager({
               if (xhr.status >= 200 && xhr.status < 300) {
                 resolve();
               } else {
-                reject(new Error("Upload failed"));
+                let msg = "Upload failed";
+                try {
+                  const errBody = JSON.parse(xhr.responseText);
+                  msg = errBody.error || msg;
+                } catch {}
+                reject(new Error(msg));
               }
             });
 
@@ -181,24 +193,24 @@ export function DocumentManager({
             xhr.send(formData);
           });
 
-          JSON.parse(xhr.responseText);
           setUploadStates((prev) => {
             const updated = [...prev];
             updated[stateIndex] = { ...updated[stateIndex], status: "success", progress: 100 };
             return updated;
           });
           toast.success(`${file.name} uploaded`);
-        } catch {
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : "Upload failed";
           setUploadStates((prev) => {
             const updated = [...prev];
             updated[stateIndex] = {
               ...updated[stateIndex],
               status: "error",
-              error: "Upload failed",
+              error: errorMsg,
             };
             return updated;
           });
-          toast.error(`Failed to upload ${file.name}`);
+          toast.error(`Failed to upload ${file.name}: ${errorMsg}`);
         }
       }
 

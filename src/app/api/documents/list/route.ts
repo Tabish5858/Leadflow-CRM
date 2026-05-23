@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase/client";
-import { collection, query, where, orderBy, getDocs, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, deleteDoc } from "firebase/firestore";
 import { cloudinary } from "@/lib/cloudinary";
 
 const DOCUMENTS_COLLECTION = "documents";
@@ -18,26 +18,32 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Use simple queries without orderBy to avoid composite index requirements
     let q;
     if (leadId) {
       q = query(
         collection(db, DOCUMENTS_COLLECTION),
-        where("leadId", "==", leadId),
-        orderBy("createdAt", "desc")
+        where("leadId", "==", leadId)
       );
     } else {
       q = query(
         collection(db, DOCUMENTS_COLLECTION),
-        where("workspaceId", "==", workspaceId),
-        orderBy("createdAt", "desc")
+        where("workspaceId", "==", workspaceId)
       );
     }
 
     const snapshot = await getDocs(q);
-    const documents = snapshot.docs.map((d) => ({
-      id: d.id,
-      ...d.data(),
-    }));
+    const nowMillis = Date.now();
+    const documents: Record<string, unknown>[] = snapshot.docs.map((d) => {
+      const data = d.data();
+      return { id: d.id, ...data };
+    });
+    // Sort by createdAt descending in-memory
+    documents.sort((a, b) => {
+      const aTs = (a.createdAt as { toMillis?: () => number; seconds?: number })?.toMillis?.() ?? (a.createdAt as { seconds?: number })?.seconds ?? nowMillis;
+      const bTs = (b.createdAt as { toMillis?: () => number; seconds?: number })?.toMillis?.() ?? (b.createdAt as { seconds?: number })?.seconds ?? nowMillis;
+      return (bTs as number) - (aTs as number);
+    });
 
     return NextResponse.json({ success: true, documents });
   } catch (error) {
