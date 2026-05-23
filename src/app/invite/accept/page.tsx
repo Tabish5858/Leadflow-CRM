@@ -358,7 +358,7 @@ function AcceptInviteContent() {
           <div className="w-full max-w-sm space-y-6">
             <div className="text-center space-y-2">
               <CheckCircle2 className="mx-auto h-10 w-10 text-green-500" />
-              <h1 className="text-xl font-bold">You're Signed In</h1>
+              <h1 className="text-xl font-bold">You&apos;re Signed In</h1>
               <p className="text-sm text-muted-foreground">
                 as {auth.currentUser?.email}
               </p>
@@ -560,7 +560,7 @@ function AcceptInviteContent() {
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Building2 className="h-4 w-4" />
               <span>
-                You've been invited to join{" "}
+                You&apos;ve been invited to join{" "}
                 <strong className="text-foreground">{invite?.workspaceName}</strong>
               </span>
             </div>
