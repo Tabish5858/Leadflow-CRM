@@ -79,7 +79,7 @@ export function WorkspaceSwitcher() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="w-full justify-start gap-2 px-2 h-10 text-sm font-medium hover:bg-accent/50"
+              className="w-full justify-start gap-2 px-2 h-10 text-sm font-medium hover:bg-accent/50 group"
             >
               <Avatar className="h-6 w-6 border bg-primary/10">
                 <AvatarFallback className="text-xs bg-primary/10 text-primary">
@@ -89,7 +89,7 @@ export function WorkspaceSwitcher() {
               <span className="flex-1 truncate text-left">
                 {activeWorkspace.name}
               </span>
-              <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
