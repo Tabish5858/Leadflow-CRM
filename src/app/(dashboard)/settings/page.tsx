@@ -418,6 +418,12 @@ export default function SettingsPage() {
 
   const isAdminOrOwner = user?.role === "owner" || user?.role === "admin";
 
+  // Dashboard and Settings access is controlled by frontend guards (nav filtering + route guards),
+  // not by module permissions — so exclude them from the toggle grid
+  const controlledModuleIds = (Object.keys(MODULE_LABELS) as ModuleId[]).filter(
+    (mod) => mod !== "dashboard" && mod !== "settings"
+  );
+
   const allTabs: { id: Tab; label: string; icon: React.ReactNode; adminOnly?: boolean }[] = [
     { id: "profile", label: "Profile", icon: <UserCircle className="h-4 w-4" /> },
     { id: "workspace", label: "Workspace", icon: <Building2 className="h-4 w-4" />, adminOnly: true },
@@ -454,15 +460,17 @@ export default function SettingsPage() {
             </button>
           ))}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="ml-2"
-          onClick={() => router.push("/settings/audit-log")}
-        >
-          <FileText className="mr-2 h-4 w-4" />
-          Audit Log
-        </Button>
+        {isAdminOrOwner && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="ml-2"
+            onClick={() => router.push("/settings/audit-log")}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Audit Log
+          </Button>
+        )}
       </div>
 
       {/* Profile Tab */}
@@ -909,7 +917,7 @@ export default function SettingsPage() {
                       <div key={role}>
                         <h4 className="text-sm font-semibold capitalize mb-2">{role}</h4>
                         <div className="grid grid-cols-2 gap-2">
-                          {(Object.keys(MODULE_LABELS) as ModuleId[]).map((mod) => (
+                          {controlledModuleIds.map((mod) => (
                             <div key={mod} className="flex items-center gap-2 text-sm py-1">
                               <div
                                 className={`h-2 w-2 rounded-full ${perms[mod] ? "bg-green-500" : "bg-red-400"}`}
@@ -933,7 +941,7 @@ export default function SettingsPage() {
                         {role === "member" ? "Member" : "Viewer"} Permissions
                       </h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {(Object.keys(MODULE_LABELS) as ModuleId[]).map((mod) => {
+                        {controlledModuleIds.map((mod) => {
                           const isEnabled = modulePermissions[role]?.[mod] ?? false;
                           return (
                             <label
