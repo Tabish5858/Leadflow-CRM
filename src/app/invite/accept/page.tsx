@@ -15,9 +15,8 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   onAuthStateChanged,
-  fetchSignInMethodsForEmail,
 } from "firebase/auth";
-import { doc, setDoc, getDoc, Timestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, query as firestoreQuery, where, getDocs, Timestamp } from "firebase/firestore";
 import {
   Building2,
   CheckCircle2,
@@ -98,19 +97,32 @@ function AcceptInviteContent() {
 
       setInvite(data);
 
-      // Check if the invited email already has a Firebase auth account
-      const signInMethods = await fetchSignInMethodsForEmail(auth, data.email);
-
+      // Check if logged in with matching email
       if (currentUser && currentUser.email?.toLowerCase() === data.email.toLowerCase()) {
-        // Already logged in with the matching email → one-click accept
         setPhase("already_logged_in");
-      } else if (signInMethods.length > 0) {
-        // Invited email has an existing account → show sign-in flow
-        setDisplayName(currentUser?.displayName || "");
+        return;
+      }
+
+      // Check Firestore for an existing user doc with this email
+      let existingUser = false;
+      try {
+        const q = firestoreQuery(
+          collection(db, "users"),
+          where("email", "==", data.email)
+        );
+        const snap = await getDocs(q);
+        existingUser = !snap.empty;
+      } catch {
+        // Firestore rules may block collection-level queries — fall through
+      }
+
+      setDisplayName(currentUser?.displayName || "");
+
+      if (existingUser) {
+        // Invited email already has a user document → show sign-in flow
         setPhase("signin_existing");
       } else {
-        // No existing account → show signup flow
-        setDisplayName(currentUser?.displayName || "");
+        // No existing account found → signup flow
         setPhase("signup");
       }
     });
