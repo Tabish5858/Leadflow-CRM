@@ -1,22 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useWorkspace } from "@/contexts/workspace-context";
-import { getAuditLogs, formatAuditAction, getActionBadgeVariant } from "@/lib/audit-log";
-import type { AuditLog, AuditAction, AuditFilters } from "@/types";
-import { PageHeader } from "@/components/shared/page-header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { RequireModuleAccess } from "@/components/shared/require-module-access";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import {
   Select,
@@ -25,22 +16,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
-import {
-  Search,
-  Download,
-  Filter,
-  Calendar,
-  User,
-  Activity,
-  FileText,
-} from "lucide-react";
-import { Timestamp, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useHeaderActions } from "@/contexts/header-actions-context";
+import { useWorkspace } from "@/contexts/workspace-context";
+import { formatAuditAction, getActionBadgeVariant, getAuditLogs } from "@/lib/audit-log";
 import { toast } from "@/lib/toast";
-import { RequireModuleAccess } from "@/components/shared/require-module-access";
+import type { AuditAction, AuditFilters, AuditLog } from "@/types";
+import { DocumentData, QueryDocumentSnapshot, Timestamp } from "firebase/firestore";
+import {
+  Activity,
+  Calendar,
+  Download,
+  FileText,
+  Filter,
+  Search,
+  User,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 const PAGE_SIZE = 20;
 
@@ -97,6 +97,7 @@ function formatTimestampShort(ts: Timestamp): string {
 
 export default function AuditLogPage() {
   const { activeWorkspace } = useWorkspace();
+  const { setHeaderActions } = useHeaderActions();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -190,7 +191,7 @@ export default function AuditLogPage() {
     fetchLogs(true);
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = useCallback(() => {
     if (logs.length === 0) {
       toast.error("No data to export");
       return;
@@ -219,14 +220,27 @@ export default function AuditLogPage() {
     link.click();
     URL.revokeObjectURL(url);
     toast.success("Audit log exported");
-  };
+  }, [activeWorkspace?.name, logs]);
 
   const totalPages = Math.ceil(totalItems / pageSize);
+
+  useEffect(() => {
+    if (!activeWorkspace) {
+      setHeaderActions(null);
+      return;
+    }
+    setHeaderActions(
+      <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={logs.length === 0}>
+        <Download className="mr-2 h-4 w-4" />
+        Export CSV
+      </Button>
+    );
+    return () => setHeaderActions(null);
+  }, [activeWorkspace, handleExportCSV, logs.length, setHeaderActions]);
 
   if (!activeWorkspace) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Audit Log" description="View all activity across your workspace." />
         <div className="flex items-center justify-center py-12">
           <Skeleton className="h-64 w-full max-w-2xl" />
         </div>
@@ -237,205 +251,194 @@ export default function AuditLogPage() {
   return (
     <RequireModuleAccess moduleId="settings">
       <div className="space-y-6">
-        <PageHeader
-          title="Audit Log"
-          description="Track all activity and changes across your workspace."
-        actions={
-          <Button variant="outline" onClick={handleExportCSV} disabled={logs.length === 0}>
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
-        }
-      />
+        {/* Filter Panel */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Filters</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-8"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                {showFilters ? "Hide" : "Show"}
+              </Button>
+            </div>
 
-      {/* Filter Panel */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Filters</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-auto h-8"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              {showFilters ? "Hide" : "Show"}
-            </Button>
-          </div>
-
-          {showFilters && (
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                    From Date
-                  </label>
-                  <Input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                  />
+            {showFilters && (
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                      From Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                      To Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      User
+                    </label>
+                    <Select value={userFilter} onValueChange={setUserFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All users" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All users</SelectItem>
+                        {uniqueUsers().map(([id, name]) => (
+                          <SelectItem key={id} value={id}>
+                            {name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-1.5">
+                      <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+                      Action Type
+                    </label>
+                    <Select value={actionFilter} onValueChange={setActionFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All actions" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All actions</SelectItem>
+                        {ACTION_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                    To Date
-                  </label>
-                  <Input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-1.5">
-                    <User className="h-3.5 w-3.5 text-muted-foreground" />
-                    User
-                  </label>
-                  <Select value={userFilter} onValueChange={setUserFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All users" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All users</SelectItem>
-                      {uniqueUsers().map(([id, name]) => (
-                        <SelectItem key={id} value={id}>
-                          {name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-1.5">
-                    <Activity className="h-3.5 w-3.5 text-muted-foreground" />
-                    Action Type
-                  </label>
-                  <Select value={actionFilter} onValueChange={setActionFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All actions" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All actions</SelectItem>
-                      {ACTION_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by lead name..."
+                      value={leadSearch}
+                      onChange={(e) => setLeadSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Button onClick={handleApplyFilters} size="sm">
+                    Apply Filters
+                  </Button>
+                  <Button variant="outline" onClick={handleClearFilters} size="sm">
+                    Clear
+                  </Button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by lead name..."
-                    value={leadSearch}
-                    onChange={(e) => setLeadSearch(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                <Button onClick={handleApplyFilters} size="sm">
-                  Apply Filters
-                </Button>
-                <Button variant="outline" onClick={handleClearFilters} size="sm">
-                  Clear
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
 
-      {/* Activity Table */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="space-y-3 p-6">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-36" />
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-4 flex-1" />
-                </div>
-              ))}
-            </div>
-          ) : logs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-medium">No audit logs found</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                {showFilters
-                  ? "Try adjusting your filters or date range."
-                  : "Activity will appear here as users interact with the workspace."}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[180px]">Timestamp</TableHead>
-                  <TableHead className="w-[140px]">User</TableHead>
-                  <TableHead className="w-[160px]">Action</TableHead>
-                  <TableHead className="w-[100px]">Entity</TableHead>
-                  <TableHead>Details</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell>
-                      <div>
-                        <p className="text-sm font-medium">
-                          {formatTimestampShort(log.timestamp)}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatTimestamp(log.timestamp)}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{log.userName}</p>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getActionBadgeVariant(log.action)}>
-                        {formatAuditAction(log.action)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm capitalize text-muted-foreground">
-                        {log.entityType}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{buildDetails(log)}</p>
-                    </TableCell>
-                  </TableRow>
+        {/* Activity Table */}
+        <Card>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="space-y-3 p-6">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 flex-1" />
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
-          )}
+              </div>
+            ) : logs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-medium">No audit logs found</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {showFilters
+                    ? "Try adjusting your filters or date range."
+                    : "Activity will appear here as users interact with the workspace."}
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[180px]">Timestamp</TableHead>
+                    <TableHead className="w-[140px]">User</TableHead>
+                    <TableHead className="w-[160px]">Action</TableHead>
+                    <TableHead className="w-[100px]">Entity</TableHead>
+                    <TableHead>Details</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {logs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell>
+                        <div>
+                          <p className="text-sm font-medium">
+                            {formatTimestampShort(log.timestamp)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatTimestamp(log.timestamp)}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm">{log.userName}</p>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getActionBadgeVariant(log.action)}>
+                          {formatAuditAction(log.action)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm capitalize text-muted-foreground">
+                          {log.entityType}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm">{buildDetails(log)}</p>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
 
-          {!loading && logs.length > 0 && (
-            <div className="border-t p-4">
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-                pageSize={pageSize}
-                onPageSizeChange={handlePageSizeChange}
-                totalItems={totalItems}
-              />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+            {!loading && logs.length > 0 && (
+              <div className="border-t p-4">
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                  pageSize={pageSize}
+                  onPageSizeChange={handlePageSizeChange}
+                  totalItems={totalItems}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </RequireModuleAccess>
   );
 }
@@ -454,8 +457,8 @@ function buildDetails(log: AuditLog): string {
       case "lead_updated": {
         const changedFields = log.newValue
           ? Object.keys(log.newValue).filter(
-              (k) => log.oldValue?.[k] !== log.newValue?.[k]
-            )
+            (k) => log.oldValue?.[k] !== log.newValue?.[k]
+          )
           : [];
         if (changedFields.length > 0) {
           return `${log.entityName}: ${changedFields.slice(0, 3).join(", ")} updated`;

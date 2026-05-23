@@ -1,20 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useWorkspace } from "@/contexts/workspace-context";
-import { canCreateWorkspace } from "@/lib/workspace-permissions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -24,12 +11,25 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { useWorkspace } from "@/contexts/workspace-context";
+import { toast } from "@/lib/toast";
+import { canCreateWorkspace } from "@/lib/workspace-permissions";
+import {
+  Building2,
   Check,
   ChevronsUpDown,
   Plus,
-  Building2,
 } from "lucide-react";
-import { toast } from "@/lib/toast";
+import { useState } from "react";
 
 function getWorkspaceInitials(name: string): string {
   return name
@@ -40,7 +40,7 @@ function getWorkspaceInitials(name: string): string {
     .slice(0, 2);
 }
 
-export function WorkspaceSwitcher() {
+export function WorkspaceSwitcher({ collapsed = false }: { collapsed?: boolean }) {
   const { workspaces, activeWorkspace, switchWorkspace, createNewWorkspace, user } = useWorkspace();
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -77,20 +77,35 @@ export function WorkspaceSwitcher() {
       <div className="px-3 pt-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 px-2 h-10 text-sm font-medium hover:bg-accent/50 group"
-            >
-              <Avatar className="h-6 w-6 border bg-primary/10">
-                <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                  {getWorkspaceInitials(activeWorkspace.name)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="flex-1 truncate text-left">
-                {activeWorkspace.name}
-              </span>
-              <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100" />
-            </Button>
+            {collapsed ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10"
+                title={activeWorkspace.name}
+              >
+                <Avatar className="h-6 w-6 border bg-primary/10">
+                  <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                    {getWorkspaceInitials(activeWorkspace.name)}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2 px-2 h-10 text-sm font-medium hover:bg-accent/50 group"
+              >
+                <Avatar className="h-6 w-6 border bg-primary/10">
+                  <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                    {getWorkspaceInitials(activeWorkspace.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="flex-1 truncate text-left">
+                  {activeWorkspace.name}
+                </span>
+                <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100" />
+              </Button>
+            )}
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-64"

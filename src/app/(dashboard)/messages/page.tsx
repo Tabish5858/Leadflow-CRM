@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useWorkspace } from "@/contexts/workspace-context";
-import { useAuth } from "@/lib/hooks/use-auth";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ConversationList } from "@/components/messages/conversation-list";
+import { CreateMeetingDialog } from "@/components/messages/create-meeting-dialog";
+import { ManageGroupDialog } from "@/components/messages/manage-group-dialog";
+import { MessageInput } from "@/components/messages/message-input";
+import { MessageThread } from "@/components/messages/message-thread";
+import { NewConversationDialog } from "@/components/messages/new-conversation-dialog";
+import { NewGroupDialog } from "@/components/messages/new-group-dialog";
+import { NewMemberConversationDialog } from "@/components/messages/new-member-conversation-dialog";
+import { RequireModuleAccess } from "@/components/shared/require-module-access";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
-import { PageHeader } from "@/components/shared/page-header";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -16,33 +19,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ConversationList } from "@/components/messages/conversation-list";
-import { MessageThread } from "@/components/messages/message-thread";
-import { MessageInput } from "@/components/messages/message-input";
-import { NewConversationDialog } from "@/components/messages/new-conversation-dialog";
-import { NewMemberConversationDialog } from "@/components/messages/new-member-conversation-dialog";
-import { NewGroupDialog } from "@/components/messages/new-group-dialog";
-import { ManageGroupDialog } from "@/components/messages/manage-group-dialog";
-import { CreateMeetingDialog } from "@/components/messages/create-meeting-dialog";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TooltipButton } from "@/components/ui/tooltip-button";
+import { useWorkspace } from "@/contexts/workspace-context";
 import {
-  subscribeToConversations,
-  subscribeToMessages,
-  sendMessage,
   createConversation,
   deleteConversation,
-  editMessage,
   deleteMessage,
-  toggleReaction,
+  editMessage,
   fixConversationNames,
+  sendMessage,
+  subscribeToConversations,
+  subscribeToMessages,
+  toggleReaction,
 } from "@/lib/firebase/messages";
-import { RequireModuleAccess } from "@/components/shared/require-module-access";
 import { getWorkspaceMembers } from "@/lib/firebase/workspaces";
-import { Search, Plus, Mail, Users, Video, Settings } from "lucide-react";
-import { Timestamp } from "firebase/firestore";
+import { useAuth } from "@/lib/hooks/use-auth";
 import { toast } from "@/lib/toast";
 import { getInitials } from "@/lib/utils";
 import type { Conversation, Message, WorkspaceMember } from "@/types";
+import { Timestamp } from "firebase/firestore";
+import { Mail, Plus, Search, Settings, Users, Video } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 /** Show the OTHER participant's name for member conversations. */
 function getConversationName(
@@ -95,9 +94,9 @@ function getConversationName(
 export default function MessagesPage() {
   const { activeWorkspace, user } = useWorkspace();
   const { firebaseUser } = useAuth();
-  const isAdminOrOwner = 
-    user?.role === "owner" || 
-    user?.role === "admin" || 
+  const isAdminOrOwner =
+    user?.role === "owner" ||
+    user?.role === "admin" ||
     activeWorkspace?.ownerId === user?.id;
 
   // Conversations
@@ -186,7 +185,7 @@ export default function MessagesPage() {
           // Migration complete — names synced
         }
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setMigrated(true));
   }, [migrated, conversations, workspaceMembers]);
 
@@ -680,10 +679,10 @@ export default function MessagesPage() {
   // If search is active, filter members too
   const filteredMembers = searchQuery
     ? membersWithoutConvo.filter(
-        (m) =>
-          m.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          m.email.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      (m) =>
+        m.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.email.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : membersWithoutConvo;
 
   // ─── Toggle reaction ──────────────────────────────────────────────────
@@ -701,10 +700,6 @@ export default function MessagesPage() {
   if (!activeWorkspace) {
     return (
       <div className="space-y-6">
-        <PageHeader
-          title="Messages"
-          description="Real-time messaging with leads and team members."
-        />
         <div className="flex items-center justify-center py-12">
           <Skeleton className="h-64 w-full rounded-lg" />
         </div>
@@ -715,314 +710,308 @@ export default function MessagesPage() {
   return (
     <RequireModuleAccess moduleId="messages">
       <div className="space-y-6">
-        <PageHeader
-          title="Messages"
-          description="Real-time messaging with leads and team members."
-        />
-
-      <div className="grid h-[calc(100vh-12rem)] grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* ─── Conversation List (Left) ─────────────────────────────────── */}
-        <div className="flex flex-col rounded-lg border bg-card lg:col-span-1">
-          {/* Search bar + group create */}
-          <div className="border-b p-3">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search conversations..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-              {isAdminOrOwner && (
-                <TooltipButton
-                  tooltip="New group chat"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 shrink-0"
-                  onClick={() => setNewGroupOpen(true)}
-                >
-                  <Plus className="h-4 w-4" />
-                </TooltipButton>
-              )}
-            </div>
-          </div>
-
-          {/* List */}
-          <div className="flex-1 overflow-y-auto">
-            <ConversationList
-              conversations={filteredConversations}
-              members={filteredMembers}
-              selectedId={selected?.id ?? (draftMember ? `member_${draftMember.userId}` : null)}
-              currentUserId={user?.id || ""}
-              memberMap={memberMap}
-              onSelectConversation={handleSelectConversation}
-              onSelectMember={handleSelectMember}
-              onDeleteConversation={handleDeleteConversation}
-              loading={convsLoading}
-              error={convsError}
-            />
-          </div>
-
-          {/* Action buttons */}
-          <div className="border-t p-2 space-y-1.5">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setNewConvOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Message Lead
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full"
-              onClick={() => setNewMemberOpen(true)}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              Message Member
-            </Button>
-          </div>
-        </div>
-
-        {/* ─── Message Thread (Right) ───────────────────────────────────── */}
-        <div className="flex flex-col overflow-hidden rounded-lg border bg-card lg:col-span-2">
-          {selected ? (
-            <>
-              {/* Conversation header */}
-              <div className="flex items-center justify-between border-b px-4 py-3">
-                {(() => {
-                  const { name, detail, isMember, isGroup } = getConversationName(selected, user?.id || "", memberMap);
-                  const canManage = isGroup && (
-                    user?.role === "owner" || 
-                    user?.role === "admin" || 
-                    activeWorkspace?.ownerId === user?.id
-                  );
-                  return (
-                    <>
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Avatar className={`h-9 w-9 border shrink-0 ${isGroup ? "rounded-xl" : ""}`}>
-                          <AvatarFallback className={`text-xs ${
-                            isGroup
-                              ? "bg-violet-500/10 text-violet-600"
-                              : isMember
-                                ? "bg-amber-500/10 text-amber-600"
-                                : "bg-primary/10 text-primary"
-                          }`}>
-                            {isGroup ? (
-                              <Users className="h-4 w-4" />
-                            ) : (
-                              getInitials(name)
-                            )}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">{name}</p>
-                          <p className="truncate text-xs text-muted-foreground">{detail}</p>
-                        </div>
-                      </div>
-                      {canManage && (
-                        <TooltipButton
-                          tooltip="Manage members"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 shrink-0"
-                          onClick={() => setManageGroupOpen(true)}
-                        >
-                          <Settings className="h-4 w-4" />
-                        </TooltipButton>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-
-              {/* Messages */}
-              <MessageThread
-                messages={messages}
-                currentUserId={user?.id ?? ""}
-                loading={msgsLoading}
-                error={msgsError}
-                onEditMessage={handleEditMessage}
-                onDeleteMessage={handleDeleteMessage}
-                onToggleReaction={handleToggleReaction}
-              />
-
-              {/* Input */}
-              <div className="border-t px-4 py-3">
-                <div className="flex items-center gap-2">
+        <div className="grid h-[calc(100vh-7rem)] grid-cols-1 gap-4 lg:grid-cols-3">
+          {/* ─── Conversation List (Left) ─────────────────────────────────── */}
+          <div className="flex flex-col rounded-lg border bg-card lg:col-span-1">
+            {/* Search bar + group create */}
+            <div className="border-b p-3">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search conversations..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8"
+                  />
+                </div>
+                {isAdminOrOwner && (
                   <TooltipButton
-                    tooltip="Send Google Meet link"
+                    tooltip="New group chat"
                     variant="ghost"
-                    className="shrink-0"
-                    onClick={handleOpenMeetingDialog}
+                    size="icon"
+                    className="h-9 w-9 shrink-0"
+                    onClick={() => setNewGroupOpen(true)}
                   >
-                    <Video className="h-4 w-4" />
+                    <Plus className="h-4 w-4" />
                   </TooltipButton>
-                  <div className="flex-1">
-                    <MessageInput
-                      onSend={handleSendMessage}
-                      placeholder={`Message ${getConversationName(selected, user?.id || "", memberMap).name.split(" ")[0]}...`}
-                      uploading={uploadingFile}
-                      pendingFile={pendingFile}
-                      onClearFile={handleClearPendingFile}
-                    />
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : draftMember ? (
-            /* Draft mode — member selected, no conversation yet */
-            <>
-              <div className="border-b px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-9 w-9 border">
-                    <AvatarFallback className="text-xs bg-amber-500/10 text-amber-600">
-                      {getInitials(draftMember.displayName)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {draftMember.displayName}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {draftMember.email}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <MessageThread
-                messages={[]}
-                currentUserId={user?.id || ""}
-                loading={false}
-                error={null}
-                onEditMessage={handleEditMessage}
-                onDeleteMessage={handleDeleteMessage}
-              />
-
-              <div className="border-t p-4">
-                <MessageInput
-                  onSend={handleSendMessage}
-                  placeholder={`Message ${draftMember.displayName.split(" ")[0]}...`}
-                  uploading={uploadingFile}
-                  pendingFile={pendingFile}
-                  onClearFile={handleClearPendingFile}
-                />
-              </div>
-            </>
-          ) : (
-            /* Empty state — no conversation selected */
-            <div className="flex h-full flex-col items-center justify-center p-6 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted/50">
-                <Mail className="h-8 w-8 text-muted-foreground/40" />
-              </div>
-              <h3 className="mt-4 text-sm font-medium text-foreground">
-                Select a conversation
-              </h3>
-              <p className="mt-1 max-w-xs text-xs text-muted-foreground">
-                Choose a conversation from the list, message a lead, or start a chat with a team member.
-              </p>
-              <div className="mt-4 flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setNewConvOpen(true)}
-                >
-                  <Plus className="mr-2 h-3.5 w-3.5" />
-                  Message Lead
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setNewMemberOpen(true)}
-                >
-                  <Users className="mr-2 h-3.5 w-3.5" />
-                  Message Member
-                </Button>
+                )}
               </div>
             </div>
-          )}
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto">
+              <ConversationList
+                conversations={filteredConversations}
+                members={filteredMembers}
+                selectedId={selected?.id ?? (draftMember ? `member_${draftMember.userId}` : null)}
+                currentUserId={user?.id || ""}
+                memberMap={memberMap}
+                onSelectConversation={handleSelectConversation}
+                onSelectMember={handleSelectMember}
+                onDeleteConversation={handleDeleteConversation}
+                loading={convsLoading}
+                error={convsError}
+              />
+            </div>
+
+            {/* Action buttons */}
+            <div className="border-t p-2 space-y-1.5">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setNewConvOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Message Lead
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => setNewMemberOpen(true)}
+              >
+                <Users className="mr-2 h-4 w-4" />
+                Message Member
+              </Button>
+            </div>
+          </div>
+
+          {/* ─── Message Thread (Right) ───────────────────────────────────── */}
+          <div className="flex flex-col overflow-hidden rounded-lg border bg-card lg:col-span-2">
+            {selected ? (
+              <>
+                {/* Conversation header */}
+                <div className="flex items-center justify-between border-b px-4 py-3">
+                  {(() => {
+                    const { name, detail, isMember, isGroup } = getConversationName(selected, user?.id || "", memberMap);
+                    const canManage = isGroup && (
+                      user?.role === "owner" ||
+                      user?.role === "admin" ||
+                      activeWorkspace?.ownerId === user?.id
+                    );
+                    return (
+                      <>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className={`h-9 w-9 border shrink-0 ${isGroup ? "rounded-xl" : ""}`}>
+                            <AvatarFallback className={`text-xs ${isGroup
+                                ? "bg-violet-500/10 text-violet-600"
+                                : isMember
+                                  ? "bg-amber-500/10 text-amber-600"
+                                  : "bg-primary/10 text-primary"
+                              }`}>
+                              {isGroup ? (
+                                <Users className="h-4 w-4" />
+                              ) : (
+                                getInitials(name)
+                              )}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{name}</p>
+                            <p className="truncate text-xs text-muted-foreground">{detail}</p>
+                          </div>
+                        </div>
+                        {canManage && (
+                          <TooltipButton
+                            tooltip="Manage members"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0"
+                            onClick={() => setManageGroupOpen(true)}
+                          >
+                            <Settings className="h-4 w-4" />
+                          </TooltipButton>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Messages */}
+                <MessageThread
+                  messages={messages}
+                  currentUserId={user?.id ?? ""}
+                  loading={msgsLoading}
+                  error={msgsError}
+                  onEditMessage={handleEditMessage}
+                  onDeleteMessage={handleDeleteMessage}
+                  onToggleReaction={handleToggleReaction}
+                />
+
+                {/* Input */}
+                <div className="border-t px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <TooltipButton
+                      tooltip="Send Google Meet link"
+                      variant="ghost"
+                      className="shrink-0"
+                      onClick={handleOpenMeetingDialog}
+                    >
+                      <Video className="h-4 w-4" />
+                    </TooltipButton>
+                    <div className="flex-1">
+                      <MessageInput
+                        onSend={handleSendMessage}
+                        placeholder={`Message ${getConversationName(selected, user?.id || "", memberMap).name.split(" ")[0]}...`}
+                        uploading={uploadingFile}
+                        pendingFile={pendingFile}
+                        onClearFile={handleClearPendingFile}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : draftMember ? (
+              /* Draft mode — member selected, no conversation yet */
+              <>
+                <div className="border-b px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-9 w-9 border">
+                      <AvatarFallback className="text-xs bg-amber-500/10 text-amber-600">
+                        {getInitials(draftMember.displayName)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {draftMember.displayName}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {draftMember.email}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <MessageThread
+                  messages={[]}
+                  currentUserId={user?.id || ""}
+                  loading={false}
+                  error={null}
+                  onEditMessage={handleEditMessage}
+                  onDeleteMessage={handleDeleteMessage}
+                />
+
+                <div className="border-t p-4">
+                  <MessageInput
+                    onSend={handleSendMessage}
+                    placeholder={`Message ${draftMember.displayName.split(" ")[0]}...`}
+                    uploading={uploadingFile}
+                    pendingFile={pendingFile}
+                    onClearFile={handleClearPendingFile}
+                  />
+                </div>
+              </>
+            ) : (
+              /* Empty state — no conversation selected */
+              <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted/50">
+                  <Mail className="h-8 w-8 text-muted-foreground/40" />
+                </div>
+                <h3 className="mt-4 text-sm font-medium text-foreground">
+                  Select a conversation
+                </h3>
+                <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+                  Choose a conversation from the list, message a lead, or start a chat with a team member.
+                </p>
+                <div className="mt-4 flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setNewConvOpen(true)}
+                  >
+                    <Plus className="mr-2 h-3.5 w-3.5" />
+                    Message Lead
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setNewMemberOpen(true)}
+                  >
+                    <Users className="mr-2 h-3.5 w-3.5" />
+                    Message Member
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Dialogs */}
-      {user && activeWorkspace && selected && (
-        <CreateMeetingDialog
-          open={meetingDialogOpen}
-          onOpenChange={setMeetingDialogOpen}
-          userId={user.id}
-          workspaceId={activeWorkspace.id}
-          conversationId={selected.id}
-          leadId={selected.leadId}
-          attendees={meetingAttendees}
-          onMeetingCreated={handleMeetingCreated}
-        />
-      )}
+        {/* Dialogs */}
+        {user && activeWorkspace && selected && (
+          <CreateMeetingDialog
+            open={meetingDialogOpen}
+            onOpenChange={setMeetingDialogOpen}
+            userId={user.id}
+            workspaceId={activeWorkspace.id}
+            conversationId={selected.id}
+            leadId={selected.leadId}
+            attendees={meetingAttendees}
+            onMeetingCreated={handleMeetingCreated}
+          />
+        )}
 
-      {activeWorkspace && (
-        <>
-          <NewConversationDialog
-            open={newConvOpen}
-            onOpenChange={setNewConvOpen}
-            workspaceId={activeWorkspace.id}
-            onCreateConversation={handleCreateConversation}
-          />
-          <NewMemberConversationDialog
-            open={newMemberOpen}
-            onOpenChange={setNewMemberOpen}
-            workspaceId={activeWorkspace.id}
-            currentUserId={user?.id || ""}
-            onCreateConversation={handleCreateMemberConversation}
-          />
-          <NewGroupDialog
-            open={newGroupOpen}
-            onOpenChange={setNewGroupOpen}
-            workspaceId={activeWorkspace.id}
-            currentUserId={user?.id || ""}
-            currentUserName={user?.displayName || "You"}
-            onCreateGroup={handleCreateGroup}
-          />
-          {selected && (
-            <ManageGroupDialog
-              open={manageGroupOpen}
-              onOpenChange={setManageGroupOpen}
-              conversation={selected}
+        {activeWorkspace && (
+          <>
+            <NewConversationDialog
+              open={newConvOpen}
+              onOpenChange={setNewConvOpen}
+              workspaceId={activeWorkspace.id}
+              onCreateConversation={handleCreateConversation}
+            />
+            <NewMemberConversationDialog
+              open={newMemberOpen}
+              onOpenChange={setNewMemberOpen}
               workspaceId={activeWorkspace.id}
               currentUserId={user?.id || ""}
-              memberMap={memberMap}
-              onUpdateMembers={handleUpdateGroupMembers}
+              onCreateConversation={handleCreateMemberConversation}
             />
-          )}
-        </>
-      )}
+            <NewGroupDialog
+              open={newGroupOpen}
+              onOpenChange={setNewGroupOpen}
+              workspaceId={activeWorkspace.id}
+              currentUserId={user?.id || ""}
+              currentUserName={user?.displayName || "You"}
+              onCreateGroup={handleCreateGroup}
+            />
+            {selected && (
+              <ManageGroupDialog
+                open={manageGroupOpen}
+                onOpenChange={setManageGroupOpen}
+                conversation={selected}
+                workspaceId={activeWorkspace.id}
+                currentUserId={user?.id || ""}
+                memberMap={memberMap}
+                onUpdateMembers={handleUpdateGroupMembers}
+              />
+            )}
+          </>
+        )}
 
-      {/* Delete conversation dialog */}
-      <Dialog open={!!deleteConvTarget} onOpenChange={() => setDeleteConvTarget(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete conversation?</DialogTitle>
-            <DialogDescription>
-              This will permanently delete the chat and all messages.
-              This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setDeleteConvTarget(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDeleteConversation}
-              disabled={deletingConv}
-            >
-              {deletingConv ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+        {/* Delete conversation dialog */}
+        <Dialog open={!!deleteConvTarget} onOpenChange={() => setDeleteConvTarget(null)}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete conversation?</DialogTitle>
+              <DialogDescription>
+                This will permanently delete the chat and all messages.
+                This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setDeleteConvTarget(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleConfirmDeleteConversation}
+                disabled={deletingConv}
+              >
+                {deletingConv ? "Deleting..." : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </RequireModuleAccess>
   );
 }

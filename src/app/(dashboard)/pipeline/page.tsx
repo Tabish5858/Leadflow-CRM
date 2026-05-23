@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { KanbanBoard } from "@/components/pipeline/kanban-board";
+import { RequireModuleAccess } from "@/components/shared/require-module-access";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useLeadStore } from "@/lib/stores/leadStore";
-import { KanbanBoard } from "@/components/pipeline/kanban-board";
-import { PageHeader } from "@/components/shared/page-header";
-import { Skeleton } from "@/components/ui/skeleton";
-import { RequireModuleAccess } from "@/components/shared/require-module-access";
+import { useEffect } from "react";
 
 export default function PipelinePage() {
   const { activeWorkspace } = useWorkspace();
@@ -21,10 +20,6 @@ export default function PipelinePage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="space-y-1">
-          <div className="h-8 w-32 skeleton rounded-md" />
-          <div className="h-4 w-64 skeleton rounded-md" />
-        </div>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="w-72 shrink-0 space-y-3">
@@ -60,10 +55,6 @@ export default function PipelinePage() {
   return (
     <RequireModuleAccess moduleId="pipeline">
       <div className="space-y-6">
-        <PageHeader
-          title="Pipeline"
-          description="Drag and drop leads between stages to update their status."
-        />
         <KanbanBoard />
       </div>
     </RequireModuleAccess>

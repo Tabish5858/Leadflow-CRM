@@ -1,22 +1,19 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
-import { useWorkspace } from "@/contexts/workspace-context";
-import { useLeadStore } from "@/lib/stores/leadStore";
+import { ExportButton } from "@/components/shared/export-button";
+import { RequireModuleAccess } from "@/components/shared/require-module-access";
 import { StatCard } from "@/components/shared/stat-card";
 import { SkeletonCardGrid } from "@/components/skeletons/skeleton-card";
 import { SkeletonChartGrid } from "@/components/skeletons/skeleton-chart";
-import { PageHeader } from "@/components/shared/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -25,51 +22,51 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  BarChart,
-  Bar,
-} from "recharts";
+import { Separator } from "@/components/ui/separator";
+import { useHeaderActions } from "@/contexts/header-actions-context";
+import { useWorkspace } from "@/contexts/workspace-context";
+import { AVAILABLE_METRICS, getAnalyticsCards } from "@/lib/analytics-cards";
 import { DEFAULT_PIPELINE_STAGES, LEAD_SOURCES } from "@/lib/constants";
-import type { PipelineStage, AnalyticsCardConfig, AnalyticsCardType } from "@/types";
+import type { AnalyticsMetrics } from "@/lib/export";
+import { db } from "@/lib/firebase/client";
+import { useLeadStore } from "@/lib/stores/leadStore";
 import { formatCurrency } from "@/lib/utils";
+import type { AnalyticsCardConfig, AnalyticsCardType, PipelineStage } from "@/types";
+import { deleteField, doc, updateDoc } from "firebase/firestore";
 import {
-  TrendingUp,
-  TrendingDown,
-  Users,
-  DollarSign,
-  Target,
-  Mail,
-  Phone,
-  Download,
-  Pencil,
-  X,
-  Plus,
-  ChevronUp,
-  ChevronDown,
   BarChart3,
-  PieChartIcon,
-  LineChartIcon,
-  ListOrdered,
+  ChevronDown,
+  ChevronUp,
+  DollarSign,
   Filter,
   Layers,
+  LineChartIcon,
+  ListOrdered,
+  Pencil,
+  PieChartIcon,
+  Plus,
+  Target,
   Trash2,
+  TrendingDown,
+  TrendingUp,
+  Users,
+  X
 } from "lucide-react";
-import { ExportButton } from "@/components/shared/export-button";
-import type { AnalyticsMetrics } from "@/lib/export";
-import { RequireModuleAccess } from "@/components/shared/require-module-access";
-import { getAnalyticsCards, AVAILABLE_METRICS } from "@/lib/analytics-cards";
-import { doc, updateDoc, deleteField } from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { toast } from "sonner";
 
 const COLORS = [
@@ -188,6 +185,7 @@ const CARD_TYPE_LABELS: Record<AnalyticsCardType, string> = {
 
 export default function AnalyticsPage() {
   const { activeWorkspace, user } = useWorkspace();
+  const { setHeaderActions } = useHeaderActions();
   const { leads, loading, initialize } = useLeadStore();
   const [dateRange, setDateRange] = useState(30);
   const [editMode, setEditMode] = useState(false);
@@ -291,18 +289,74 @@ export default function AnalyticsPage() {
     avgDealSize,
   };
 
-  const analyticsMetrics: AnalyticsMetrics = {
-    totalLeads,
-    wonLeads,
-    lostLeads,
-    conversionRate,
-    totalValue,
-    activeDeals,
-    wonValue,
-    avgDealSize,
-    dateRange: DATE_RANGES.find((r) => r.days === dateRange)?.label || "Last 30 days",
-    generatedAt: new Date().toLocaleDateString(),
-  };
+  const analyticsMetrics = useMemo<AnalyticsMetrics>(
+    () => ({
+      totalLeads,
+      wonLeads,
+      lostLeads,
+      conversionRate,
+      totalValue,
+      activeDeals,
+      wonValue,
+      avgDealSize,
+      dateRange: DATE_RANGES.find((r) => r.days === dateRange)?.label || "Last 30 days",
+      generatedAt: new Date().toLocaleDateString(),
+    }),
+    [
+      totalLeads,
+      wonLeads,
+      lostLeads,
+      conversionRate,
+      totalValue,
+      activeDeals,
+      wonValue,
+      avgDealSize,
+      dateRange,
+    ]
+  );
+
+  const headerActions = useMemo(
+    () => (
+      <div className="flex items-center gap-2">
+        {isAdmin && (
+          <Button
+            variant={editMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => setEditMode(!editMode)}
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            {editMode ? "Done" : "Edit Cards"}
+          </Button>
+        )}
+        <ExportButton type="analytics" data={analyticsMetrics} />
+        <Select
+          value={dateRange.toString()}
+          onValueChange={(v) => setDateRange(parseInt(v))}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DATE_RANGES.map((range) => (
+              <SelectItem key={range.days} value={range.days.toString()}>
+                {range.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    ),
+    [isAdmin, editMode, analyticsMetrics, dateRange]
+  );
+
+  useEffect(() => {
+    if (loading) {
+      setHeaderActions(null);
+      return;
+    }
+    setHeaderActions(headerActions);
+    return () => setHeaderActions(null);
+  }, [loading, headerActions, setHeaderActions]);
 
   // Top leads
   const topLeads = useMemo(() =>
@@ -733,13 +787,6 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <div className="h-8 w-32 skeleton rounded-md" />
-            <div className="h-4 w-48 skeleton rounded-md" />
-          </div>
-          <div className="h-10 w-[180px] skeleton rounded-md" />
-        </div>
         <SkeletonCardGrid count={4} />
         <SkeletonChartGrid />
       </div>
@@ -749,41 +796,6 @@ export default function AnalyticsPage() {
   return (
     <RequireModuleAccess moduleId="analytics">
       <div className="space-y-6">
-        <PageHeader
-          title="Analytics"
-          description="Insights into your CRM performance."
-          actions={
-            <div className="flex items-center gap-2">
-              {isAdmin && (
-                <Button
-                  variant={editMode ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setEditMode(!editMode)}
-                >
-                  <Pencil className="mr-2 h-4 w-4" />
-                  {editMode ? "Done" : "Edit Cards"}
-                </Button>
-              )}
-              <ExportButton type="analytics" data={analyticsMetrics} />
-              <Select
-                value={dateRange.toString()}
-                onValueChange={(v) => setDateRange(parseInt(v))}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DATE_RANGES.map((range) => (
-                    <SelectItem key={range.days} value={range.days.toString()}>
-                      {range.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          }
-        />
-
         {/* ─── Card grid ────────────────────────────────────────────────── */}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1056,24 +1068,24 @@ function AddCardDialog({
           {(isCustomFieldMetric ||
             option?.cardType === "bar_chart" ||
             option?.cardType === "pie_chart") && selectableFields.length > 0 && (
-            <Select value={selectedCustomField} onValueChange={setSelectedCustomField}>
-              <SelectTrigger>
-                <SelectValue placeholder="Pick a custom field..." />
-              </SelectTrigger>
-              <SelectContent>
-                {selectableFields.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+              <Select value={selectedCustomField} onValueChange={setSelectedCustomField}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick a custom field..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {selectableFields.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           {(isCustomFieldMetric ||
             option?.cardType === "bar_chart" ||
             option?.cardType === "pie_chart") && selectableFields.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              No select/multiselect custom fields available. Create one in Settings → Custom Fields.
-            </p>
-          )}
+              <p className="text-xs text-muted-foreground">
+                No select/multiselect custom fields available. Create one in Settings → Custom Fields.
+              </p>
+            )}
 
           {/* Add button */}
           <Button
