@@ -21,6 +21,7 @@ import { MessageThread } from "@/components/messages/message-thread";
 import { MessageInput } from "@/components/messages/message-input";
 import { NewConversationDialog } from "@/components/messages/new-conversation-dialog";
 import { NewMemberConversationDialog } from "@/components/messages/new-member-conversation-dialog";
+import { NewGroupDialog } from "@/components/messages/new-group-dialog";
 import { CreateMeetingDialog } from "@/components/messages/create-meeting-dialog";
 import { TooltipButton } from "@/components/ui/tooltip-button";
 import {
@@ -47,27 +48,46 @@ function getConversationName(
   conv: Conversation,
   currentUserId: string,
   memberMap: Map<string, string>
-): { name: string; detail: string; isMember: boolean } {
+): { name: string; detail: string; isMember: boolean; isGroup: boolean } {
   const isMember = conv.type === "member" || (!conv.type && !(conv.leadName || conv.leadEmail));
   if (isMember) {
     const ids = conv.participantIds || [];
     const names = conv.participantNames || [];
-    // Try index-aligned lookup first
+    const isGroup = ids.length > 2 || !!conv.groupName;
+
+    // Group conversation — use groupName or list of names
+    if (isGroup) {
+      if (conv.groupName) {
+        const otherCount = ids.filter((id) => id !== currentUserId).length;
+        return { name: conv.groupName, detail: `${otherCount} member${otherCount !== 1 ? "s" : ""}`, isMember: true, isGroup: true };
+      }
+      const otherNames = ids
+        .filter((id) => id !== currentUserId)
+        .map((id, i) => {
+          const idx = ids.indexOf(id);
+          return names[idx] || memberMap.get(id) || "Unknown";
+        });
+      const displayName = otherNames.slice(0, 3).join(", ");
+      const suffix = otherNames.length > 3 ? ` +${otherNames.length - 3}` : "";
+      return { name: displayName + suffix, detail: `${ids.length} members`, isMember: true, isGroup: true };
+    }
+
+    // 1:1 conversation
     const idx = ids.findIndex((id) => id !== currentUserId);
     if (idx >= 0 && names[idx]) {
-      return { name: names[idx], detail: "Workspace member", isMember: true };
+      return { name: names[idx], detail: "Workspace member", isMember: true, isGroup: false };
     }
-    // Fallback: look up by userId from workspace members
     const otherId = ids.find((id) => id !== currentUserId);
     if (otherId && memberMap.has(otherId)) {
-      return { name: memberMap.get(otherId)!, detail: "Workspace member", isMember: true };
+      return { name: memberMap.get(otherId)!, detail: "Workspace member", isMember: true, isGroup: false };
     }
-    return { name: names[0] || "Team Member", detail: "Workspace member", isMember: true };
+    return { name: names[0] || "Team Member", detail: "Workspace member", isMember: true, isGroup: false };
   }
   return {
     name: conv.leadName || "Unknown",
     detail: conv.leadEmail || "",
     isMember: false,
+    isGroup: false,
   };
 }
 
@@ -98,6 +118,7 @@ export default function MessagesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [newConvOpen, setNewConvOpen] = useState(false);
   const [newMemberOpen, setNewMemberOpen] = useState(false);
+  const [newGroupOpen, setNewGroupOpen] = useState(false);
 
   // Delete conversation
   const [deleteConvTarget, setDeleteConvTarget] = useState<Conversation | null>(null);
@@ -492,7 +513,7 @@ export default function MessagesPage() {
 
   const handleCreateConversation = useCallback(
     async (lead: { id: string; firstName: string; lastName: string; email: string }) => {
-      if (!activeWorkspace) return;
+      if (!activeWorkspace || !user) return;
       const leadName = `${lead.firstName} ${lead.lastName}`;
       await createConversation({
         workspaceId: activeWorkspace.id,
@@ -500,10 +521,12 @@ export default function MessagesPage() {
         leadId: lead.id,
         leadName,
         leadEmail: lead.email,
+        participantIds: [user.id],
+        participantNames: [user.displayName || "You"],
       });
       toast.success(`Conversation started with ${leadName}`);
     },
-    [activeWorkspace]
+    [activeWorkspace, user]
   );
 
   // ─── Create new member conversation ───────────────────────────────────
@@ -536,6 +559,30 @@ export default function MessagesPage() {
     [activeWorkspace, user, conversations]
   );
 
+  // ─── Create group conversation ────────────────────────────────────────
+
+  const handleCreateGroup = useCallback(
+    async (name: string, members: WorkspaceMember[]) => {
+      if (!activeWorkspace || !user) return;
+      const allIds = [user.id, ...members.map((m) => m.userId)];
+      const allNames = [user.displayName || "You", ...members.map((m) => m.displayName)];
+      const convoId = await createConversation({
+        workspaceId: activeWorkspace.id,
+        type: "member",
+        participantIds: allIds,
+        participantNames: allNames,
+      });
+      // Update the conversation doc with the group name
+      const { doc: fdoc, updateDoc } = await import("firebase/firestore");
+      const { db: fdb } = await import("@/lib/firebase/client");
+      await updateDoc(fdoc(fdb, "conversations", convoId), {
+        groupName: name,
+      });
+      toast.success(`Group "${name}" created`);
+    },
+    [activeWorkspace, user]
+  );
+
   // ─── Search filter ───────────────────────────────────────────────────
 
   // ─── Member name lookup map ──────────────────────────────────────────
@@ -547,7 +594,12 @@ export default function MessagesPage() {
 
   // ─── Filtered data ────────────────────────────────────────────────────
 
-  const filteredConversations = conversations.filter((c) => {
+  // Only show conversations where the current user is a participant
+  const myConversations = conversations.filter(
+    (c) => c.participantIds?.includes(user?.id || "")
+  );
+
+  const filteredConversations = myConversations.filter((c) => {
     const { name, detail } = getConversationName(c, user?.id || "", memberMap);
     const q = searchQuery.toLowerCase();
     return (
@@ -561,7 +613,7 @@ export default function MessagesPage() {
   const membersWithoutConvo = workspaceMembers.filter(
     (m) =>
       m.userId !== user?.id &&
-      !filteredConversations.some(
+      !myConversations.some(
         (c) =>
           c.type === "member" &&
           c.participantIds?.includes(m.userId) &&
@@ -615,16 +667,27 @@ export default function MessagesPage() {
       <div className="grid h-[calc(100vh-12rem)] grid-cols-1 gap-4 lg:grid-cols-3">
         {/* ─── Conversation List (Left) ─────────────────────────────────── */}
         <div className="flex flex-col rounded-lg border bg-card lg:col-span-1">
-          {/* Search bar */}
+          {/* Search bar + group create */}
           <div className="border-b p-3">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search conversations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8"
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search conversations..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+              <TooltipButton
+                tooltip="New group chat"
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => setNewGroupOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+              </TooltipButton>
             </div>
           </div>
 
@@ -672,12 +735,22 @@ export default function MessagesPage() {
               {/* Conversation header */}
               <div className="border-b px-4 py-3">
                 {(() => {
-                  const { name, detail, isMember } = getConversationName(selected, user?.id || "", memberMap);
+                  const { name, detail, isMember, isGroup } = getConversationName(selected, user?.id || "", memberMap);
                   return (
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9 border">
-                        <AvatarFallback className={`text-xs ${isMember ? "bg-amber-500/10 text-amber-600" : "bg-primary/10 text-primary"}`}>
-                          {getInitials(name)}
+                      <Avatar className={`h-9 w-9 border ${isGroup ? "rounded-xl" : ""}`}>
+                        <AvatarFallback className={`text-xs ${
+                          isGroup
+                            ? "bg-violet-500/10 text-violet-600"
+                            : isMember
+                              ? "bg-amber-500/10 text-amber-600"
+                              : "bg-primary/10 text-primary"
+                        }`}>
+                          {isGroup ? (
+                            <Users className="h-4 w-4" />
+                          ) : (
+                            getInitials(name)
+                          )}
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
@@ -826,6 +899,14 @@ export default function MessagesPage() {
             workspaceId={activeWorkspace.id}
             currentUserId={user?.id || ""}
             onCreateConversation={handleCreateMemberConversation}
+          />
+          <NewGroupDialog
+            open={newGroupOpen}
+            onOpenChange={setNewGroupOpen}
+            workspaceId={activeWorkspace.id}
+            currentUserId={user?.id || ""}
+            currentUserName={user?.displayName || "You"}
+            onCreateGroup={handleCreateGroup}
           />
         </>
       )}

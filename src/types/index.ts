@@ -297,6 +297,7 @@ export interface Conversation {
   /** Member-specific — set when type is "member" */
   participantIds: string[];
   participantNames: string[];
+  groupName?: string;
   /** Common */
   lastMessage: string;
   lastMessageAt: Timestamp;

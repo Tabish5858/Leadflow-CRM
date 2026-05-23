@@ -18,28 +18,43 @@ import type { Conversation, WorkspaceMember } from "@/types";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Show the OTHER participant's name, with member map fallback. */
+/** Show the OTHER participant's name, with member map fallback. Handles groups. */
 function getMemberDisplay(
   conv: Conversation,
   currentUserId: string,
   memberMap: Map<string, string>
-): { name: string; detail: string } {
+): { name: string; detail: string; isGroup: boolean } {
   const ids = conv.participantIds || [];
   const names = conv.participantNames || [];
+  const isGroup = ids.length > 2 || !!conv.groupName;
 
-  // Try index-aligned lookup first
+  // Group conversation
+  if (isGroup) {
+    if (conv.groupName) {
+      const otherCount = ids.filter((id) => id !== currentUserId).length;
+      return { name: conv.groupName, detail: `${otherCount} member${otherCount !== 1 ? "s" : ""}`, isGroup: true };
+    }
+    const otherNames = ids
+      .filter((id) => id !== currentUserId)
+      .map((id) => {
+        const idx = ids.indexOf(id);
+        return names[idx] || memberMap.get(id) || "Unknown";
+      });
+    const displayName = otherNames.slice(0, 2).join(", ");
+    const suffix = otherNames.length > 2 ? ` +${otherNames.length - 2}` : "";
+    return { name: displayName + suffix, detail: `${ids.length} members`, isGroup: true };
+  }
+
+  // 1:1 conversation
   const otherIdx = ids.findIndex((id) => id !== currentUserId);
   if (otherIdx >= 0 && names[otherIdx]) {
-    return { name: names[otherIdx], detail: "Workspace member" };
+    return { name: names[otherIdx], detail: "Workspace member", isGroup: false };
   }
-
-  // Fallback: look up by userId
   const otherId = ids.find((id) => id !== currentUserId);
   if (otherId && memberMap.has(otherId)) {
-    return { name: memberMap.get(otherId)!, detail: "Workspace member" };
+    return { name: memberMap.get(otherId)!, detail: "Workspace member", isGroup: false };
   }
-
-  return { name: names[0] || "Team Member", detail: "Workspace member" };
+  return { name: names[0] || "Team Member", detail: "Workspace member", isGroup: false };
 }
 
 function getLeadDisplay(conv: Conversation) {
@@ -178,9 +193,10 @@ export function ConversationList({
           <div className="space-y-px pb-1">
             {conversations.map((conv) => {
               const isLead = conv.type === "lead" || (!conv.type && !!(conv.leadName || conv.leadEmail));
-              const { name } = isLead
-                ? getLeadDisplay(conv)
+              const display = isLead
+                ? { ...getLeadDisplay(conv), isGroup: false }
                 : getMemberDisplay(conv, currentUserId, memberMap);
+              const { name, isGroup } = display;
               const isSelected = selectedId === conv.id;
               const hasUnread = (conv.unreadCount ?? 0) > 0;
 
@@ -212,8 +228,11 @@ export function ConversationList({
                           {getInitials(name)}
                         </AvatarFallback>
                       </Avatar>
-                      {!isLead && !isSelected && (
+                      {!isLead && !isGroup && !isSelected && (
                         <Users className="absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full bg-amber-500 p-0.5 text-white ring-2 ring-background" />
+                      )}
+                      {isGroup && !isSelected && (
+                        <Users className="absolute -right-0.5 -top-0.5 h-4 w-4 rounded-full bg-violet-500 p-0.5 text-white ring-2 ring-background" />
                       )}
                       {hasUnread && !isSelected && (
                         <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground ring-2 ring-background">
