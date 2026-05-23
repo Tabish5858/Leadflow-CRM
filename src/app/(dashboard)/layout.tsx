@@ -32,16 +32,18 @@ import {
 import { useTheme } from "next-themes";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/workspace-context";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
+import { usePermissions } from "@/lib/hooks/use-permissions";
+import type { ModuleId } from "@/types";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/leads", label: "Leads", icon: Users },
-  { href: "/pipeline", label: "Pipeline", icon: KanbanSquare },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/time-tracker", label: "Time Tracker", icon: Clock },
-  { href: "/messages", label: "Messages", icon: MessageSquare },
-  { href: "/automations", label: "Automations", icon: Zap },
-  { href: "/settings", label: "Settings", icon: Settings },
+const navItems: { href: string; label: string; icon: typeof LayoutDashboard; moduleId: ModuleId }[] = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, moduleId: "dashboard" },
+  { href: "/leads", label: "Leads", icon: Users, moduleId: "leads" },
+  { href: "/pipeline", label: "Pipeline", icon: KanbanSquare, moduleId: "pipeline" },
+  { href: "/analytics", label: "Analytics", icon: BarChart3, moduleId: "analytics" },
+  { href: "/time-tracker", label: "Time Tracker", icon: Clock, moduleId: "time_tracker" },
+  { href: "/messages", label: "Messages", icon: MessageSquare, moduleId: "messages" },
+  { href: "/automations", label: "Automations", icon: Zap, moduleId: "automations" },
+  { href: "/settings", label: "Settings", icon: Settings, moduleId: "settings" },
 ];
 
 function SidebarSkeleton() {
@@ -79,6 +81,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const { user, activeWorkspace, loading: wsLoading } = useWorkspace();
+  const { canAccess } = usePermissions();
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -175,7 +178,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-0.5 p-3">
-          {navItems.map((item) => {
+          {navItems
+            .filter((item) => canAccess(item.moduleId))
+            .map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link

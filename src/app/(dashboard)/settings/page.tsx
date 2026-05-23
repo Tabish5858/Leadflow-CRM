@@ -51,8 +51,18 @@ import {
   Check,
   Palette,
   UserCircle,
+  Settings,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import {
+  MODULE_LABELS,
+  DEFAULT_MEMBER_PERMISSIONS,
+  DEFAULT_VIEWER_PERMISSIONS,
+  type ModuleId,
+  type ModulePermissionsMap,
+  type ModulePermissionsByRole,
+} from "@/types";
+import { getEffectivePermissions } from "@/lib/permissions";
 import {
   updateWorkspaceName,
   updateWorkspace,
@@ -91,7 +101,7 @@ import {
 import { useRouter } from "next/navigation";
 import { FileText } from "lucide-react";
 
-type Tab = "profile" | "workspace" | "members" | "pipeline" | "custom-fields" | "preferences" | "integrations";
+type Tab = "profile" | "workspace" | "members" | "pipeline" | "custom-fields" | "permissions" | "preferences" | "integrations";
 
 export default function SettingsPage() {
   const { user, activeWorkspace, workspaces, switchWorkspace, refreshWorkspaces } = useWorkspace();
@@ -132,12 +142,48 @@ export default function SettingsPage() {
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
   const [savingPipeline, setSavingPipeline] = useState(false);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [modulePermissions, setModulePermissions] = useState<ModulePermissionsByRole>({
+    member: { ...DEFAULT_MEMBER_PERMISSIONS },
+    viewer: { ...DEFAULT_VIEWER_PERMISSIONS },
+  });
+  const [savingPermissions, setSavingPermissions] = useState(false);
+
+  const handleToggleModule = (role: "member" | "viewer", moduleId: ModuleId) => {
+    setModulePermissions((prev) => ({
+      ...prev,
+      [role]: { ...prev[role], [moduleId]: !prev[role][moduleId] },
+    }));
+  };
+
+  const handleSavePermissions = async () => {
+    if (!activeWorkspace) return;
+    setSavingPermissions(true);
+    try {
+      await updateWorkspace(activeWorkspace.id, { modulePermissions });
+      await refreshWorkspaces();
+      toast.success("Permissions saved");
+    } catch {
+      toast.error("Failed to save permissions");
+    } finally {
+      setSavingPermissions(false);
+    }
+  };
+
+  const handleResetPermissions = () => {
+    setModulePermissions({
+      member: { ...DEFAULT_MEMBER_PERMISSIONS },
+      viewer: { ...DEFAULT_VIEWER_PERMISSIONS },
+    });
+  };
 
   useEffect(() => {
     if (activeWorkspace) {
       setWorkspaceName(activeWorkspace.name);
       setPipelineStages(activeWorkspace.pipeline?.stages || []);
       setCustomFields(activeWorkspace.customFields || []);
+      if (activeWorkspace.modulePermissions) {
+        setModulePermissions(activeWorkspace.modulePermissions);
+      }
     }
   }, [activeWorkspace]);
 
@@ -373,7 +419,8 @@ export default function SettingsPage() {
     { id: "members", label: "Members", icon: <Users className="h-4 w-4" /> },
     { id: "pipeline", label: "Pipeline", icon: <KanbanSquare className="h-4 w-4" /> },
     { id: "custom-fields", label: "Custom Fields", icon: <ListFilter className="h-4 w-4" /> },
-    { id: "preferences", label: "Preferences", icon: <Shield className="h-4 w-4" /> },
+    { id: "permissions", label: "Permissions", icon: <Shield className="h-4 w-4" /> },
+    { id: "preferences", label: "Preferences", icon: <Settings className="h-4 w-4" /> },
     { id: "integrations", label: "Integrations", icon: <Plug className="h-4 w-4" /> },
   ];
 
@@ -828,6 +875,98 @@ export default function SettingsPage() {
             fields={customFields}
             onSave={handleSaveCustomFields}
           />
+        </div>
+      )}
+
+      {/* Permissions Tab */}
+      {activeTab === "permissions" && (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Module Permissions</CardTitle>
+              <CardDescription>
+                Control which modules each role can access. Owners and Admins always have full access.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!isOwner ? (
+                <div className="space-y-4">
+                  {/* Read-only view for non-owners */}
+                  {["member", "viewer"]?.map((role) => {
+                    const perms = getEffectivePermissions(
+                      activeWorkspace?.modulePermissions || null,
+                      role
+                    );
+                    return (
+                      <div key={role}>
+                        <h4 className="text-sm font-semibold capitalize mb-2">{role}</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(Object.keys(MODULE_LABELS) as ModuleId[]).map((mod) => (
+                            <div key={mod} className="flex items-center gap-2 text-sm py-1">
+                              <div
+                                className={`h-2 w-2 rounded-full ${perms[mod] ? "bg-green-500" : "bg-red-400"}`}
+                              />
+                              <span className={!perms[mod] ? "text-muted-foreground line-through" : ""}>
+                                {MODULE_LABELS[mod]}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Editable view for owners/admins */}
+                  {(["member", "viewer"] as const).map((role) => (
+                    <div key={role} className="space-y-3">
+                      <h4 className="text-sm font-semibold capitalize">
+                        {role === "member" ? "Member" : "Viewer"} Permissions
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {(Object.keys(MODULE_LABELS) as ModuleId[]).map((mod) => {
+                          const isEnabled = modulePermissions[role]?.[mod] ?? false;
+                          return (
+                            <label
+                              key={mod}
+                              className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${
+                                isEnabled
+                                  ? "bg-primary/5 border-primary/20 hover:bg-primary/10"
+                                  : "bg-muted/30 border-border hover:bg-muted/50"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isEnabled}
+                                onChange={() => handleToggleModule(role, mod)}
+                                className="h-4 w-4 rounded border-primary text-primary focus:ring-primary"
+                              />
+                              <span className={`text-sm ${!isEnabled ? "text-muted-foreground" : "font-medium"}`}>
+                                {MODULE_LABELS[mod]}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      onClick={handleSavePermissions}
+                      disabled={savingPermissions}
+                    >
+                      {savingPermissions ? "Saving..." : "Save Permissions"}
+                    </Button>
+                    <Button variant="outline" onClick={handleResetPermissions}>
+                      Reset to Default
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 

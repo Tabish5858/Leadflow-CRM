@@ -43,7 +43,58 @@ export interface Workspace {
   updatedAt: Timestamp;
   ownerId: string;
   memberIds: string[];
+  modulePermissions?: ModulePermissionsByRole;
 }
+
+export type ModuleId =
+  | "dashboard"
+  | "leads"
+  | "pipeline"
+  | "analytics"
+  | "time_tracker"
+  | "messages"
+  | "automations"
+  | "settings";
+
+export type ModulePermissionsMap = Record<ModuleId, boolean>;
+
+export interface ModulePermissionsByRole {
+  member: ModulePermissionsMap;
+  viewer: ModulePermissionsMap;
+}
+
+export const MODULE_LABELS: Record<ModuleId, string> = {
+  dashboard: "Dashboard",
+  leads: "Leads",
+  pipeline: "Pipeline",
+  analytics: "Analytics",
+  time_tracker: "Time Tracker",
+  messages: "Messages",
+  automations: "Automations",
+  settings: "Settings",
+} as const;
+
+export const DEFAULT_MEMBER_PERMISSIONS: ModulePermissionsMap = {
+  dashboard: true,
+  leads: true,
+  pipeline: true,
+  analytics: true,
+  time_tracker: true,
+  messages: true,
+  automations: false,
+  settings: false,
+};
+
+export const DEFAULT_VIEWER_PERMISSIONS: ModulePermissionsMap = {
+  dashboard: true,
+  leads: true,
+  pipeline: false,
+  analytics: true,
+  time_tracker: false,
+  messages: false,
+  automations: false,
+  settings: false,
+};
 
 export interface WorkspaceMember {
   userId: string;
