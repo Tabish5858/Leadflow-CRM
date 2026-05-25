@@ -258,21 +258,7 @@ export default function SettingsPage() {
     }
     setInviting(true);
     try {
-      const inviteId = await createInvite(activeWorkspace.id, inviteEmail.trim(), firebaseUser.uid, inviteRole);
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
-      const acceptUrl = `${baseUrl}/invite/accept?inviteId=${inviteId}`;
-      const workspaceName = activeWorkspace.name;
-      const inviterName = user?.displayName || "A team member";
-
-      // Send actual invitation email via Resend
-      const html = renderInviteEmail({
-        inviterName,
-        workspaceName,
-        inviteRole,
-        acceptUrl,
-      });
-
-      await fetch("/api/email/send", {
+      const res = await fetch("/api/workspaces/invite", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -280,13 +266,22 @@ export default function SettingsPage() {
           "x-workspace-id": activeWorkspace.id,
         },
         body: JSON.stringify({
-          to: inviteEmail.trim(),
-          subject: `Join ${workspaceName} on LeadFlow CRM`,
-          html,
+          email: inviteEmail.trim(),
+          role: inviteRole,
         }),
       });
 
-      toast.success(`Invite sent to ${inviteEmail}`);
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to send invite");
+        return;
+      }
+
+      toast.success(
+        data.emailSent
+          ? `Invite sent to ${inviteEmail}`
+          : `Invite created for ${inviteEmail} (email sending not configured)`
+      );
       setInviteEmail("");
       // Refresh pending invites list
       const updated = await getPendingInvitesForWorkspace(activeWorkspace.id);
