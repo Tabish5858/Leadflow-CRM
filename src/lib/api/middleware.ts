@@ -91,13 +91,22 @@ export async function requireAuth(
 
 /**
  * Wrapper: extracts auth context or returns the error response directly.
+ * Catches all errors (incl. Firebase Admin SDK init failures) and returns
+ * a proper JSON error instead of a generic 500 with empty body.
  */
 export async function withAuth(
   req: NextRequest,
   handler: (ctx: AuthContext) => Promise<NextResponse>,
   moduleId?: ModuleId
 ): Promise<NextResponse> {
-  const auth = await requireAuth(req, moduleId);
-  if (auth instanceof NextResponse) return auth;
-  return handler(auth);
+  try {
+    const auth = await requireAuth(req, moduleId);
+    if (auth instanceof NextResponse) return auth;
+    return handler(auth);
+  } catch (error) {
+    console.error("withAuth error:", error);
+    const message =
+      error instanceof Error ? error.message : "Authentication failed";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
