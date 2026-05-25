@@ -2,8 +2,6 @@
 
 import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
-import { auth } from "@/lib/firebase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,9 +12,7 @@ import Link from "next/link";
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const oobCode = searchParams.get("oobCode");
-  const mode = searchParams.get("mode");
+  const token = searchParams.get("token");
 
   const [verifying, setVerifying] = useState(true);
   const [valid, setValid] = useState(false);
@@ -29,25 +25,30 @@ function ResetPasswordForm() {
   const [done, setDone] = useState(false);
   const [resetError, setResetError] = useState("");
 
-  // Verify the reset code on mount
+  // Verify the token on mount
   useEffect(() => {
-    if (!oobCode || mode !== "resetPassword") {
+    if (!token) {
       setError("Invalid or missing reset link. Please request a new password reset.");
       setVerifying(false);
       return;
     }
 
-    verifyPasswordResetCode(auth, oobCode)
-      .then((email) => {
-        setEmail(email);
-        setValid(true);
+    fetch(`/api/auth/verify-reset-token?token=${token}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.valid) {
+          setEmail(data.email);
+          setValid(true);
+        } else {
+          setError(data.error || "This reset link is invalid or has expired.");
+        }
         setVerifying(false);
       })
       .catch(() => {
-        setError("This reset link is invalid or has expired. Please request a new one.");
+        setError("Failed to verify reset link. Please try again.");
         setVerifying(false);
       });
-  }, [oobCode, mode]);
+  }, [token]);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,17 +65,25 @@ function ResetPasswordForm() {
 
     setResetting(true);
     try {
-      await confirmPasswordReset(auth, oobCode!, password);
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, newPassword: password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setResetError(data.error || "Failed to reset password");
+        return;
+      }
       setDone(true);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to reset password";
-      setResetError(message);
+    } catch {
+      setResetError("Something went wrong. Please try again.");
     } finally {
       setResetting(false);
     }
   };
 
-  // ── No code / wrong mode ───────────────────────────────────────
+  // ── No token ──────────────────────────────────────────────────
   if (!verifying && !valid) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
@@ -121,7 +130,7 @@ function ResetPasswordForm() {
                 <CheckCircle2 className="h-7 w-7 text-green-500" />
               </div>
             </div>
-            <CardTitle>Password Reset</CardTitle>
+            <CardTitle>Password Changed</CardTitle>
             <CardDescription>
               Your password has been reset successfully. You can now sign in with your new password.
             </CardDescription>

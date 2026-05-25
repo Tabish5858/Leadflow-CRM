@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getApps, initializeApp, cert } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
+import { getAdminDb } from "@/lib/firebase/admin";
+import { Timestamp } from "firebase-admin/firestore";
+
+const RESET_TOKENS_COLLECTION = "password_reset_tokens";
 
 /**
  * POST /api/auth/forgot-password
  *
- * Generates a Firebase password reset link pointing to our own domain,
- * then sends the email via Resend (from our own domain).
- * No auth required — public endpoint.
+ * Generates a self-managed password reset token, stores it in Firestore
+ * with a 1-hour expiry, and sends a branded email via Resend containing
+ * a link to our own /reset-password page.
+ *
+ * No Firebase email action handler involved — the email comes from our
+ * own domain via Resend, so it won't land in spam.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -21,41 +26,68 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Lazy-init Firebase Admin SDK (needed for auth, not just firestore)
-    if (!process.env.FIREBASE_ADMIN_CLIENT_EMAIL || !process.env.FIREBASE_ADMIN_PRIVATE_KEY) {
-      return NextResponse.json(
-        { error: "Password reset is not configured on this server" },
-        { status: 500 }
-      );
-    }
+    const normalizedEmail = email.toLowerCase().trim();
 
-    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, "\n");
-    const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
+    // Find the user by email in Firebase Auth (Admin SDK)
+    // so we can verify the account exists
+    let uid: string | null = null;
+    try {
+      const { getAuth } = await import("firebase-admin/auth");
+      // Ensure Admin SDK is initialized (it's already in getAdminDb but auth needs separate init)
+      const { getApps, initializeApp, cert } = await import("firebase-admin/app");
 
-    if (getApps().length === 0) {
-      initializeApp({
-        projectId,
-        credential: cert({
+      if (!process.env.FIREBASE_ADMIN_CLIENT_EMAIL || !process.env.FIREBASE_ADMIN_PRIVATE_KEY) {
+        return NextResponse.json(
+          { error: "Password reset is not configured on this server" },
+          { status: 500 }
+        );
+      }
+
+      const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY.replace(/\\n/g, "\n");
+      const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
+
+      if (getApps().length === 0) {
+        initializeApp({
           projectId,
-          clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-          privateKey,
-        }),
-      });
+          credential: cert({
+            projectId,
+            clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+            privateKey,
+          }),
+        });
+      }
+
+      const auth = getAuth();
+      const userRecord = await auth.getUserByEmail(normalizedEmail);
+      uid = userRecord.uid;
+    } catch (err: unknown) {
+      // If user not found in Firebase Auth, still send a generic response
+      // to avoid revealing whether the email exists (security best practice)
+      console.warn("Password reset requested for non-existent or error email:", (err instanceof Error ? err.message : "unknown"));
     }
 
+    // Generate a secure random token
+    const crypto = await import("node:crypto");
+    const token = crypto.randomBytes(32).toString("hex");
+
+    // Store in Firestore with expiry (1 hour)
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    await getAdminDb().collection(RESET_TOKENS_COLLECTION).add({
+      email: normalizedEmail,
+      uid,
+      token,
+      used: false,
+      createdAt: Timestamp.now(),
+      expiresAt: Timestamp.fromDate(expiresAt),
+    });
+
+    // Build reset link
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL
       || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
       || "http://localhost:3000";
+    const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
-    const auth = getAuth();
-
-    // Generate a Firebase password reset link pointing to our custom page
-    const resetLink = await auth.generatePasswordResetLink(email.trim(), {
-      url: `${baseUrl}/reset-password`,
-      handleCodeInApp: true,
-    });
-
-    // Build a branded HTML email
+    // Build branded HTML email
     const appName = process.env.NEXT_PUBLIC_APP_NAME || "LeadFlow";
     const fromEmail = process.env.FROM_EMAIL || "noreply@leadflow.app";
     const fromName = process.env.FROM_NAME || "LeadFlow CRM";
@@ -73,11 +105,11 @@ export async function POST(req: NextRequest) {
 <tr><td style="padding:32px 40px;">
 <h2 style="margin:0 0 8px;font-size:20px;color:#1a1a1a;">Reset your password</h2>
 <p style="margin:0 0 24px;font-size:14px;color:#666;line-height:1.5;">
-We received a request to reset the password for your <strong>${appName}</strong> account associated with <strong>${email}</strong>.
+We received a request to reset the password for your <strong>${appName}</strong> account associated with <strong>${normalizedEmail}</strong>.
 </p>
 <table role="presentation" cellpadding="0" cellspacing="0">
 <tr><td align="center" style="border-radius:8px;background:#667eea;">
-<a href="${resetLink}" style="display:inline-block;padding:12px 32px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Reset Password</a>
+<a href="${resetUrl}" style="display:inline-block;padding:12px 32px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;">Reset Password</a>
 </td></tr>
 </table>
 <p style="margin:24px 0 0;font-size:13px;color:#999;line-height:1.4;">
@@ -86,7 +118,7 @@ If you didn't request a password reset, you can safely ignore this email. Your p
 <hr style="margin:24px 0;border:none;border-top:1px solid #eee;">
 <p style="margin:0;font-size:12px;color:#aaa;">
 This link expires in 1 hour. If the button doesn't work, copy and paste this URL into your browser:<br>
-<a href="${resetLink}" style="color:#667eea;word-break:break-all;">${resetLink}</a>
+<a href="${resetUrl}" style="color:#667eea;word-break:break-all;">${resetUrl}</a>
 </p>
 </td></tr>
 <tr><td style="padding:16px 40px;text-align:center;background:#fafafa;border-top:1px solid #eee;">
@@ -102,19 +134,17 @@ ${appName} &mdash; Open-source CRM
 
     // Send via Resend
     if (!process.env.RESEND_API_KEY) {
-      // If Resend not configured, fall back to Firebase's own email
-      return NextResponse.json({
-        success: true,
-        sentBy: "firebase",
-        message: "Reset email sent via Firebase (configure RESEND_API_KEY for custom from-address)",
-      });
+      return NextResponse.json(
+        { error: "Email sending is not configured. Contact your administrator." },
+        { status: 500 }
+      );
     }
 
     const { Resend } = await import("resend");
     const resend = new Resend(process.env.RESEND_API_KEY);
     const result = await resend.emails.send({
       from: `${fromName} <${fromEmail}>`,
-      to: email.trim(),
+      to: normalizedEmail,
       subject: `Reset your ${appName} password`,
       html,
     });
@@ -127,13 +157,16 @@ ${appName} &mdash; Open-source CRM
       );
     }
 
+    // Always return success even if user doesn't exist (security — don't reveal account existence)
     return NextResponse.json({
       success: true,
       sentBy: "resend",
     });
   } catch (error) {
     console.error("Forgot password error:", error);
-    const message = error instanceof Error ? error.message : "Failed to send reset email";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to send reset email. Please try again later." },
+      { status: 500 }
+    );
   }
 }
