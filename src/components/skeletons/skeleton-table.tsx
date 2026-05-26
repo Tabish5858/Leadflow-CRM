@@ -12,7 +12,7 @@ export function SkeletonTable({
   columnWidths,
 }: SkeletonTableProps) {
   return (
-    <div className="w-full space-y-0">
+    <div className="w-full space-y-0 h-full">
       {/* Header */}
       <div className="flex items-center gap-4 border-b px-6 py-3">
         <Skeleton className="h-4 w-4 shrink-0" />

@@ -1,10 +1,6 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { KanbanCard } from "./kanban-card";
 import type { Lead, PipelineStage } from "@/types";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -56,14 +52,9 @@ export function KanbanColumn({ stage, leads, onLeadClick }: KanbanColumnProps) {
           isOver && "bg-muted/30"
         )}
       >
-        <SortableContext
-          items={leads.map((l) => l.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {leads.map((lead) => (
-            <KanbanCard key={lead.id} lead={lead} onClick={() => onLeadClick?.(lead.id)} />
-          ))}
-        </SortableContext>
+        {leads.map((lead) => (
+          <KanbanCard key={lead.id} lead={lead} onClick={() => onLeadClick?.(lead.id)} />
+        ))}
 
         {leads.length === 0 && (
           <div className="flex flex-1 items-center justify-center rounded-lg border-2 border-dashed p-6">

@@ -509,7 +509,7 @@ export default function LeadsPage() {
         )}
 
         {/* Table */}
-        <div className="rounded-xl border bg-card">
+        <div className="rounded-xl border bg-card h-full">
           {loading ? (
             <SkeletonTable columns={5} rows={8} />
           ) : sortedLeads.length === 0 ? (

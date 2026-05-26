@@ -8,12 +8,8 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  pointerWithin,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { useLeadStore } from "@/lib/stores/leadStore";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { DEFAULT_PIPELINE_STAGES } from "@/lib/constants";
@@ -89,25 +85,20 @@ export function KanbanBoard({ onLeadClick }: { onLeadClick?: (leadId: string) =>
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
       <div className="flex flex-col gap-4 lg:flex-row lg:overflow-x-auto lg:pb-4">
-        <SortableContext
-          items={stages.map((s) => `column-${s.id}`)}
-          strategy={horizontalListSortingStrategy}
-        >
-          {stages.map((stage) => (
-            <KanbanColumn
-              key={stage.id}
-              stage={stage}
-              leads={leadsByStatus[stage.id] || []}
-              onLeadClick={onLeadClick}
-            />
-          ))}
-        </SortableContext>
+        {stages.map((stage) => (
+          <KanbanColumn
+            key={stage.id}
+            stage={stage}
+            leads={leadsByStatus[stage.id] || []}
+            onLeadClick={onLeadClick}
+          />
+        ))}
       </div>
 
       <DragOverlay>

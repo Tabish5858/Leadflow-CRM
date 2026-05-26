@@ -1,6 +1,6 @@
 "use client";
 
-import { useSortable } from "@dnd-kit/sortable";
+import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { Lead } from "@/types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -20,17 +20,16 @@ export function KanbanCard({ lead, isDragging, onClick }: KanbanCardProps) {
     listeners,
     setNodeRef,
     transform,
-    transition,
-    isDragging: isSortableDragging,
-  } = useSortable({ id: lead.id });
+    isDragging: isDragged,
+  } = useDraggable({ id: lead.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
     opacity: isDragging ? 0.5 : 1,
+    transition: "transform 200ms ease",
   };
 
-  const dragging = isDragging || isSortableDragging;
+  const dragging = isDragging || isDragged;
 
   return (
     <div
@@ -43,7 +42,7 @@ export function KanbanCard({ lead, isDragging, onClick }: KanbanCardProps) {
         dragging && "shadow-lg ring-2 ring-primary/30 ring-offset-2 ring-offset-background scale-[1.02]"
       )}
     >
-      {/* Content — click opens detail, drag-and-drop moves cards */}
+      {/* Content — click opens detail */}
       <div
         className="space-y-2"
         onClick={(e) => { e.stopPropagation(); onClick?.(); }}
