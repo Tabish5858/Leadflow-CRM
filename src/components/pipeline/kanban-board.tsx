@@ -23,7 +23,7 @@ import type { Lead, PipelineStage } from "@/types";
 import { useState } from "react";
 import { toast } from "@/lib/toast";
 
-export function KanbanBoard() {
+export function KanbanBoard({ onLeadClick }: { onLeadClick?: (leadId: string) => void }) {
   const { activeWorkspace } = useWorkspace();
   const { leads, updateStatus } = useLeadStore();
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
@@ -104,6 +104,7 @@ export function KanbanBoard() {
               key={stage.id}
               stage={stage}
               leads={leadsByStatus[stage.id] || []}
+              onLeadClick={onLeadClick}
             />
           ))}
         </SortableContext>

@@ -11,9 +11,10 @@ import { Building2, DollarSign } from "lucide-react";
 interface KanbanCardProps {
   lead: Lead;
   isDragging?: boolean;
+  onClick?: () => void;
 }
 
-export function KanbanCard({ lead, isDragging }: KanbanCardProps) {
+export function KanbanCard({ lead, isDragging, onClick }: KanbanCardProps) {
   const {
     attributes,
     listeners,
@@ -37,6 +38,10 @@ export function KanbanCard({ lead, isDragging }: KanbanCardProps) {
       {...listeners}
       ref={setNodeRef}
       style={style}
+      onClick={() => onClick?.()}
+      onKeyDown={(e) => { if (e.key === "Enter") onClick?.(); }}
+      role="button"
+      tabIndex={0}
       className={cn(
         "group rounded-lg border bg-card p-3 shadow-sm transition-all hover:shadow-md hover:border-primary/20 hover:scale-[1.01] cursor-grab active:cursor-grabbing active:scale-[0.99]",
         dragging && "shadow-lg ring-2 ring-primary/30 ring-offset-2 ring-offset-background scale-[1.02]"
@@ -78,9 +83,9 @@ export function KanbanCard({ lead, isDragging }: KanbanCardProps) {
               <Badge
                 key={tag}
                 variant="secondary"
-                className="text-[10px] px-1.5 py-0"
+                className="text-[10px] px-1.5 py-0 capitalize"
               >
-                {tag}
+                {tag.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
               </Badge>
             ))}
             {lead.tags.length > 2 && (

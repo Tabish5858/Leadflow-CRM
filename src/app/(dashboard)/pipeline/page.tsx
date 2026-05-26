@@ -1,21 +1,38 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { KanbanBoard } from "@/components/pipeline/kanban-board";
 import { RequireModuleAccess } from "@/components/shared/require-module-access";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useWorkspace } from "@/contexts/workspace-context";
 import { useLeadStore } from "@/lib/stores/leadStore";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+
+const LeadDetail = dynamic(() => import("@/components/leads/lead-detail").then((mod) => mod.LeadDetail), {
+  loading: () => <div className="p-8 flex items-center justify-center"><div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" /></div>,
+});
 
 export default function PipelinePage() {
   const { activeWorkspace } = useWorkspace();
-  const { loading, initialize, refreshStats } = useLeadStore();
+  const { loading, initialize, loadMore, refreshStats } = useLeadStore();
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activeWorkspace) return;
-    initialize(activeWorkspace.id);
+    (async () => {
+      await initialize(activeWorkspace.id);
+      // Load all pages so the kanban board has complete data
+      while (useLeadStore.getState().hasMore) {
+        await useLeadStore.getState().loadMore(activeWorkspace.id);
+      }
+    })();
     refreshStats(activeWorkspace.id);
-  }, [activeWorkspace?.id, initialize, refreshStats, activeWorkspace]);
+  }, [activeWorkspace?.id, initialize, loadMore, refreshStats]);
 
   if (loading) {
     return (
@@ -55,8 +72,18 @@ export default function PipelinePage() {
   return (
     <RequireModuleAccess moduleId="pipeline">
       <div className="space-y-6">
-        <KanbanBoard />
+        <KanbanBoard onLeadClick={(leadId) => setSelectedLeadId(leadId)} />
       </div>
+
+      <Dialog
+        open={!!selectedLeadId}
+        onOpenChange={(open) => !open && setSelectedLeadId(null)}
+      >
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Lead Details</DialogTitle>
+          {selectedLeadId && <LeadDetail leadId={selectedLeadId} />}
+        </DialogContent>
+      </Dialog>
     </RequireModuleAccess>
   );
 }
