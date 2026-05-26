@@ -7,7 +7,7 @@ Thank you for your interest in contributing to LeadFlow! We welcome all contribu
 1. **Fork** the repository on GitHub
 2. **Clone** your fork locally
    ```bash
-   git clone https://github.com/YOUR_USERNAME/leadflow-crm.git
+   git clone https://github.com/Tabish5858/leadflow-crm.git
    cd leadflow-crm
    ```
 3. **Set up** the project
