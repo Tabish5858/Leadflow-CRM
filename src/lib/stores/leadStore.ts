@@ -12,7 +12,7 @@ import {
 } from "@/lib/firebase/firestore";
 import type { LeadFormData } from "@/lib/schemas/lead";
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 200;
 
 interface LeadState {
   leads: Lead[];

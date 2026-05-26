@@ -110,12 +110,14 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<string | null>(null);
   const [deleteConfirmLeadId, setDeleteConfirmLeadId] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
-  const [sortBy, setSortBy] = useState<string>("created");
+  const [sortBy, setSortBy] = useState<string>("sr");
   const [emails, setEmails] = useState<EmailRecord[]>([]);
   // ─── Column visibility and ordering ──────────────────────────────────
   const COLUMN_LABELS: Record<string, string> = {
+    sr: "#",
     name: "Name",
     company: "Company",
+    website: "Website",
     country: "Country",
     status: "Status",
     value: "Value",
@@ -155,11 +157,16 @@ export default function LeadsPage() {
 
   // Build the effective column order: standard fields + custom fields (new ones appended at end)
   const allCustomFields = activeWorkspace?.customFields || [];
-  const allCustomPrefixed = allCustomFields.map((cf) => `cf_${cf.id}`);
-  const defaultOrder = ["name", "company", "country", "status", "value", ...allCustomPrefixed, "created", "score"];
+  // Exclude "SR." custom field from default columns (we use the standard `sr` field instead)
+  const allCustomPrefixed = allCustomFields
+    .filter((cf) => cf.name !== "SR.")
+    .map((cf) => `cf_${cf.id}`);
+  const defaultOrder = ["sr", "name", "company", "website", "country", "status", "value", ...allCustomPrefixed, "created", "score"];
 
   const effectiveOrder = useMemo(() => {
-    let order = columnOrder.length > 0 ? [...columnOrder] : [...defaultOrder];
+    // If saved order is missing any standard column, reset to default
+    const hasAllStandard = STANDARD_TOGGLEABLE.every((id) => columnOrder.includes(id));
+    let order = columnOrder.length > 0 && hasAllStandard ? [...columnOrder] : [...defaultOrder];
     // Remove stale IDs (deleted custom fields)
     const valid = new Set([...STANDARD_TOGGLEABLE, ...allCustomPrefixed]);
     order = order.filter((id) => valid.has(id));
@@ -244,6 +251,7 @@ export default function LeadsPage() {
     selectAll,
     clearSelection,
     removeLeads,
+    editLead,
     initialize,
     loadMore,
     refreshStats,
@@ -330,6 +338,8 @@ export default function LeadsPage() {
     const sorted = [...finalFilteredLeads];
     if (sortBy === "score") {
       sorted.sort((a, b) => (leadScores[b.id]?.score ?? 0) - (leadScores[a.id]?.score ?? 0));
+    } else if (sortBy === "sr") {
+      sorted.sort((a, b) => (a.sr ?? 999) - (b.sr ?? 999));
     }
     return sorted;
   }, [finalFilteredLeads, sortBy, leadScores]);
@@ -473,10 +483,13 @@ export default function LeadsPage() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
                   <ArrowUpDown className="h-4 w-4" />
-                  Sort: {sortBy === "score" ? "Score" : "Created"}
+                  Sort: {sortBy === "sr" ? "SR" : sortBy === "score" ? "Score" : "Created"}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setSortBy("sr")}>
+                  Sort by #
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSortBy("created")}>
                   Sort by Created
                 </DropdownMenuItem>
@@ -541,388 +554,415 @@ export default function LeadsPage() {
           ) : null}
         </div>
 
-          {/* Table + Load More */}
-          {sortedLeads.length > 0 && (
-            <div className="overflow-x-auto min-w-[900px]">
-              <table className="min-w-full w-max table-fixed">
-                <thead>
-                  <tr className="border-b">
+        {/* Table + Load More */}
+        {sortedLeads.length > 0 && (
+          <div className="overflow-x-auto min-w-[900px]">
+            <table className="min-w-full w-max table-fixed">
+              <thead>
+                <tr className="border-b">
+                  {renderColumnIds.map((colId) => {
+                    if (colId === "checkbox") {
+                      return (
+                        <th key="checkbox" className="sticky left-0 z-10 bg-card w-12 px-4 py-3">
+                          <Checkbox
+                            checked={allSelected}
+                            onCheckedChange={allSelected ? clearSelection : selectAll}
+                          />
+                        </th>
+                      );
+                    }
+                    if (colId === "actions") {
+                      return (
+                        <th key="actions" className="sticky right-0 z-20 bg-card w-12 px-4 py-3">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <TooltipButton
+                                tooltip="Toggle &amp; reorder columns"
+                                variant="ghost"
+                                className="h-6 w-6"
+                                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </TooltipButton>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-72 p-1 max-h-80 overflow-y-auto" sideOffset={4}>
+                              <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground sticky top-0 bg-popover z-10 border-b mb-1">
+                                Toggle &amp; reorder columns
+                              </p>
+                              <DndContext
+                                sensors={dropdownSensors}
+                                collisionDetection={closestCenter}
+                                onDragStart={handleDropdownDragStart}
+                                onDragEnd={handleDropdownDragEnd}
+                              >
+                                <SortableContext
+                                  items={effectiveOrder}
+                                  strategy={verticalListSortingStrategy}
+                                >
+                                  {effectiveOrder.map((id) => {
+                                    const col = allToggleableMap.get(id);
+                                    if (!col) return null;
+                                    const colIdx = effectiveOrder.indexOf(id);
+                                    return (
+                                      <ColumnReorderItem
+                                        key={id}
+                                        id={id}
+                                        label={col.label}
+                                        isCustom={col.isCustom}
+                                        isVisible={isColumnVisible(id)}
+                                        isLast={colIdx === effectiveOrder.length - 1}
+                                        onToggleVisibility={() =>
+                                          setColumnVisibility((prev) => ({
+                                            ...prev,
+                                            [id]: prev[id] === false ? true : false,
+                                          }))
+                                        }
+                                        onMoveDown={() => moveColumn(id, "down")}
+                                      />
+                                    );
+                                  })}
+                                </SortableContext>
+                              </DndContext>
+                              {allToggleableMap.size > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setColumnVisibility({});
+                                    setColumnOrder(defaultOrder);
+                                  }}
+                                  className="w-full text-left px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-md mt-1 border-t pt-2"
+                                >
+                                  Reset to default
+                                </button>
+                              )}
+                            </PopoverContent>
+                          </Popover>
+                        </th>
+                      );
+                    }
+                    // Standard or custom field column
+                    const isCustom = colId.startsWith("cf_");
+                    const cf = isCustom
+                      ? allCustomFields.find((c) => `cf_${c.id}` === colId)
+                      : undefined;
+                    const label = isCustom
+                      ? cf?.name || colId
+                      : COLUMN_LABELS[colId] || colId;
+                    const minWidth = isCustom ? 120 : STANDARD_TOGGLEABLE.includes(colId)
+                      ? ({ name: 180, company: 140, website: 140, status: 120, value: 100, created: 120, score: 90 } as Record<string, number>)[colId] || 72
+                      : 72;
+                    const responsiveClass = isCustom
+                      ? "hidden lg:table-cell"
+                      : ({ name: "", company: "hidden md:table-cell", website: "hidden md:table-cell", status: "hidden lg:table-cell", value: "hidden lg:table-cell", created: "hidden xl:table-cell", score: "" } as Record<string, string>)[colId] || "";
+
+                    return (
+                      <SortableColumnHeader
+                        key={colId}
+                        colId={colId}
+                        width={columnWidths[colId]}
+                        onResizeStart={startResize}
+                        minWidth={minWidth}
+                        className={cn(
+                          "text-left px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground",
+                          responsiveClass
+                        )}
+                      >
+                        {label}
+                      </SortableColumnHeader>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {sortedLeads.map((lead) => (
+                  <tr
+                    key={lead.id}
+                    className={cn(
+                      "border-b last:border-b-0 transition-colors hover:bg-muted/30",
+                      selectedIds.has(lead.id) && "bg-muted/50"
+                    )}
+                  >
                     {renderColumnIds.map((colId) => {
                       if (colId === "checkbox") {
                         return (
-                          <th key="checkbox" className="sticky left-0 z-10 bg-card w-12 px-4 py-3">
+                          <td key="checkbox" className="sticky left-0 z-10 bg-card px-4 py-3" onClick={(e) => e.stopPropagation()}>
                             <Checkbox
-                              checked={allSelected}
-                              onCheckedChange={allSelected ? clearSelection : selectAll}
+                              checked={selectedIds.has(lead.id)}
+                              onCheckedChange={() => toggleSelect(lead.id)}
                             />
-                          </th>
+                          </td>
                         );
                       }
                       if (colId === "actions") {
                         return (
-                          <th key="actions" className="sticky right-0 z-20 bg-card w-12 px-4 py-3">
-                            <Popover>
-                              <PopoverTrigger asChild>
+                          <td key="actions" className="sticky right-0 z-20 bg-card px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
                                 <TooltipButton
-                                  tooltip="Toggle &amp; reorder columns"
+                                  tooltip="Actions"
                                   variant="ghost"
-                                  className="h-6 w-6"
-                                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                  className="h-8 w-8"
                                 >
-                                  <Plus className="h-3.5 w-3.5" />
+                                  <MoreHorizontal className="h-4 w-4" />
                                 </TooltipButton>
-                              </PopoverTrigger>
-                              <PopoverContent align="end" className="w-72 p-1 max-h-80 overflow-y-auto" sideOffset={4}>
-                                <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground sticky top-0 bg-popover z-10 border-b mb-1">
-                                  Toggle &amp; reorder columns
-                                </p>
-                                <DndContext
-                                  sensors={dropdownSensors}
-                                  collisionDetection={closestCenter}
-                                  onDragStart={handleDropdownDragStart}
-                                  onDragEnd={handleDropdownDragEnd}
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => setSelectedLead(lead.id)}
                                 >
-                                  <SortableContext
-                                    items={effectiveOrder}
-                                    strategy={verticalListSortingStrategy}
-                                  >
-                                    {effectiveOrder.map((id) => {
-                                      const col = allToggleableMap.get(id);
-                                      if (!col) return null;
-                                      const colIdx = effectiveOrder.indexOf(id);
-                                      return (
-                                        <ColumnReorderItem
-                                          key={id}
-                                          id={id}
-                                          label={col.label}
-                                          isCustom={col.isCustom}
-                                          isVisible={isColumnVisible(id)}
-                                          isLast={colIdx === effectiveOrder.length - 1}
-                                          onToggleVisibility={() =>
-                                            setColumnVisibility((prev) => ({
-                                              ...prev,
-                                              [id]: prev[id] === false ? true : false,
-                                            }))
-                                          }
-                                          onMoveDown={() => moveColumn(id, "down")}
-                                        />
-                                      );
-                                    })}
-                                  </SortableContext>
-                                </DndContext>
-                                {allToggleableMap.size > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setColumnVisibility({});
-                                      setColumnOrder(defaultOrder);
-                                    }}
-                                    className="w-full text-left px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-md mt-1 border-t pt-2"
-                                  >
-                                    Reset to default
-                                  </button>
-                                )}
-                              </PopoverContent>
-                            </Popover>
-                          </th>
+                                  <ExternalLink className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => setDeleteConfirmLeadId(lead.id)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
                         );
                       }
-                      // Standard or custom field column
-                      const isCustom = colId.startsWith("cf_");
-                      const cf = isCustom
-                        ? allCustomFields.find((c) => `cf_${c.id}` === colId)
-                        : undefined;
-                      const label = isCustom
-                        ? cf?.name || colId
-                        : COLUMN_LABELS[colId] || colId;
-                      const minWidth = isCustom ? 120 : STANDARD_TOGGLEABLE.includes(colId)
-                        ? ({ name: 180, company: 140, status: 120, value: 100, created: 120, score: 90 } as Record<string, number>)[colId] || 72
-                        : 72;
-                      const responsiveClass = isCustom
-                        ? "hidden lg:table-cell"
-                        : ({ name: "", company: "hidden md:table-cell", status: "hidden lg:table-cell", value: "hidden lg:table-cell", created: "hidden xl:table-cell", score: "" } as Record<string, string>)[colId] || "";
+                      if (colId === "name") {
+                        return (
+                          <td key="name" className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-9 w-9 border">
+                                <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">
+                                  {getInitials(`${lead.firstName} ${lead.lastName}`)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="font-medium text-sm">
+                                  <InlineEditCell
+                                    type="name"
+                                    firstName={lead.firstName}
+                                    lastName={lead.lastName}
+                                    onSave={async (val) => {
+                                      const { firstName, lastName } = val as { firstName: string; lastName: string };
+                                      editLead(lead.id, { firstName, lastName });
+                                    }}
+                                  />
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  <InlineEditCell
+                                    type="email"
+                                    value={lead.email}
+                                    onSave={async (val) => {
+                                      const emailVal = val as string | null;
+                                      editLead(lead.id, { email: emailVal || "" });
+                                    }}
+                                  />
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                        );
+                      }
+                      if (colId === "sr") {
+                        return (
+                          <td key="sr" className="px-4 py-3 text-sm text-muted-foreground tabular-nums w-12">
+                            {lead.sr ?? "—"}
+                          </td>
+                        );
+                      }
+                      if (colId === "company") {
+                        return (
+                          <td key="company" className="px-4 py-3 text-sm hidden md:table-cell">
+                            <InlineEditCell
+                              type="text"
+                              value={lead.company}
+                              placeholder="—"
+                              onSave={async (val) => {
+                                const v = val as string | null;
+                                editLead(lead.id, { company: v || undefined });
+                              }}
+                            />
+                          </td>
+                        );
+                      }
+                      if (colId === "website") {
+                        return (
+                          <td key="website" className="px-4 py-3 text-sm hidden md:table-cell">
+                            <InlineEditCell
+                              type="url"
+                              value={lead.website}
+                              placeholder="—"
+                              onSave={async (val) => {
+                                const v = val as string | null;
+                                editLead(lead.id, { website: v || undefined });
+                              }}
+                            />
+                          </td>
+                        );
+                      }
+                      if (colId === "country") {
+                        return (
+                          <td key="country" className="px-4 py-3 text-sm hidden lg:table-cell">
+                            <CountrySelect
+                              value={lead.country || ""}
+                              onChange={async (v) => {
+                                const { updateLead } = await import("@/lib/firebase/firestore");
+                                await updateLead(lead.id, { country: v || null });
+                              }}
+                              placeholder="—"
+                              inline
+                            />
+                          </td>
+                        );
+                      }
+                      if (colId === "status") {
+                        return (
+                          <td key="status" className="px-4 py-3 hidden lg:table-cell">
+                            <Select value={lead.status} onValueChange={(v) => handleStatusChange(lead.id, v)}>
+                              <SelectTrigger className="w-fit h-6 px-2 py-0 text-xs font-medium border-0 shadow-none hover:opacity-80 focus:ring-0 bg-muted/50 rounded-full">
+                                {(() => {
+                                  const stage = stages.find((s) => s.id === lead.status);
+                                  return (
+                                    <div className="flex items-center gap-1.5">
+                                      <span
+                                        className="inline-block h-2 w-2 rounded-full"
+                                        style={{ backgroundColor: stage?.color || "#94a3b8" }}
+                                      />
+                                      <p>{stage?.name || lead.status}</p>
+                                    </div>
+                                  );
+                                })()}
+                              </SelectTrigger>
+                              <SelectContent>
+                                {stages.map((stage) => (
+                                  <SelectItem key={stage.id} value={stage.id}>
+                                    <span className="flex items-center gap-2">
+                                      <span
+                                        className="inline-block h-2.5 w-2.5 rounded-full"
+                                        style={{ backgroundColor: stage.color }}
+                                      />
+                                      {stage.name}
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </td>
+                        );
+                      }
+                      if (colId === "value") {
+                        return (
+                          <td key="value" className="px-4 py-3 text-sm font-medium hidden lg:table-cell">
+                            <InlineEditCell
+                              type="number"
+                              value={lead.value}
+                              displayValue={lead.value ? formatCurrency(lead.value, lead.currency) : undefined}
+                              placeholder="—"
+                              onSave={async (val) => {
+                                const v = val as number | null;
+                                editLead(lead.id, { value: v ?? undefined });
+                              }}
+                            />
+                          </td>
+                        );
+                      }
+                      if (colId === "created") {
+                        return (
+                          <td key="created" className="px-4 py-3 text-sm text-muted-foreground hidden xl:table-cell">
+                            {formatDate(lead.createdAt?.toDate())}
+                          </td>
+                        );
+                      }
+                      if (colId === "score") {
+                        return (
+                          <td key="score" className="px-4 py-3">
+                            {leadScores[lead.id] && (
+                              <ScoreBadge
+                                score={leadScores[lead.id].score}
+                                breakdown={leadScores[lead.id].breakdown}
+                                size="sm"
+                              />
+                            )}
+                          </td>
+                        );
+                      }
+                      // Custom field
+                      if (colId.startsWith("cf_")) {
+                        const cf = allCustomFields.find((c) => `cf_${c.id}` === colId);
+                        if (!cf) return null;
+                        const rawValue = lead.customFields?.[cf.id];
+                        const isSelectType = cf.type === "select" || cf.type === "multiselect";
 
-                      return (
-                        <SortableColumnHeader
-                          key={colId}
-                          colId={colId}
-                          width={columnWidths[colId]}
-                          onResizeStart={startResize}
-                          minWidth={minWidth}
-                          className={cn(
-                            "text-left px-4 py-3 text-xs font-medium uppercase tracking-wider text-muted-foreground",
-                            responsiveClass
-                          )}
-                        >
-                          {label}
-                        </SortableColumnHeader>
-                      );
+                        const saveCustomField = async (newVal: unknown) => {
+                          const store = useLeadStore.getState();
+                          const current = store.leads.find((l) => l.id === lead.id);
+                          const merged = { ...(current?.customFields || {}), [cf.id]: newVal };
+                          // Optimistic update local state
+                          useLeadStore.setState((s) => ({
+                            leads: s.leads.map((l) => l.id === lead.id ? { ...l, customFields: merged } : l),
+                            filteredLeads: s.filteredLeads.map((l) => l.id === lead.id ? { ...l, customFields: merged } : l),
+                          }));
+                          // Firestore sync in background
+                          const { updateLead } = await import("@/lib/firebase/firestore");
+                          await updateLead(lead.id, { customFields: merged }).catch(() => {
+                            initialize(activeWorkspace?.id || "");
+                          });
+                        };
+
+                        const inlineType = cf.type === "number" ? "number" :
+                          cf.type === "date" ? "date" :
+                            cf.type === "email" ? "email" :
+                              cf.type === "url" ? "url" :
+                                cf.type === "checkbox" ? "checkbox" :
+                                  "text";
+
+                        return (
+                          <td key={colId} className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
+                            {isSelectType ? (
+                              <SelectFieldCell
+                                customField={cf}
+                                value={rawValue}
+                                leadId={lead.id}
+                              />
+                            ) : inlineType === "checkbox" ? (
+                              <InlineEditCell
+                                type="checkbox"
+                                checked={!!rawValue}
+                                onSave={saveCustomField}
+                              />
+                            ) : inlineType === "date" ? (
+                              <InlineEditCell
+                                type="date"
+                                value={rawValue ? String(rawValue) : null}
+                                displayValue={rawValue ? String(rawValue) : undefined}
+                                placeholder="—"
+                                onSave={saveCustomField}
+                              />
+                            ) : (
+                              <InlineEditCell
+                                type={inlineType as "text" | "number" | "email" | "url"}
+                                value={rawValue != null ? String(rawValue) : null}
+                                placeholder="—"
+                                onSave={saveCustomField}
+                              />
+                            )}
+                          </td>
+                        );
+                      }
+                      return null;
                     })}
                   </tr>
-                </thead>
-                <tbody>
-                  {sortedLeads.map((lead) => (
-                    <tr
-                      key={lead.id}
-                      className={cn(
-                        "border-b last:border-b-0 transition-colors hover:bg-muted/30",
-                        selectedIds.has(lead.id) && "bg-muted/50"
-                      )}
-                    >
-                      {renderColumnIds.map((colId) => {
-                        if (colId === "checkbox") {
-                          return (
-                            <td key="checkbox" className="sticky left-0 z-10 bg-card px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                              <Checkbox
-                                checked={selectedIds.has(lead.id)}
-                                onCheckedChange={() => toggleSelect(lead.id)}
-                              />
-                            </td>
-                          );
-                        }
-                        if (colId === "actions") {
-                          return (
-                            <td key="actions" className="sticky right-0 z-20 bg-card px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <TooltipButton
-                                    tooltip="Actions"
-                                    variant="ghost"
-                                    className="h-8 w-8"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </TooltipButton>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    onClick={() => setSelectedLead(lead.id)}
-                                  >
-                                    <ExternalLink className="mr-2 h-4 w-4" />
-                                    View Details
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => setDeleteConfirmLeadId(lead.id)}
-                                    className="text-destructive focus:text-destructive"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
-                          );
-                        }
-                        if (colId === "name") {
-                          return (
-                            <td key="name" className="px-4 py-3">
-                              <div className="flex items-center gap-3">
-                                <Avatar className="h-9 w-9 border">
-                                  <AvatarFallback className="text-xs bg-primary/10 text-primary font-medium">
-                                    {getInitials(`${lead.firstName} ${lead.lastName}`)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <div className="font-medium text-sm">
-                                    <InlineEditCell
-                                      type="name"
-                                      firstName={lead.firstName}
-                                      lastName={lead.lastName}
-                                      onSave={async (val) => {
-                                        const { firstName, lastName } = val as { firstName: string; lastName: string };
-                                        const { updateLead } = await import("@/lib/firebase/firestore");
-                                        await updateLead(lead.id, { firstName, lastName });
-                                      }}
-                                    />
-                                  </div>
-                                  <p className="text-xs text-muted-foreground">
-                                    <InlineEditCell
-                                      type="email"
-                                      value={lead.email}
-                                      onSave={async (val) => {
-                                        const { updateLead } = await import("@/lib/firebase/firestore");
-                                        const emailVal = val as string | null;
-                                        await updateLead(lead.id, { email: emailVal || undefined });
-                                      }}
-                                    />
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
-                          );
-                        }
-                        if (colId === "company") {
-                          return (
-                            <td key="company" className="px-4 py-3 text-sm hidden md:table-cell">
-                              <InlineEditCell
-                                type="text"
-                                value={lead.company}
-                                placeholder="—"
-                                onSave={async (val) => {
-                                  const v = val as string | null;
-                                  const { updateLead } = await import("@/lib/firebase/firestore");
-                                  await updateLead(lead.id, { company: v });
-                                }}
-                              />
-                            </td>
-                          );
-                        }
-                        if (colId === "country") {
-                          return (
-                            <td key="country" className="px-4 py-3 text-sm hidden lg:table-cell">
-                              <CountrySelect
-                                value={lead.country || ""}
-                                onChange={async (v) => {
-                                  const { updateLead } = await import("@/lib/firebase/firestore");
-                                  await updateLead(lead.id, { country: v || null });
-                                }}
-                                placeholder="—"
-                                inline
-                              />
-                            </td>
-                          );
-                        }
-                        if (colId === "status") {
-                          return (
-                            <td key="status" className="px-4 py-3 hidden lg:table-cell">
-                              <Select value={lead.status} onValueChange={(v) => handleStatusChange(lead.id, v)}>
-                                <SelectTrigger className="w-fit h-6 px-2 py-0 text-xs font-medium border-0 shadow-none hover:opacity-80 focus:ring-0 bg-muted/50 rounded-full">
-                                  {(() => {
-                                    const stage = stages.find((s) => s.id === lead.status);
-                                    return (
-                                      <div className="flex items-center gap-1.5">
-                                        <span
-                                          className="inline-block h-2 w-2 rounded-full"
-                                          style={{ backgroundColor: stage?.color || "#94a3b8" }}
-                                        />
-                                        <p>{stage?.name || lead.status}</p>
-                                      </div>
-                                    );
-                                  })()}
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {stages.map((stage) => (
-                                    <SelectItem key={stage.id} value={stage.id}>
-                                      <span className="flex items-center gap-2">
-                                        <span
-                                          className="inline-block h-2.5 w-2.5 rounded-full"
-                                          style={{ backgroundColor: stage.color }}
-                                        />
-                                        {stage.name}
-                                      </span>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </td>
-                          );
-                        }
-                        if (colId === "value") {
-                          return (
-                            <td key="value" className="px-4 py-3 text-sm font-medium hidden lg:table-cell">
-                              <InlineEditCell
-                                type="number"
-                                value={lead.value}
-                                displayValue={lead.value ? formatCurrency(lead.value, lead.currency) : undefined}
-                                placeholder="—"
-                                onSave={async (val) => {
-                                  const v = val as number | null;
-                                  const { updateLead } = await import("@/lib/firebase/firestore");
-                                  await updateLead(lead.id, { value: v });
-                                }}
-                              />
-                            </td>
-                          );
-                        }
-                        if (colId === "created") {
-                          return (
-                            <td key="created" className="px-4 py-3 text-sm text-muted-foreground hidden xl:table-cell">
-                              {formatDate(lead.createdAt?.toDate())}
-                            </td>
-                          );
-                        }
-                        if (colId === "score") {
-                          return (
-                            <td key="score" className="px-4 py-3">
-                              {leadScores[lead.id] && (
-                                <ScoreBadge
-                                  score={leadScores[lead.id].score}
-                                  breakdown={leadScores[lead.id].breakdown}
-                                  size="sm"
-                                />
-                              )}
-                            </td>
-                          );
-                        }
-                        // Custom field
-                        if (colId.startsWith("cf_")) {
-                          const cf = allCustomFields.find((c) => `cf_${c.id}` === colId);
-                          if (!cf) return null;
-                          const rawValue = lead.customFields?.[cf.id];
-                          const isSelectType = cf.type === "select" || cf.type === "multiselect";
+                ))}
+              </tbody>
+            </table>
 
-                          const saveCustomField = async (newVal: unknown) => {
-                            const { updateLead } = await import("@/lib/firebase/firestore");
-                            const current = useLeadStore.getState().leads.find((l) => l.id === lead.id);
-                            const merged = { ...(current?.customFields || {}), [cf.id]: newVal };
-                            await updateLead(lead.id, { customFields: merged });
-                          };
-
-                          const inlineType = cf.type === "number" ? "number" :
-                            cf.type === "date" ? "date" :
-                              cf.type === "email" ? "email" :
-                                cf.type === "url" ? "url" :
-                                  cf.type === "checkbox" ? "checkbox" :
-                                    "text";
-
-                          return (
-                            <td key={colId} className="px-4 py-3 text-sm text-muted-foreground hidden lg:table-cell">
-                              {isSelectType ? (
-                                <SelectFieldCell
-                                  customField={cf}
-                                  value={rawValue}
-                                  leadId={lead.id}
-                                />
-                              ) : inlineType === "checkbox" ? (
-                                <InlineEditCell
-                                  type="checkbox"
-                                  checked={!!rawValue}
-                                  onSave={saveCustomField}
-                                />
-                              ) : inlineType === "date" ? (
-                                <InlineEditCell
-                                  type="date"
-                                  value={rawValue ? String(rawValue) : null}
-                                  displayValue={rawValue ? String(rawValue) : undefined}
-                                  placeholder="—"
-                                  onSave={saveCustomField}
-                                />
-                              ) : (
-                                <InlineEditCell
-                                  type={inlineType as "text" | "number" | "email" | "url"}
-                                  value={rawValue != null ? String(rawValue) : null}
-                                  placeholder="—"
-                                  onSave={saveCustomField}
-                                />
-                              )}
-                            </td>
-                          );
-                        }
-                        return null;
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {!hasMore && !loading && leads.length > 0 && (
-                <p className="text-center text-xs text-muted-foreground py-3">Showing all {leads.length} leads</p>
-              )}
-              {loadingMore && (
-                <p className="text-center text-xs text-muted-foreground py-3">Loading more leads...</p>
-              )}
-              <div ref={sentinelRef} className={hasMore ? "h-4" : "hidden"} />
-            </div>
-          )}
+            {!hasMore && !loading && leads.length > 0 && (
+              <p className="text-center text-xs text-muted-foreground py-3">Showing all {leads.length} leads</p>
+            )}
+            {loadingMore && (
+              <p className="text-center text-xs text-muted-foreground py-3">Loading more leads...</p>
+            )}
+            <div ref={sentinelRef} className={hasMore ? "h-4" : "hidden"} />
+          </div>
+        )}
 
         {/* Create Dialog */}
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>

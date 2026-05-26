@@ -198,6 +198,7 @@ export interface Lead {
   lastContactedAt: Timestamp | null;
   nextFollowUpAt: Timestamp | null;
   createdBy: string;
+  sr?: number;
 }
 
 export interface Attachment {

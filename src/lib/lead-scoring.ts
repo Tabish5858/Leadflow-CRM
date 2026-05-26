@@ -33,12 +33,12 @@ export function calculateLeadScore(
     }
   }
 
-  // Pipeline stage: 0-20 points (based on stage order)
+  // Pipeline stage: 0-20 points (based on stage position in array)
   let pipelineStage = 0;
-  const leadStage = stages.find((s) => s.id === lead.status);
-  if (leadStage) {
-    const maxOrder = Math.max(...stages.map((s) => s.order));
-    pipelineStage = Math.round((leadStage.order / maxOrder) * 20);
+  const stageIdx = stages.findIndex((s) => s.id === lead.status);
+  if (stageIdx >= 0) {
+    const maxIdx = Math.max(stages.length - 1, 1);
+    pipelineStage = Math.round((stageIdx / maxIdx) * 20);
   }
 
   // Email engagement: 0-20 points (5+ emails = 20 points)
