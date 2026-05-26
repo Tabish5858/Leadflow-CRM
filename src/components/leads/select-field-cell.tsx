@@ -55,6 +55,11 @@ function SelectCell({ customField, value, leadId }: SelectFieldCellProps) {
       ...getCurrentCustomFields(leadId),
       [customField.id]: newValue,
     };
+    // Optimistic update
+    useLeadStore.setState((s) => ({
+      leads: s.leads.map((l) => l.id === leadId ? { ...l, customFields: merged } : l),
+      filteredLeads: s.filteredLeads.map((l) => l.id === leadId ? { ...l, customFields: merged } : l),
+    }));
     updateLead(leadId, { customFields: merged });
     setOpen(false);
   };
@@ -105,6 +110,11 @@ function MultiSelectCell({ customField, value, leadId }: SelectFieldCellProps) {
       ...getCurrentCustomFields(leadId),
       [customField.id]: next,
     };
+    // Optimistic update
+    useLeadStore.setState((s) => ({
+      leads: s.leads.map((l) => l.id === leadId ? { ...l, customFields: merged } : l),
+      filteredLeads: s.filteredLeads.map((l) => l.id === leadId ? { ...l, customFields: merged } : l),
+    }));
     updateLead(leadId, { customFields: merged });
   };
 

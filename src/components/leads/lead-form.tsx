@@ -32,7 +32,14 @@ interface LeadFormProps {
 export function LeadForm({ onSuccess, userId, workspaceId, defaultValues, customFields = [] }: LeadFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const addLead = useLeadStore((s) => s.addLead);
-  const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>({});
+  // Default select custom fields to first option
+  const initialCustomValues: Record<string, unknown> = {};
+  for (const cf of customFields) {
+    if (cf.type === "select" && cf.options && cf.options.length > 0) {
+      initialCustomValues[cf.id] = cf.options[0];
+    }
+  }
+  const [customFieldValues, setCustomFieldValues] = useState<Record<string, unknown>>(initialCustomValues);
 
   const form = useForm<LeadFormData>({
     resolver: zodResolver(leadSchema),

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Lead } from "@/types";
+import { Timestamp } from "firebase/firestore";
 import type { DocumentData } from "firebase/firestore";
 import {
   createLead,
@@ -124,7 +125,8 @@ export const useLeadStore = create<LeadState>((set, get) => ({
   addLead: async (workspaceId: string, userId: string, data: LeadFormData, customFields?: Record<string, unknown>) => {
     set({ loading: true, error: null });
     try {
-      await createLead({
+      const now = Timestamp.now();
+      const newId = await createLead({
         workspaceId,
         firstName: data.firstName,
         lastName: data.lastName,
@@ -152,7 +154,44 @@ export const useLeadStore = create<LeadState>((set, get) => ({
         nextFollowUpAt: null,
         createdBy: userId,
       });
-      set({ loading: false });
+      // Append new lead to local state (no reload needed)
+      const newLead: Lead = {
+        id: newId,
+        workspaceId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone || null,
+        company: data.company || null,
+        jobTitle: data.jobTitle || null,
+        status: data.status,
+        source: data.source || null,
+        niche: data.niche || null,
+        country: data.country || null,
+        city: data.city || null,
+        website: data.website || null,
+        linkedin: data.linkedin || null,
+        value: data.value || null,
+        currency: data.currency || "USD",
+        assignedTo: null,
+        tags: data.tags || [],
+        notes: data.notes || null,
+        customFields: customFields || {},
+        socialProfiles: {},
+        avatarUrl: null,
+        attachments: [],
+        lastContactedAt: null,
+        nextFollowUpAt: null,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      };
+      set((state) => ({
+        leads: [newLead, ...state.leads],
+        filteredLeads: [newLead, ...state.filteredLeads],
+        totalCount: state.totalCount + 1,
+        loading: false,
+      }));
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Failed to create lead";
       set({ error: message, loading: false });
