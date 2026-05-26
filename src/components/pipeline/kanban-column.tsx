@@ -12,9 +12,10 @@ import { cn, formatCurrency } from "@/lib/utils";
 interface KanbanColumnProps {
   stage: PipelineStage;
   leads: Lead[];
+  onLeadClick?: (leadId: string) => void;
 }
 
-export function KanbanColumn({ stage, leads }: KanbanColumnProps) {
+export function KanbanColumn({ stage, leads, onLeadClick }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `column-${stage.id}`,
   });
@@ -60,7 +61,7 @@ export function KanbanColumn({ stage, leads }: KanbanColumnProps) {
           strategy={verticalListSortingStrategy}
         >
           {leads.map((lead) => (
-            <KanbanCard key={lead.id} lead={lead} />
+            <KanbanCard key={lead.id} lead={lead} onClick={() => onLeadClick?.(lead.id)} />
           ))}
         </SortableContext>
 
