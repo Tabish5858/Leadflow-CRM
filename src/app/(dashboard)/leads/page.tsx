@@ -556,9 +556,9 @@ export default function LeadsPage() {
 
         {/* Table + Load More */}
         {sortedLeads.length > 0 && (
-          <div className="overflow-x-auto min-w-[900px]">
-            <table className="min-w-full w-max table-fixed">
-              <thead>
+          <div className="overflow-x-auto overflow-y-auto min-w-[900px] max-h-[calc(100vh-320px)]">
+              <table className="min-w-full w-max table-fixed">
+              <thead className="sticky top-0 z-10 bg-card">
                 <tr className="border-b">
                   {renderColumnIds.map((colId) => {
                     if (colId === "checkbox") {
@@ -804,8 +804,7 @@ export default function LeadsPage() {
                             <CountrySelect
                               value={lead.country || ""}
                               onChange={async (v) => {
-                                const { updateLead } = await import("@/lib/firebase/firestore");
-                                await updateLead(lead.id, { country: v || null });
+                                editLead(lead.id, { country: v || undefined });
                               }}
                               placeholder="—"
                               inline
