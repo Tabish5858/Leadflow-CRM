@@ -74,6 +74,7 @@
     "eslint-config-next": "^15.3.3",
     "jsdom": "^29.1.1",
     "prettier": "^3.5.3",
+    "server-only": "^0.0.1",
     "tailwindcss": "^4.1.10",
     "typescript": "^5.8.3",
     "vitest": "^4.1.7"
