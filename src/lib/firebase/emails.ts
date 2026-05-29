@@ -6,6 +6,7 @@ import {
   where,
   orderBy,
   Timestamp,
+  type QueryConstraint,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { getApiAuthHeaders } from "@/lib/api/client";
@@ -80,12 +81,11 @@ export async function saveDraft(data: {
   return docRef.id;
 }
 
-export async function getEmailsForLead(leadId: string): Promise<EmailRecord[]> {
-  const q = query(
-    collection(db, EMAILS_COLLECTION),
-    where("leadId", "==", leadId),
-    orderBy("createdAt", "desc")
-  );
+export async function getEmailsForLead(leadId: string, workspaceId?: string): Promise<EmailRecord[]> {
+  const constraints: QueryConstraint[] = [where("leadId", "==", leadId)];
+  if (workspaceId) constraints.push(where("workspaceId", "==", workspaceId));
+  constraints.push(orderBy("createdAt", "desc"));
+  const q = query(collection(db, EMAILS_COLLECTION), ...constraints);
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as EmailRecord));
 }

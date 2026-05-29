@@ -89,9 +89,10 @@ interface ActivityTimelineProps {
   leadId: string;
   userId: string;
   userName: string;
+  workspaceId: string;
 }
 
-export function ActivityTimeline({ leadId, userId, userName: _userName }: ActivityTimelineProps) {
+export function ActivityTimeline({ leadId, userId, userName: _userName, workspaceId }: ActivityTimelineProps) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -99,9 +100,9 @@ export function ActivityTimeline({ leadId, userId, userName: _userName }: Activi
     const unsubscribe = subscribeToLeadActivities(leadId, (acts) => {
       setActivities(acts);
       setLoading(false);
-    });
+    }, workspaceId);
     return () => unsubscribe();
-  }, [leadId]);
+  }, [leadId, workspaceId]);
 
   if (loading) {
     return (

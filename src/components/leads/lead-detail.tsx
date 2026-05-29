@@ -125,25 +125,26 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   }, [leadId]);
 
   useEffect(() => {
-    if (leadId) {
+    if (leadId && activeWorkspace) {
       setLoadingEmails(true);
-      Promise.all([getEmailsForLead(leadId), getEmailEventsForLead(leadId)])
+      Promise.all([getEmailsForLead(leadId, activeWorkspace.id), getEmailEventsForLead(leadId, activeWorkspace.id)])
         .then(([emailRecords, events]) => {
           setEmails(emailRecords);
           setEmailEvents(events);
         })
         .finally(() => setLoadingEmails(false));
     }
-  }, [leadId]);
+  }, [leadId, activeWorkspace]);
 
   useEffect(() => {
+    if (!activeWorkspace) return;
     setNotesLoading(true);
     const unsubscribe = subscribeToLeadActivities(leadId, (acts) => {
       setNotes(acts.filter((a) => a.type === "note"));
       setNotesLoading(false);
-    });
+    }, activeWorkspace.id);
     return () => unsubscribe();
-  }, [leadId]);
+  }, [leadId, activeWorkspace]);
 
   const stages = activeWorkspace?.pipeline?.stages || DEFAULT_PIPELINE_STAGES;
 
@@ -166,8 +167,8 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
       trackClicks: data.trackClicks,
     });
     const [updatedEmails, updatedEvents] = await Promise.all([
-      getEmailsForLead(leadId),
-      getEmailEventsForLead(leadId),
+      getEmailsForLead(leadId, activeWorkspace.id),
+      getEmailEventsForLead(leadId, activeWorkspace.id),
     ]);
     setEmails(updatedEmails);
     setEmailEvents(updatedEvents);
@@ -761,6 +762,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               leadId={lead.id}
               userId={user?.id || ""}
               userName={user?.displayName || "User"}
+              workspaceId={activeWorkspace?.id || ""}
             />
           </div>
         </TabsContent>
