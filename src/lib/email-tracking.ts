@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, where, Timestamp } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, Timestamp, type QueryConstraint } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 
 const EMAIL_EVENTS_COLLECTION = "email_events";
@@ -42,11 +42,10 @@ export async function getEmailEvents(emailId: string): Promise<EmailEvent[]> {
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as EmailEvent));
 }
 
-export async function getEmailEventsForLead(leadId: string): Promise<EmailEvent[]> {
-  const q = query(
-    collection(db, EMAIL_EVENTS_COLLECTION),
-    where("leadId", "==", leadId)
-  );
+export async function getEmailEventsForLead(leadId: string, workspaceId?: string): Promise<EmailEvent[]> {
+  const constraints: QueryConstraint[] = [where("leadId", "==", leadId)];
+  if (workspaceId) constraints.push(where("workspaceId", "==", workspaceId));
+  const q = query(collection(db, EMAIL_EVENTS_COLLECTION), ...constraints);
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as EmailEvent));
 }

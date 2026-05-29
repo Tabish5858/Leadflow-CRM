@@ -203,6 +203,8 @@ export default function MessagesPage() {
     setMsgsLoading(true);
     setMsgsError(null);
 
+    if (!activeWorkspace) return;
+
     const unsub = subscribeToMessages(
       selected.id,
       (msgs) => {
@@ -210,6 +212,7 @@ export default function MessagesPage() {
         setMsgsLoading(false);
         setMsgsError(null);
       },
+      activeWorkspace.id,
       (err) => {
         setMsgsError(err.message || "Failed to load messages");
         setMsgsLoading(false);
@@ -218,7 +221,7 @@ export default function MessagesPage() {
     );
 
     return () => unsub();
-  }, [selected]);
+  }, [selected, activeWorkspace]);
 
   // ─── Auto-detect newly created member conversation ───────────────────
 

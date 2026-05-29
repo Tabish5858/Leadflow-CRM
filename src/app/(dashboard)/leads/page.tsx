@@ -405,27 +405,32 @@ export default function LeadsPage() {
     sortedLeads.length > 0 &&
     sortedLeads.every((l) => selectedIds.has(l.id));
 
+  const canWrite = user?.role !== "viewer";
   const headerActions = useMemo(
     () => (
       <div className="flex items-center gap-2">
         <ExportButton type="leads" data={sortedLeads} />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowCsvImport(true)}
-          className="hidden sm:flex"
-        >
-          <Upload className="mr-2 h-4 w-4" />
-          Import CSV
-        </Button>
-        <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          <span className="hidden sm:inline">Add Lead</span>
-          <span className="sm:hidden">Add</span>
-        </Button>
+        {canWrite && (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCsvImport(true)}
+              className="hidden sm:flex"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Import CSV
+            </Button>
+            <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">Add Lead</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          </>
+        )}
       </div>
     ),
-    [sortedLeads]
+    [sortedLeads, canWrite]
   );
 
   useEffect(() => {

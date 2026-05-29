@@ -11,6 +11,7 @@ import {
   QuerySnapshot,
   DocumentData,
   Timestamp,
+  type QueryConstraint,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import type { Activity } from "@/types";
@@ -30,28 +31,26 @@ export async function createActivity(
 }
 
 export async function getActivitiesByLead(
-  leadId: string
+  leadId: string,
+  workspaceId?: string
 ): Promise<Activity[]> {
-  const activitiesRef = collection(db, ACTIVITIES_COLLECTION);
-  const q = query(
-    activitiesRef,
-    where("leadId", "==", leadId),
-    orderBy("createdAt", "desc")
-  );
+  const constraints: QueryConstraint[] = [where("leadId", "==", leadId)];
+  if (workspaceId) constraints.push(where("workspaceId", "==", workspaceId));
+  constraints.push(orderBy("createdAt", "desc"));
+  const q = query(collection(db, ACTIVITIES_COLLECTION), ...constraints);
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Activity[];
 }
 
 export function subscribeToLeadActivities(
   leadId: string,
-  callback: (activities: Activity[]) => void
+  callback: (activities: Activity[]) => void,
+  workspaceId?: string
 ): () => void {
-  const activitiesRef = collection(db, ACTIVITIES_COLLECTION);
-  const q = query(
-    activitiesRef,
-    where("leadId", "==", leadId),
-    orderBy("createdAt", "desc")
-  );
+  const constraints: QueryConstraint[] = [where("leadId", "==", leadId)];
+  if (workspaceId) constraints.push(where("workspaceId", "==", workspaceId));
+  constraints.push(orderBy("createdAt", "desc"));
+  const q = query(collection(db, ACTIVITIES_COLLECTION), ...constraints);
 
   return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
     const activities = snapshot.docs.map((doc) => ({

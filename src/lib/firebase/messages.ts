@@ -13,6 +13,7 @@ import {
   serverTimestamp,
   QuerySnapshot,
   DocumentData,
+  type QueryConstraint,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import type { Message, Conversation } from "@/types";
@@ -67,13 +68,13 @@ export function subscribeToConversations(
 // ─── Messages (one-shot) ─────────────────────────────────────────────────────
 
 export async function getMessages(
-  conversationId: string
+  conversationId: string,
+  workspaceId?: string
 ): Promise<Message[]> {
-  const q = query(
-    collection(db, MESSAGES_COLLECTION),
-    where("conversationId", "==", conversationId),
-    orderBy("createdAt", "asc")
-  );
+  const constraints: QueryConstraint[] = [where("conversationId", "==", conversationId)];
+  if (workspaceId) constraints.push(where("workspaceId", "==", workspaceId));
+  constraints.push(orderBy("createdAt", "asc"));
+  const q = query(collection(db, MESSAGES_COLLECTION), ...constraints);
   const snapshot = await getDocs(q);
   return snapshot.docs.map(
     (d) => ({ id: d.id, ...d.data() }) as Message
@@ -85,13 +86,13 @@ export async function getMessages(
 export function subscribeToMessages(
   conversationId: string,
   callback: (messages: Message[]) => void,
+  workspaceId?: string,
   onError?: (error: Error) => void
 ): () => void {
-  const q = query(
-    collection(db, MESSAGES_COLLECTION),
-    where("conversationId", "==", conversationId),
-    orderBy("createdAt", "asc")
-  );
+  const constraints: QueryConstraint[] = [where("conversationId", "==", conversationId)];
+  if (workspaceId) constraints.push(where("workspaceId", "==", workspaceId));
+  constraints.push(orderBy("createdAt", "asc"));
+  const q = query(collection(db, MESSAGES_COLLECTION), ...constraints);
 
   return onSnapshot(
     q,
@@ -183,12 +184,11 @@ export async function deleteMessage(messageId: string): Promise<void> {
 
 // ─── Delete Conversation ─────────────────────────────────────────────────────
 
-export async function deleteConversation(conversationId: string): Promise<void> {
+export async function deleteConversation(conversationId: string, workspaceId?: string): Promise<void> {
   // Delete all messages in the conversation
-  const msgsQuery = query(
-    collection(db, MESSAGES_COLLECTION),
-    where("conversationId", "==", conversationId)
-  );
+  const constraints: QueryConstraint[] = [where("conversationId", "==", conversationId)];
+  if (workspaceId) constraints.push(where("workspaceId", "==", workspaceId));
+  const msgsQuery = query(collection(db, MESSAGES_COLLECTION), ...constraints);
   const msgsSnapshot = await getDocs(msgsQuery);
   const batch: Array<Promise<void>> = [];
   msgsSnapshot.docs.forEach((d) => {
