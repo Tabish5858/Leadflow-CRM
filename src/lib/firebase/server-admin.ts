@@ -3,6 +3,7 @@
  * Use these in API routes instead of the client SDK to avoid
  * "Missing or insufficient permissions" errors.
  */
+import "server-only";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { Timestamp } from "firebase-admin/firestore";
 import type { MeetingTypeAvailability } from "@/lib/availability";
