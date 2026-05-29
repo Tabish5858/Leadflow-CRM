@@ -151,12 +151,14 @@ export default function AuditLogPage() {
         setPage(1);
         setPageStack([]);
       }
-    } catch {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load audit logs";
+      console.error("Audit log fetch error:", message);
       toast.error("Failed to load audit logs");
     } finally {
       setLoading(false);
     }
-  }, [activeWorkspace, dateFrom, dateTo, userFilter, actionFilter, leadSearch, pageSize, pageStack, page]);
+  }, [activeWorkspace, dateFrom, dateTo, userFilter, actionFilter, leadSearch, pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchLogs(true);

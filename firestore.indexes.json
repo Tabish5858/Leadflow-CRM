@@ -109,6 +109,14 @@
         { "fieldPath": "bookingToken", "order": "ASCENDING" },
         { "fieldPath": "active", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "audit_logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

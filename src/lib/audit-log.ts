@@ -78,7 +78,57 @@ export async function getAuditLogs(
   }
 
   const q = query(collection(db, AUDIT_LOGS_COLLECTION), ...constraints);
-  const snapshot = await getDocs(q);
+  let snapshot;
+  try {
+    snapshot = await getDocs(q);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn("getAuditLogs query failed, using fallback:", message);
+
+    // Fallback: query without orderBy (requires no composite index)
+    // and sort in-memory instead
+    if (message.includes("index")) {
+      console.warn("getAuditLogs: falling back to simple query + in-memory sort");
+      const fallbackConstraints: QueryConstraint[] = [where("workspaceId", "==", workspaceId)];
+      if (filters?.userId) fallbackConstraints.push(where("userId", "==", filters.userId));
+      if (filters?.action) fallbackConstraints.push(where("action", "==", filters.action));
+      fallbackConstraints.push(limit(pageSize * 4)); // over-fetch to allow in-memory sort
+
+      const fallbackQ = query(collection(db, AUDIT_LOGS_COLLECTION), ...fallbackConstraints);
+      const fallbackSnap = await getDocs(fallbackQ);
+
+      const allLogs = fallbackSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as AuditLog[];
+
+      // Sort in-memory by timestamp descending
+      allLogs.sort((a, b) => b.timestamp.toDate().getTime() - a.timestamp.toDate().getTime());
+
+      // Apply date filters in-memory
+      let filtered = allLogs;
+      if (filters?.dateFrom) {
+        const from = filters.dateFrom.getTime();
+        filtered = filtered.filter((l) => l.timestamp.toDate().getTime() >= from);
+      }
+      if (filters?.dateTo) {
+        const to = new Date(filters.dateTo);
+        to.setHours(23, 59, 59, 999);
+        filtered = filtered.filter((l) => l.timestamp.toDate().getTime() <= to.getTime());
+      }
+
+      const logs = filtered.slice(0, pageSize);
+
+      return {
+        logs,
+        lastVisible: null,
+        hasMore: false,
+        total: logs.length,
+      };
+    }
+
+    throw new Error(message);
+  }
 
   const logs = snapshot.docs.map((doc) => ({
     id: doc.id,
@@ -89,12 +139,17 @@ export async function getAuditLogs(
 
   let total = 0;
   if (!filters && !lastVisible) {
-    const countQuery = query(
-      collection(db, AUDIT_LOGS_COLLECTION),
-      where("workspaceId", "==", workspaceId)
-    );
-    const countSnapshot = await getDocs(countQuery);
-    total = countSnapshot.size;
+    try {
+      const countQuery = query(
+        collection(db, AUDIT_LOGS_COLLECTION),
+        where("workspaceId", "==", workspaceId)
+      );
+      const countSnapshot = await getDocs(countQuery);
+      total = countSnapshot.size;
+    } catch (err: unknown) {
+      console.warn("getAuditLogs count query failed, using page size:", err);
+      total = logs.length;
+    }
   } else {
     total = logs.length;
   }
