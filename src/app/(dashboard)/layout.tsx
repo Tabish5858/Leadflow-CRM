@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { HeaderActionsProvider } from "@/contexts/header-actions-context";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/workspace-context";
 import { auth, db } from "@/lib/firebase/client";
@@ -400,6 +401,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               {headerActions && (
                 <div className="flex items-center gap-2">{headerActions}</div>
               )}
+              <NotificationBell />
               <Avatar className="h-8 w-8 border sm:hidden">
                 <AvatarImage src={user?.photoURL || undefined} />
                 <AvatarFallback className="text-xs bg-primary/10 text-primary">
