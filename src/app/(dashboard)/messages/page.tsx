@@ -167,6 +167,29 @@ export default function MessagesPage() {
     return () => unsub();
   }, [activeWorkspace]);
 
+  // ─── Auto-select most recent conversation on first load ──────────
+
+  const [initialAutoSelectDone, setInitialAutoSelectDone] = useState(false);
+
+  useEffect(() => {
+    if (initialAutoSelectDone || selected || conversations.length === 0 || !user?.id) return;
+
+    const myConvs = conversations.filter(
+      (c) => c.participantIds?.includes(user.id)
+    );
+    if (myConvs.length === 0) return;
+
+    // Sort by lastMessageAt, most recent first
+    const sorted = [...myConvs].sort((a, b) => {
+      const aTime = a.lastMessageAt?.toMillis() || 0;
+      const bTime = b.lastMessageAt?.toMillis() || 0;
+      return bTime - aTime;
+    });
+
+    setSelected(sorted[0]);
+    setInitialAutoSelectDone(true);
+  }, [initialAutoSelectDone, selected, conversations, user]);
+
   // ─── Fetch workspace members (once) ──────────────────────────────────
 
   useEffect(() => {

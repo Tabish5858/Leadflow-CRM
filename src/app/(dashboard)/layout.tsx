@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { WorkspaceSwitcher } from "@/components/workspace/workspace-switcher";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { UnreadBadge } from "@/components/messages/unread-badge";
 import { HeaderActionsProvider } from "@/contexts/header-actions-context";
 import { WorkspaceProvider, useWorkspace } from "@/contexts/workspace-context";
 import { auth, db } from "@/lib/firebase/client";
@@ -247,7 +248,17 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     )}
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
-                    {!sidebarCollapsed && <span className="flex-1">{item.label}</span>}
+                    {!sidebarCollapsed && (
+                      <>
+                        <span className="flex-1">{item.label}</span>
+                        {item.href === "/messages" && (
+                          <UnreadBadge
+                            workspaceId={activeWorkspace?.id || ""}
+                            userId={user?.id || ""}
+                          />
+                        )}
+                      </>
+                    )}
                     {!sidebarCollapsed && isActive && (
                       <ChevronRight className="h-3.5 w-3.5 text-primary" />
                     )}
