@@ -309,11 +309,11 @@ export default function MessagesPage() {
   // ─── Mark conversation as read ────────────────────────────────────
 
   useEffect(() => {
-    if (!selected || !user?.id) return;
+    if (!selected || !user?.id || !activeWorkspace?.id) return;
     import("@/lib/firebase/messages").then(({ markConversationAsRead }) => {
-      markConversationAsRead(selected.id, user.id);
+      markConversationAsRead(selected.id, user.id, activeWorkspace.id);
     });
-  }, [selected, user?.id, messages]);
+  }, [selected, user?.id, activeWorkspace?.id, messages]);
 
   // ─── Delete conversation ──────────────────────────────────────────────
 

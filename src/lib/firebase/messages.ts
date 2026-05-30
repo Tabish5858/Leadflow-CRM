@@ -348,7 +348,8 @@ export async function markMessagesAsRead(
  */
 export async function markConversationAsRead(
   conversationId: string,
-  userId: string
+  userId: string,
+  workspaceId?: string
 ): Promise<void> {
   if (!conversationId || !userId) return;
 
@@ -357,23 +358,25 @@ export async function markConversationAsRead(
     const convRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
     await updateDoc(convRef, { unreadCount: 0 });
 
-    // Also update readBy on messages this user RECEIVED (not sent by them)
-    // Use individual updates instead of batch to avoid silent failures
-    const q = query(
-      collection(db, MESSAGES_COLLECTION),
-      where("conversationId", "==", conversationId),
-      where("senderId", "!=", userId)
-    );
+    // Fetch messages, filtered by workspaceId so Firestore rules pass
+    // (isWorkspaceMember check reads resource.data.workspaceId — must match)
+    const constraints: QueryConstraint[] = [where("conversationId", "==", conversationId)];
+    if (workspaceId) constraints.push(where("workspaceId", "==", workspaceId));
+    const q = query(collection(db, MESSAGES_COLLECTION), ...constraints);
     const snapshot = await getDocs(q);
 
+    let updated = 0;
     for (const docSnap of snapshot.docs) {
       const data = docSnap.data();
+      // Skip messages the current user sent
+      if (data.senderId === userId) continue;
       const readBy: string[] = data.readBy || [];
       if (!readBy.includes(userId)) {
         try {
           await updateDoc(docSnap.ref, {
             readBy: [...readBy, userId],
           });
+          updated++;
         } catch {
           // Individual message update failed — continue with others
         }
