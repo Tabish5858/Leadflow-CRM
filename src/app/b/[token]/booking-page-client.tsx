@@ -19,9 +19,11 @@ import {
 
 interface BookingPageClientProps {
   token: string;
+  /** Timezone detected server-side (Cloudflare cf-timezone). Used as first choice. */
+  detectedTimezone?: string | null;
 }
 
-export function BookingPageClient({ token }: BookingPageClientProps) {
+export function BookingPageClient({ token, detectedTimezone }: BookingPageClientProps) {
   // Page state
   const [meetingType, setMeetingType] = useState<BookingMeetingType | null>(null);
   const [workspaceName, setWorkspaceName] = useState("");
@@ -40,7 +42,7 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string>("");
 
-  // Timezone state — auto-detected from browser
+  // Timezone state
   const [displayTimezone, setDisplayTimezone] = useState<string>("UTC");
 
   // Booking form
@@ -55,35 +57,41 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
   // Track if we've done the initial date selection
   const initialDateSet = useRef(false);
 
-  // ── Auto-detect browser timezone on mount ──────────────────────
+  // ── Auto-detect timezone ────────────────────────────────────
   useEffect(() => {
-    try {
-      const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (browserTz) setDisplayTimezone(browserTz);
-    } catch {
-      // fallback to UTC
-    }
-  }, []);
+    if (detectedTimezone) {
+      // 1. Server-detected (Cloudflare cf-timezone) — handles VPN
+      setDisplayTimezone(detectedTimezone);
+    } else {
+      // 2. OS-level via Intl API
+      try {
+        const osTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (osTz) setDisplayTimezone(osTz);
+      } catch { /* ignore */ }
 
-  // ── Auto-detect browser theme (light/dark) ─────────────────────
+      // 3. IP-based override via proxy
+      fetch("/api/timezone")
+        .then((r) => r.json())
+        .then((data) => {
+          if (data?.timezone) setDisplayTimezone(data.timezone);
+        })
+        .catch(() => {});
+    }
+  }, [detectedTimezone]);
+
+  // ── Auto-detect browser theme ────────────────────────────────
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: light)");
-
     const applyTheme = (isLight: boolean) => {
-      if (isLight) {
-        document.documentElement.classList.add("light");
-      } else {
-        document.documentElement.classList.remove("light");
-      }
+      document.documentElement.classList.toggle("light", isLight);
     };
-
     applyTheme(mq.matches);
     const handler = (e: MediaQueryListEvent) => applyTheme(e.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  // ── Fetch meeting type info ─────────────────────────────────────
+  // ── Fetch meeting type ───────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -105,12 +113,11 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
     fetchData();
   }, [token]);
 
-  // ── Generate available dates from daysOfWeek ───────────────────
+  // ── Generate available dates ────────────────────────────────
   useEffect(() => {
     if (!meetingType?.availability) return;
     const dates = generateAvailableDates(meetingType.availability.daysOfWeek);
     setAvailableDates(dates);
-    // Auto-navigate calendar to first available date
     if (!initialDateSet.current && dates.length > 0) {
       initialDateSet.current = true;
       setSelectedDate(dates[0]);
@@ -119,13 +126,13 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
     }
   }, [meetingType]);
 
-  // ── Fetch slots when date is selected ──────────────────────────
-  const activeFetchRef = useRef<AbortController | null>(null);
+  // ── Fetch slots for selected date ───────────────────────────
+  const slotsFetchRef = useRef<AbortController | null>(null);
 
-  const fetchSlots = useCallback(async (date: Date, tz: string) => {
-    activeFetchRef.current?.abort();
+  const fetchSlotsForDate = useCallback(async (date: Date, tz: string) => {
+    slotsFetchRef.current?.abort();
     const controller = new AbortController();
-    activeFetchRef.current = controller;
+    slotsFetchRef.current = controller;
 
     setSlots([]);
     setSlotsLoading(true);
@@ -158,22 +165,21 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       setSlotsError("Failed to load available times");
     } finally {
-      if (!controller.signal.aborted) {
-        setSlotsLoading(false);
-      }
+      if (!controller.signal.aborted) setSlotsLoading(false);
     }
   }, [token]);
 
+  // Fetch slots when selected date or timezone changes
   useEffect(() => {
     if (selectedDate) {
-      fetchSlots(selectedDate, displayTimezone);
+      fetchSlotsForDate(selectedDate, displayTimezone);
     }
     return () => {
-      activeFetchRef.current?.abort();
+      slotsFetchRef.current?.abort();
     };
-  }, [selectedDate, displayTimezone, fetchSlots]);
+  }, [selectedDate, displayTimezone, fetchSlotsForDate]);
 
-  // ── Calendar navigation ────────────────────────────────────────
+  // ── Month navigation ────────────────────────────────────────
   const prevMonth = () => {
     if (calendarMonth === 0) {
       setCalendarYear(calendarYear - 1);
@@ -182,7 +188,6 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
       setCalendarMonth(calendarMonth - 1);
     }
   };
-
   const nextMonth = () => {
     if (calendarMonth === 11) {
       setCalendarYear(calendarYear + 1);
@@ -191,53 +196,45 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
       setCalendarMonth(calendarMonth + 1);
     }
   };
-
   const canSelectNextMonth =
     calendarYear > new Date().getFullYear() ||
     (calendarYear === new Date().getFullYear() && calendarMonth >= new Date().getMonth());
 
-  // ── Day click ──────────────────────────────────────────────────
+  // ── Day click ───────────────────────────────────────────────
   const handleDayClick = (day: number) => {
     const date = new Date(calendarYear, calendarMonth, day);
     setSelectedDate(date);
     setSelectedTime("");
   };
 
-  // ── Time slot click ────────────────────────────────────────────
+  // ── Time slot click ─────────────────────────────────────────
   const handleSelectTime = (time: string) => {
     setSelectedTime(time);
   };
 
-  // ── Timezone change ────────────────────────────────────────────
+  // ── Timezone change ─────────────────────────────────────────
   const handleTimezoneChange = (tz: string) => {
     setDisplayTimezone(tz);
   };
 
-  // ── Back from form ─────────────────────────────────────────────
-  const handleBackFromForm = () => {
-    setSelectedTime("");
-  };
+  // ── Back from form ──────────────────────────────────────────
+  const handleBackFromForm = () => setSelectedTime("");
 
-  // ── Booking submission ─────────────────────────────────────────
+  // ── Booking submission ──────────────────────────────────────
   const handleBook = async (data: {
-    name: string;
-    email: string;
-    notes: string;
+    name: string; email: string; notes: string;
     questionAnswers: Record<string, string | string[]>;
   }) => {
     if (!selectedDate || !selectedTime || !meetingType) {
       toast.error("Please fill in all required fields");
       return;
     }
-
-    const tz = meetingType?.availability?.timezone || "UTC";
+    const tz = meetingType.availability?.timezone || "UTC";
     const startDateTimeISO = dateAndSlotToISO(selectedDate, selectedTime, tz);
-
     if (new Date(startDateTimeISO) <= new Date()) {
       toast.error("This time has already passed");
       return;
     }
-
     setBooking(true);
     try {
       const res = await fetch(`/api/meetings/book/${token}`, {
@@ -251,19 +248,15 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
           questionAnswers: Object.keys(data.questionAnswers).length > 0 ? data.questionAnswers : undefined,
         }),
       });
-
       if (!res.ok) {
         const errData = await res.json();
         toast.error(errData.error || "Failed to book meeting");
         return;
       }
-
-      // Handle confirmation redirect
       if (meetingType.confirmationPage === "redirect" && meetingType.redirectUrl) {
         setRedirectUrl(meetingType.redirectUrl);
         return;
       }
-
       setBooked(true);
       setBookedEmail(data.email);
       setBookedSlot({
@@ -278,16 +271,12 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
     }
   };
 
-  // ═══════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════
   // RENDER
-  // ═══════════════════════════════════════════════════════════════
+  // ═════════════════════════════════════════════════════════════
 
-  // ── Loading screen (skeleton matching Cal.com layout) ─────
-  if (pageLoading) {
-    return <BookingSkeleton />;
-  }
+  if (pageLoading) return <BookingSkeleton />;
 
-  // ── Error screen ──────────────────────────────────────────
   if (pageError || !meetingType) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -306,7 +295,6 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
     );
   }
 
-  // ── Success screen ────────────────────────────────────────
   if (booked && bookedSlot) {
     return (
       <BookingConfirmation
@@ -318,7 +306,6 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
     );
   }
 
-  // ── Redirect screen ──────────────────────────────────────
   if (redirectUrl) {
     if (typeof window !== "undefined") {
       try {
@@ -331,7 +318,7 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
           setBookedSlot({
             time: selectedTime,
             display: formatSlotTime(selectedTime),
-            label: formatSlotWithTz(selectedTime, meetingType?.availability?.timezone || "UTC", selectedDate!),
+            label: formatSlotWithTz(selectedTime, meetingType.availability?.timezone || "UTC", selectedDate!),
           });
           setRedirectUrl(null);
         }
@@ -341,7 +328,7 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
         setBookedSlot({
           time: selectedTime,
           display: formatSlotTime(selectedTime),
-          label: formatSlotWithTz(selectedTime, meetingType?.availability?.timezone || "UTC", selectedDate!),
+          label: formatSlotWithTz(selectedTime, meetingType.availability?.timezone || "UTC", selectedDate!),
         });
         setRedirectUrl(null);
       }
@@ -356,7 +343,7 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
     );
   }
 
-  // ── Main booking page (Cal.com layout) ────────────────────
+  // ── Main booking page ──────────────────────────────────────
   const hasTimeSelected = !!selectedTime;
 
   return (
@@ -364,14 +351,12 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
       <div className="max-w-275 mx-auto px-4 py-12 flex min-h-screen flex-col justify-center">
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
           <div className="flex flex-col md:flex-row">
-            {/* ═══ LEFT PANEL — gets wider in form view (Cal.com pattern) ═══ */}
-            <div
-              className={`
-                border-border p-6 md:p-8 bg-muted/20
-                ${hasTimeSelected ? "md:w-85 md:min-w-85" : "md:w-70 md:min-w-70"}
-                md:border-r
-              `}
-            >
+            {/* ═══ LEFT PANEL ═══ */}
+            <div className={`
+              border-border p-6 md:p-8 bg-muted/20
+              ${hasTimeSelected ? "md:w-85 md:min-w-85" : "md:w-70 md:min-w-70"}
+              md:border-r
+            `}>
               <BookingInfoPanel
                 meetingType={meetingType}
                 workspaceName={workspaceName}
@@ -385,7 +370,6 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
             {/* ═══ RIGHT PANEL ═══ */}
             <div className="flex-1 p-6 md:p-8">
               {!hasTimeSelected ? (
-                /* Calendar + Time Slots view */
                 <div className="flex flex-col lg:flex-row gap-8">
                   <div className="flex-1">
                     <BookingCalendar
@@ -399,7 +383,9 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
                       canSelectNextMonth={canSelectNextMonth}
                     />
                   </div>
-                  <div className="lg:w-[220px] lg:min-w-[220px] lg:border-l lg:border-border lg:pl-6">
+
+                  {/* Time slots panel */}
+                  <div className="lg:w-[240px] lg:min-w-[240px] lg:border-l lg:border-border lg:pl-6">
                     <BookingTimeSlots
                       selectedDate={selectedDate}
                       slots={slots}
@@ -411,7 +397,6 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
                   </div>
                 </div>
               ) : (
-                /* Booking Form view */
                 <BookingForm
                   meetingType={meetingType}
                   selectedDate={selectedDate!}
@@ -425,7 +410,6 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
           </div>
         </div>
 
-        {/* Footer branding */}
         <div className="text-center mt-8">
           <p className="text-xs text-muted-foreground">
             Powered by <strong>LeadFlow</strong>

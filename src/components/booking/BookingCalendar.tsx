@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, List, Columns3 } from "lucide-react";
+import { useMemo } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { generateMonthCalendar } from "./utils";
-
-type ViewMode = "month" | "week" | "column";
 
 interface BookingCalendarProps {
   calendarYear: number;
@@ -27,14 +25,10 @@ export function BookingCalendar({
   onDayClick,
   canSelectNextMonth,
 }: BookingCalendarProps) {
-  const calendarGrid = generateMonthCalendar(calendarYear, calendarMonth);
-  const [viewMode, setViewMode] = useState<ViewMode>("month");
-
-  // Reset to month view on mobile
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 768px)");
-    if (mq.matches) setViewMode("month");
-  }, []);
+  const calendarGrid = useMemo(
+    () => generateMonthCalendar(calendarYear, calendarMonth),
+    [calendarYear, calendarMonth]
+  );
 
   const monthLabel = new Intl.DateTimeFormat("en-US", {
     month: "long",
@@ -73,50 +67,9 @@ export function BookingCalendar({
 
   return (
     <div>
-      {/* View Mode Toggle + Month Header */}
+      {/* Month Header */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          {/* Layout toggle (hidden on mobile) */}
-          <div className="hidden md:flex items-center rounded-lg border border-border p-0.5">
-            <button
-              type="button"
-              onClick={() => setViewMode("month")}
-              className={`p-1.5 rounded-md transition-colors ${
-                viewMode === "month"
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              title="Monthly view"
-            >
-              <CalendarDays className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("week")}
-              className={`p-1.5 rounded-md transition-colors ${
-                viewMode === "week"
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              title="Weekly view"
-            >
-              <List className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("column")}
-              className={`p-1.5 rounded-md transition-colors ${
-                viewMode === "column"
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              title="Column view"
-            >
-              <Columns3 className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
+        <h2 className="text-sm font-semibold text-foreground">{monthLabel}</h2>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -126,9 +79,6 @@ export function BookingCalendar({
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <h2 className="text-sm font-semibold text-foreground min-w-[140px] text-center">
-            {monthLabel}
-          </h2>
           <button
             type="button"
             onClick={onNextMonth}

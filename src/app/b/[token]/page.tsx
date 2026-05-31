@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { BookingPageClient } from "./booking-page-client";
 
 interface Props {
@@ -6,5 +7,8 @@ interface Props {
 
 export default async function BookingPage({ params }: Props) {
   const { token } = await params;
-  return <BookingPageClient token={token} />;
+  const headersList = await headers();
+  const cfTz = headersList.get("cf-timezone");
+
+  return <BookingPageClient token={token} detectedTimezone={cfTz} />;
 }

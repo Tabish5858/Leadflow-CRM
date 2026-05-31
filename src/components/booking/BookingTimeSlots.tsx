@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, AlertCircle, Clock } from "lucide-react";
+import { AlertCircle, Clock } from "lucide-react";
 import { AvailabilitySlot } from "./types";
 
 interface BookingTimeSlotsProps {
@@ -86,10 +86,15 @@ export function BookingTimeSlots({
         </div>
       </div>
 
-      {/* Loading */}
+      {/* Loading skeleton */}
       {slotsLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="w-full h-11 rounded-lg bg-muted/60 animate-pulse"
+            />
+          ))}
         </div>
       ) : slotsError ? (
         <div className="flex items-center gap-2 py-6 text-sm text-destructive">
@@ -107,7 +112,7 @@ export function BookingTimeSlots({
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-75 overflow-y-auto pr-1 scrollbar-thin">
           {slots.map((slot) => (
             <button
               key={slot.time}
