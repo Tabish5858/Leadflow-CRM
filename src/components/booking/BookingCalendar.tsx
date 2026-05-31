@@ -1,7 +1,10 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, CalendarDays, List, Columns3 } from "lucide-react";
 import { generateMonthCalendar } from "./utils";
+
+type ViewMode = "month" | "week" | "column";
 
 interface BookingCalendarProps {
   calendarYear: number;
@@ -25,6 +28,14 @@ export function BookingCalendar({
   canSelectNextMonth,
 }: BookingCalendarProps) {
   const calendarGrid = generateMonthCalendar(calendarYear, calendarMonth);
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
+
+  // Reset to month view on mobile
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    if (mq.matches) setViewMode("month");
+  }, []);
+
   const monthLabel = new Intl.DateTimeFormat("en-US", {
     month: "long",
     year: "numeric",
@@ -62,22 +73,68 @@ export function BookingCalendar({
 
   return (
     <div>
-      {/* Month Header */}
+      {/* View Mode Toggle + Month Header */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold text-foreground">{monthLabel}</h2>
+        <div className="flex items-center gap-2">
+          {/* Layout toggle (hidden on mobile) */}
+          <div className="hidden md:flex items-center rounded-lg border border-border p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode("month")}
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "month"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Monthly view"
+            >
+              <CalendarDays className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("week")}
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "week"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Weekly view"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("column")}
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === "column"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Column view"
+            >
+              <Columns3 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={onPrevMonth}
             className="p-2 hover:bg-muted rounded-lg transition-colors"
+            aria-label="Previous month"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
+          <h2 className="text-sm font-semibold text-foreground min-w-[140px] text-center">
+            {monthLabel}
+          </h2>
           <button
             type="button"
             onClick={onNextMonth}
             disabled={!canSelectNextMonth}
             className="p-2 hover:bg-muted rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            aria-label="Next month"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -118,10 +175,10 @@ export function BookingCalendar({
                 ${selected
                   ? "bg-foreground text-background font-semibold"
                   : available && !past
-                    ? "bg-muted hover:bg-muted/80 text-foreground cursor-pointer"
+                    ? "bg-muted/70 hover:bg-muted text-foreground cursor-pointer"
                     : past
                       ? "text-muted-foreground/30 cursor-not-allowed"
-                      : "text-muted-foreground cursor-not-allowed"
+                      : "text-muted-foreground/50 cursor-not-allowed"
                 }
               `}
             >

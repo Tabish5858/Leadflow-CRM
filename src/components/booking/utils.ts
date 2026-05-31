@@ -106,7 +106,7 @@ export function dateAndSlotToISO(date: Date, time24: string, timezone: string): 
 export function generateMonthCalendar(year: number, month: number): Array<Array<number | null>> {
   const weeks: Array<Array<number | null>> = [];
   const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year + 1, 0, 0).getDate();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   let week: Array<number | null> = [];
   for (let d = 0; d < firstDay; d++) week.push(null);

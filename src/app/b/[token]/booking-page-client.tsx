@@ -8,6 +8,7 @@ import { BookingCalendar } from "@/components/booking/BookingCalendar";
 import { BookingTimeSlots } from "@/components/booking/BookingTimeSlots";
 import { BookingForm } from "@/components/booking/BookingForm";
 import { BookingConfirmation } from "@/components/booking/BookingConfirmation";
+import { BookingSkeleton } from "@/components/booking/BookingSkeleton";
 import type { BookingMeetingType, AvailabilitySlot } from "@/components/booking/types";
 import {
   generateAvailableDates,
@@ -39,6 +40,9 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string>("");
 
+  // Timezone state — auto-detected from browser
+  const [displayTimezone, setDisplayTimezone] = useState<string>("UTC");
+
   // Booking form
   const [booking, setBooking] = useState(false);
   const [booked, setBooked] = useState(false);
@@ -50,6 +54,34 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
 
   // Track if we've done the initial date selection
   const initialDateSet = useRef(false);
+
+  // ── Auto-detect browser timezone on mount ──────────────────────
+  useEffect(() => {
+    try {
+      const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      if (browserTz) setDisplayTimezone(browserTz);
+    } catch {
+      // fallback to UTC
+    }
+  }, []);
+
+  // ── Auto-detect browser theme (light/dark) ─────────────────────
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+
+    const applyTheme = (isLight: boolean) => {
+      if (isLight) {
+        document.documentElement.classList.add("light");
+      } else {
+        document.documentElement.classList.remove("light");
+      }
+    };
+
+    applyTheme(mq.matches);
+    const handler = (e: MediaQueryListEvent) => applyTheme(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   // ── Fetch meeting type info ─────────────────────────────────────
   useEffect(() => {
@@ -78,6 +110,7 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
     if (!meetingType?.availability) return;
     const dates = generateAvailableDates(meetingType.availability.daysOfWeek);
     setAvailableDates(dates);
+    // Auto-navigate calendar to first available date
     if (!initialDateSet.current && dates.length > 0) {
       initialDateSet.current = true;
       setSelectedDate(dates[0]);
@@ -89,7 +122,7 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
   // ── Fetch slots when date is selected ──────────────────────────
   const activeFetchRef = useRef<AbortController | null>(null);
 
-  const fetchSlots = useCallback(async (date: Date) => {
+  const fetchSlots = useCallback(async (date: Date, tz: string) => {
     activeFetchRef.current?.abort();
     const controller = new AbortController();
     activeFetchRef.current = controller;
@@ -102,7 +135,7 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
     const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
     try {
       const res = await fetch(
-        `/api/meetings/availability?token=${token}&date=${dateStr}`,
+        `/api/meetings/availability?token=${token}&date=${dateStr}&timezone=${encodeURIComponent(tz)}`,
         { signal: controller.signal }
       );
       if (controller.signal.aborted) return;
@@ -113,12 +146,12 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
         return;
       }
       const data = await res.json();
-      const tz = data.timezone || meetingType?.availability?.timezone || "UTC";
+      const slotTz = data.timezone || tz;
       setSlots(
         (data.slots || []).map((s: string) => ({
           time: s,
           display: formatSlotTime(s),
-          label: formatSlotWithTz(s, tz, date),
+          label: formatSlotWithTz(s, slotTz, date),
         }))
       );
     } catch (err: unknown) {
@@ -129,16 +162,16 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
         setSlotsLoading(false);
       }
     }
-  }, [token, meetingType?.availability?.timezone]);
+  }, [token]);
 
   useEffect(() => {
     if (selectedDate) {
-      fetchSlots(selectedDate);
+      fetchSlots(selectedDate, displayTimezone);
     }
     return () => {
       activeFetchRef.current?.abort();
     };
-  }, [selectedDate, fetchSlots]);
+  }, [selectedDate, displayTimezone, fetchSlots]);
 
   // ── Calendar navigation ────────────────────────────────────────
   const prevMonth = () => {
@@ -173,6 +206,11 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
   // ── Time slot click ────────────────────────────────────────────
   const handleSelectTime = (time: string) => {
     setSelectedTime(time);
+  };
+
+  // ── Timezone change ────────────────────────────────────────────
+  const handleTimezoneChange = (tz: string) => {
+    setDisplayTimezone(tz);
   };
 
   // ── Back from form ─────────────────────────────────────────────
@@ -244,16 +282,9 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
   // RENDER
   // ═══════════════════════════════════════════════════════════════
 
-  // ── Loading screen ────────────────────────────────────────
+  // ── Loading screen (skeleton matching Cal.com layout) ─────
   if (pageLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading booking page...</p>
-        </div>
-      </div>
-    );
+    return <BookingSkeleton />;
   }
 
   // ── Error screen ──────────────────────────────────────────
@@ -329,38 +360,33 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
   const hasTimeSelected = !!selectedTime;
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      {/* Top bar — Cal.com has overlay/calendar controls here, we skip for now */}
-      <div className="h-12" />
-
-      {/* Main Container */}
-      <div className="max-w-[1100px] mx-auto px-4 pb-12">
+    <div className="min-h-screen bg-background">
+      <div className="max-w-275 mx-auto px-4 py-12 flex min-h-screen flex-col justify-center">
         <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          {/* Desktop: 3 columns (calendar) or 2 columns (form) */}
-          {/* Mobile: stacked single column */}
-
           <div className="flex flex-col md:flex-row">
-            {/* ═══ LEFT PANEL — Always visible ═══ */}
-            <div className={`
-              md:w-[280px] md:min-w-[280px] md:border-r md:border-border
-              ${hasTimeSelected ? "p-6 md:p-8" : "p-6 md:p-8"}
-              bg-muted/20
-            `}>
+            {/* ═══ LEFT PANEL — gets wider in form view (Cal.com pattern) ═══ */}
+            <div
+              className={`
+                border-border p-6 md:p-8 bg-muted/20
+                ${hasTimeSelected ? "md:w-85 md:min-w-85" : "md:w-70 md:min-w-70"}
+                md:border-r
+              `}
+            >
               <BookingInfoPanel
                 meetingType={meetingType}
                 workspaceName={workspaceName}
                 selectedDate={hasTimeSelected ? selectedDate : null}
                 selectedTime={hasTimeSelected ? selectedTime : null}
-                selectedSlot={hasTimeSelected ? slots.find(s => s.time === selectedTime) || null : null}
+                displayTimezone={displayTimezone}
+                onTimezoneChange={handleTimezoneChange}
               />
             </div>
 
-            {/* ═══ RIGHT PANEL — Calendar + Slots or Form ═══ */}
+            {/* ═══ RIGHT PANEL ═══ */}
             <div className="flex-1 p-6 md:p-8">
               {!hasTimeSelected ? (
                 /* Calendar + Time Slots view */
                 <div className="flex flex-col lg:flex-row gap-8">
-                  {/* Calendar */}
                   <div className="flex-1">
                     <BookingCalendar
                       calendarYear={calendarYear}
@@ -373,9 +399,7 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
                       canSelectNextMonth={canSelectNextMonth}
                     />
                   </div>
-
-                  {/* Time Slots */}
-                  <div className="lg:w-[200px] lg:min-w-[200px] lg:border-l lg:border-border lg:pl-6">
+                  <div className="lg:w-[220px] lg:min-w-[220px] lg:border-l lg:border-border lg:pl-6">
                     <BookingTimeSlots
                       selectedDate={selectedDate}
                       slots={slots}
@@ -391,7 +415,7 @@ export function BookingPageClient({ token }: BookingPageClientProps) {
                 <BookingForm
                   meetingType={meetingType}
                   selectedDate={selectedDate!}
-                  selectedSlot={slots.find(s => s.time === selectedTime)!}
+                  selectedSlot={slots.find((s) => s.time === selectedTime)!}
                   onBack={handleBackFromForm}
                   onSubmit={handleBook}
                   booking={booking}
