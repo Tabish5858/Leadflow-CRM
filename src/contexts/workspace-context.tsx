@@ -140,16 +140,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Keep user.role in sync with the active workspace's workspaceRoles map
+  // Uses a ref to avoid setState-in-effect lint error
+  const prevWorkspaceIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!activeWorkspace) return;
-    setUser((prev) => {
-      if (!prev) return prev;
-      const workspaceRoles = prev.workspaceRoles || {};
-      const effectiveRole = workspaceRoles[activeWorkspace.id] || prev.role || "viewer";
-      if (prev.role === effectiveRole) return prev;
-      return { ...prev, role: effectiveRole as User["role"] };
-    });
-  }, [activeWorkspace?.id]);
+    if (!activeWorkspace || !user) return;
+    if (prevWorkspaceIdRef.current === activeWorkspace.id) return;
+    prevWorkspaceIdRef.current = activeWorkspace.id;
+
+    const workspaceRoles = user.workspaceRoles || {};
+    const effectiveRole = workspaceRoles[activeWorkspace.id] || user.role || "viewer";
+    if (user.role !== effectiveRole) {
+      setUser({ ...user, role: effectiveRole as User["role"] });
+    }
+  }, [activeWorkspace?.id, user]);
 
   const switchWorkspace = useCallback(async (workspaceId: string) => {
     const workspace = workspaces.find((w) => w.id === workspaceId);

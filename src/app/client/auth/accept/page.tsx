@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { auth, db } from "@/lib/firebase/client";
 import { toast } from "@/lib/toast";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
+import { doc, setDoc, Timestamp } from "firebase/firestore";
 import { AlertCircle, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -46,16 +46,12 @@ function AcceptClientInviteContent() {
 
   // Fetch invite details
   useEffect(() => {
-    if (!token) {
-      setError("No invitation token provided. Please use the link from your invitation email.");
-      setPageState("error");
-      return;
-    }
+    if (!token) return;
 
     async function fetchInvite() {
-      if (!token) return;
+      const inviteToken: string = token!;
       try {
-        const res = await fetch(`/api/workspaces/clients/check-invite?token=${encodeURIComponent(token)}`);
+        const res = await fetch(`/api/workspaces/clients/check-invite?token=${encodeURIComponent(inviteToken)}`);
         const data = await res.json();
 
         if (!res.ok) {
@@ -290,7 +286,7 @@ function AcceptClientInviteContent() {
               Join {invite?.workspaceName}
             </CardTitle>
             <CardDescription>
-              You've been invited by {invite?.inviterName}
+              You&apos;ve been invited by {invite?.inviterName}
             </CardDescription>
           </CardHeader>
 

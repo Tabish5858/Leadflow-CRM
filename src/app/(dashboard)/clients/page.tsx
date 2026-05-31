@@ -251,7 +251,7 @@ export default function ClientsPage() {
                       </Label>
                       <Textarea
                         id="message"
-                        placeholder="We've set up your client portal..."
+                        placeholder="We&apos;ve set up your client portal..."
                         value={inviteMessage}
                         onChange={(e) => setInviteMessage(e.target.value)}
                         maxLength={500}
