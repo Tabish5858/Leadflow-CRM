@@ -104,8 +104,22 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  const { isPreviewing, previewClientName, previewClientId } = useClientPreview();
+  const { isPreviewing, previewClientName, previewClientId, enterPreview } = useClientPreview();
   const isAuthRoute = pathname?.startsWith("/client/auth") ?? false;
+
+  // Synchronous preview check from sessionStorage (faster than waiting for React state)
+  const [syncPreviewActive] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = sessionStorage.getItem("leadflow_client_portal_preview");
+        if (stored) {
+          const { clientId, clientName } = JSON.parse(stored);
+          return { active: true, clientId, clientName };
+        }
+      } catch { /* ignore */ }
+    }
+    return { active: false, clientId: null as string | null, clientName: "" };
+  });
 
   // Compute visible nav items based on portal settings
   const navItems: NavItem[] = ALL_NAV_ITEMS.filter((item) => {
@@ -136,8 +150,18 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Preview mode: use mock data + saved settings from sessionStorage
-    if (isPreviewing && previewClientId) {
+    // Preview mode: check both React context and sessionStorage directly
+    const previewActive = isPreviewing && previewClientId;
+    const syncPreviewId = syncPreviewActive.active ? syncPreviewActive.clientId : null;
+    const effectivePreviewId = syncPreviewId || (isPreviewing ? previewClientId : null);
+    const effectivePreviewName = syncPreviewActive.clientName || previewClientName;
+
+    if (effectivePreviewId) {
+      // Sync sessionStorage preview state into React context if not already
+      if (syncPreviewActive.active && !isPreviewing) {
+        enterPreview(syncPreviewActive.clientId!, syncPreviewActive.clientName);
+      }
+
       // Try to load preview settings from sessionStorage
       let previewSettings: ClientPortalSettings | null = null;
       if (typeof window !== "undefined") {
@@ -158,8 +182,8 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
         }
       }
       setClientUser({
-        uid: previewClientId,
-        displayName: previewClientName || "Preview Client",
+        uid: effectivePreviewId,
+        displayName: effectivePreviewName || "Preview Client",
         email: "client@preview.local",
         photoURL: null,
         clientWorkspaceId: "preview",
@@ -230,7 +254,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [router, isAuthRoute, isPreviewing, previewClientId, previewClientName]);
+  }, [router, isAuthRoute, isPreviewing, previewClientId, previewClientName, enterPreview]);
 
   const handleLogout = async () => {
     await signOut(auth);

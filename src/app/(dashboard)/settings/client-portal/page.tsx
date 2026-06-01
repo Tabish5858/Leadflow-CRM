@@ -568,12 +568,17 @@ export default function ClientPortalSettingsPage() {
               // Save current draft settings to sessionStorage for preview
               if (typeof window !== "undefined") {
                 sessionStorage.setItem(
+                  "leadflow_client_portal_preview",
+                  JSON.stringify({ clientId: "preview-client", clientName: "Preview Client" })
+                );
+                sessionStorage.setItem(
                   "leadflow_client_portal_preview_settings",
                   JSON.stringify(settings)
                 );
               }
               enterPreview("preview-client", "Preview Client");
-              router.push("/client/dashboard");
+              // Delay navigation to allow React state to propagate
+              setTimeout(() => router.push("/client/dashboard"), 50);
             }}
           >
             <Eye className="mr-2 h-4 w-4" />
@@ -1081,12 +1086,16 @@ export default function ClientPortalSettingsPage() {
                 onClick={() => {
                   if (typeof window !== "undefined") {
                     sessionStorage.setItem(
+                      "leadflow_client_portal_preview",
+                      JSON.stringify({ clientId: "preview-client", clientName: "Preview Client" })
+                    );
+                    sessionStorage.setItem(
                       "leadflow_client_portal_preview_settings",
                       JSON.stringify(settings)
                     );
                   }
                   enterPreview("preview-client", "Preview Client");
-                  router.push("/client/dashboard");
+                  setTimeout(() => router.push("/client/dashboard"), 50);
                 }}
               >
                 <Eye className="mr-2 h-4 w-4" />
