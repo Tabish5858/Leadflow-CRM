@@ -57,6 +57,7 @@ import { useLeadStore } from "@/lib/stores/leadStore";
 import { toast } from "@/lib/toast";
 import type { CustomField, PipelineStage, WorkspaceInvite, WorkspaceMember } from "@/types";
 import {
+  DEFAULT_CLIENT_PERMISSIONS,
   DEFAULT_MEMBER_PERMISSIONS,
   DEFAULT_VIEWER_PERMISSIONS,
   MODULE_LABELS,
@@ -174,10 +175,11 @@ export default function SettingsPage() {
   const [modulePermissions, setModulePermissions] = useState<ModulePermissionsByRole>({
     member: { ...DEFAULT_MEMBER_PERMISSIONS },
     viewer: { ...DEFAULT_VIEWER_PERMISSIONS },
+    client: { ...DEFAULT_CLIENT_PERMISSIONS },
   });
   const [savingPermissions, setSavingPermissions] = useState(false);
 
-  const handleToggleModule = (role: "member" | "viewer", moduleId: ModuleId) => {
+  const handleToggleModule = (role: "member" | "viewer" | "client", moduleId: ModuleId) => {
     setModulePermissions((prev) => ({
       ...prev,
       [role]: { ...prev[role], [moduleId]: !prev[role][moduleId] },
@@ -202,6 +204,7 @@ export default function SettingsPage() {
     setModulePermissions({
       member: { ...DEFAULT_MEMBER_PERMISSIONS },
       viewer: { ...DEFAULT_VIEWER_PERMISSIONS },
+      client: { ...DEFAULT_CLIENT_PERMISSIONS },
     });
   };
 
@@ -1020,7 +1023,7 @@ export default function SettingsPage() {
                 {!isOwner ? (
                   <div className="space-y-4">
                     {/* Read-only view for non-owners */}
-                    {["member", "viewer"]?.map((role) => {
+                    {["member", "viewer", "client"]?.map((role) => {
                       const perms = getEffectivePermissions(
                         activeWorkspace?.modulePermissions || null,
                         role
@@ -1047,10 +1050,10 @@ export default function SettingsPage() {
                 ) : (
                   <div className="space-y-6">
                     {/* Editable view for owners/admins */}
-                    {(["member", "viewer"] as const).map((role) => (
+                    {(["member", "viewer", "client"] as const).map((role) => (
                       <div key={role} className="space-y-3">
                         <h4 className="text-sm font-semibold capitalize">
-                          {role === "member" ? "Member" : "Viewer"} Permissions
+                          {role === "member" ? "Member" : role === "viewer" ? "Viewer" : "Client"} Permissions
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {controlledModuleIds.map((mod) => {
@@ -1076,6 +1079,12 @@ export default function SettingsPage() {
                             );
                           })}
                         </div>
+                        {role === "client" && (
+                          <p className="text-xs text-muted-foreground">
+                            Client permissions control module access via the /client portal. Clients
+                            use a separate portal interface rather than the main dashboard.
+                          </p>
+                        )}
                       </div>
                     ))}
 

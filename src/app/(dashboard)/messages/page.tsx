@@ -1,6 +1,6 @@
 "use client";
 
-import { ConversationList } from "@/components/messages/conversation-list";
+import { ConversationList, type ConversationSection } from "@/components/messages/conversation-list";
 import { CreateMeetingDialog } from "@/components/messages/create-meeting-dialog";
 import { ManageGroupDialog } from "@/components/messages/manage-group-dialog";
 import { MessageInput } from "@/components/messages/message-input";
@@ -698,6 +698,11 @@ export default function MessagesPage() {
     [workspaceMembers]
   );
 
+  const roleMap = useMemo(
+    () => new Map(workspaceMembers.map((m) => [m.userId, m.role])),
+    [workspaceMembers]
+  );
+
   // ─── Filtered data ────────────────────────────────────────────────────
 
   // Only show conversations where the current user is a participant
@@ -714,6 +719,33 @@ export default function MessagesPage() {
       (c.lastMessage || "").toLowerCase().includes(q)
     );
   });
+
+  const conversationSections = useMemo((): ConversationSection[] => {
+    const buckets = { clients: [] as Conversation[], team: [] as Conversation[], admin: [] as Conversation[] };
+
+    for (const conv of filteredConversations) {
+      const otherIds = (conv.participantIds || []).filter((id) => id !== user?.id);
+
+      if (conv.type === "lead") {
+        buckets.clients.push(conv);
+        continue;
+      }
+
+      let cat: "clients" | "team" | "admin" = "team";
+      for (const pid of otherIds) {
+        const r = roleMap.get(pid);
+        if (r === "client") { cat = "clients"; break; }
+        if (r === "owner" || r === "admin") { cat = "admin"; }
+      }
+      buckets[cat].push(conv);
+    }
+
+    return [
+      { key: "clients", label: "Clients", conversations: buckets.clients },
+      { key: "team", label: "Team Members", conversations: buckets.team },
+      { key: "admin", label: "Admin", conversations: buckets.admin },
+    ];
+  }, [filteredConversations, roleMap, user?.id]);
 
   // Members without an existing conversation (exclude current user)
   const membersWithoutConvo = workspaceMembers.filter(
@@ -793,7 +825,7 @@ export default function MessagesPage() {
             {/* List */}
             <div className="flex-1 overflow-y-auto">
               <ConversationList
-                conversations={filteredConversations}
+                sections={conversationSections}
                 members={filteredMembers}
                 selectedId={selected?.id ?? (draftMember ? `member_${draftMember.userId}` : null)}
                 currentUserId={user?.id || ""}

@@ -103,6 +103,7 @@ export type ModulePermissionsMap = Record<ModuleId, boolean>;
 export interface ModulePermissionsByRole {
   member: ModulePermissionsMap;
   viewer: ModulePermissionsMap;
+  client: ModulePermissionsMap;
 }
 
 export const MODULE_LABELS: Record<ModuleId, string> = {
@@ -142,6 +143,19 @@ export const DEFAULT_VIEWER_PERMISSIONS: ModulePermissionsMap = {
   meetings: false,
   settings: true,
   clients: true,
+};
+
+export const DEFAULT_CLIENT_PERMISSIONS: ModulePermissionsMap = {
+  dashboard: false,
+  leads: false,
+  pipeline: false,
+  analytics: false,
+  time_tracker: false,
+  messages: false,
+  automations: false,
+  meetings: false,
+  settings: false,
+  clients: false,
 };
 
 export interface WorkspaceMember {

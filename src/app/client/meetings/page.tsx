@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useClientUser } from "@/contexts/client-user-context";
 import { fetchClientMeetings } from "@/lib/client/client-data";
-import { Calendar, ExternalLink, Video } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Calendar, Video } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { ErrorState, PageHeader, SkeletonList } from "@/components/client/module-layout";
 
@@ -87,7 +87,7 @@ export default function ClientMeetingsPage() {
               </h2>
               <div className="space-y-3">
                 {upcoming.map((meeting) => (
-                  <MeetingCard key={meeting.id} meeting={meeting} />
+                  <MeetingCard key={meeting.id} meeting={meeting} currentEmail={email} />
                 ))}
               </div>
             </section>
@@ -101,7 +101,7 @@ export default function ClientMeetingsPage() {
               </h2>
               <div className="space-y-3">
                 {past.map((meeting) => (
-                  <MeetingCard key={meeting.id} meeting={meeting} past />
+                  <MeetingCard key={meeting.id} meeting={meeting} past currentEmail={email} />
                 ))}
               </div>
             </section>
@@ -115,9 +115,11 @@ export default function ClientMeetingsPage() {
 function MeetingCard({
   meeting,
   past = false,
+  currentEmail,
 }: {
   meeting: Awaited<ReturnType<typeof fetchClientMeetings>>[number];
   past?: boolean;
+  currentEmail?: string;
 }) {
   const isToday =
     meeting.startTime.toDateString() === new Date().toDateString();
@@ -177,14 +179,18 @@ function MeetingCard({
               </Badge>
             </div>
           </div>
-          {meeting.attendees.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-2">
-              With:{" "}
-              {meeting.attendees
-                .map((a) => a.name || a.email)
-                .join(", ")}
-            </p>
-          )}
+          {meeting.attendees.length > 0 && (() => {
+            const others = meeting.attendees.filter(
+              (a) => a.email?.toLowerCase() !== currentEmail?.toLowerCase()
+            );
+            if (others.length === 0) return null;
+            return (
+              <p className="text-xs text-muted-foreground mt-2">
+                With:{" "}
+                {others.map((a) => a.name || a.email).join(", ")}
+              </p>
+            );
+          })()}
         </div>
 
         {/* Join button */}
