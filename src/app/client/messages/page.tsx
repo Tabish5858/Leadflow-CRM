@@ -626,6 +626,7 @@ export default function ClientMessagesPage() {
           workspaceId: clientWorkspaceId,
           participantIds: [uid, contactId],
           participantNames: [displayName, contactName],
+          type: "member",
           createdAt: serverTimestamp(),
           lastMessageAt: serverTimestamp(),
           unreadCount: 0,

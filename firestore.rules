@@ -192,8 +192,13 @@ service cloud.firestore {
     // Conversations (messages module)
     match /conversations/{conversationId} {
       allow read: if isWorkspaceMember(resource.data.workspaceId);
-      allow create: if canWrite(request.resource.data.workspaceId);
-      allow update: if canWrite(resource.data.workspaceId);
+      // Workspace members can create; clients can create where they are a participant
+      allow create: if canWrite(request.resource.data.workspaceId) ||
+        (isClient(request.resource.data.workspaceId) &&
+         request.resource.data.participantIds.hasAny([request.auth.uid]));
+      allow update: if canWrite(resource.data.workspaceId) ||
+        (isClient(resource.data.workspaceId) &&
+         resource.data.participantIds.hasAny([request.auth.uid]));
       allow delete: if canWrite(resource.data.workspaceId);
     }
 

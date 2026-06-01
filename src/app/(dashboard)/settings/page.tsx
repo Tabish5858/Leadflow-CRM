@@ -57,7 +57,6 @@ import { useLeadStore } from "@/lib/stores/leadStore";
 import { toast } from "@/lib/toast";
 import type { CustomField, PipelineStage, WorkspaceInvite, WorkspaceMember } from "@/types";
 import {
-  DEFAULT_CLIENT_PERMISSIONS,
   DEFAULT_MEMBER_PERMISSIONS,
   DEFAULT_VIEWER_PERMISSIONS,
   MODULE_LABELS,
@@ -81,6 +80,7 @@ import {
   Settings,
   Shield,
   Trash2,
+  UserCheck,
   UserCircle,
   UserCog,
   Users,
@@ -88,6 +88,7 @@ import {
   XCircle,
 } from "lucide-react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -104,7 +105,7 @@ const CalendarConnection = dynamic(() => import("@/components/settings/calendar-
   loading: () => <div className="p-8 animate-pulse space-y-4"><div className="h-8 bg-muted rounded w-1/3" /><div className="h-24 bg-muted rounded" /></div>,
 });
 
-type Tab = "profile" | "workspace" | "members" | "pipeline" | "custom-fields" | "permissions" | "preferences" | "integrations";
+type Tab = "profile" | "workspace" | "members" | "pipeline" | "custom-fields" | "permissions" | "preferences" | "integrations" | "client-portal";
 
 export default function SettingsPage() {
   const { user, activeWorkspace, workspaces, switchWorkspace, refreshWorkspaces } = useWorkspace();
@@ -175,11 +176,10 @@ export default function SettingsPage() {
   const [modulePermissions, setModulePermissions] = useState<ModulePermissionsByRole>({
     member: { ...DEFAULT_MEMBER_PERMISSIONS },
     viewer: { ...DEFAULT_VIEWER_PERMISSIONS },
-    client: { ...DEFAULT_CLIENT_PERMISSIONS },
   });
   const [savingPermissions, setSavingPermissions] = useState(false);
 
-  const handleToggleModule = (role: "member" | "viewer" | "client", moduleId: ModuleId) => {
+  const handleToggleModule = (role: "member" | "viewer", moduleId: ModuleId) => {
     setModulePermissions((prev) => ({
       ...prev,
       [role]: { ...prev[role], [moduleId]: !prev[role][moduleId] },
@@ -204,7 +204,6 @@ export default function SettingsPage() {
     setModulePermissions({
       member: { ...DEFAULT_MEMBER_PERMISSIONS },
       viewer: { ...DEFAULT_VIEWER_PERMISSIONS },
-      client: { ...DEFAULT_CLIENT_PERMISSIONS },
     });
   };
 
@@ -520,6 +519,7 @@ export default function SettingsPage() {
     { id: "pipeline", label: "Pipeline", icon: <KanbanSquare className="h-4 w-4" /> },
     { id: "custom-fields", label: "Custom Fields", icon: <ListFilter className="h-4 w-4" /> },
     { id: "permissions", label: "Permissions", icon: <Shield className="h-4 w-4" />, adminOnly: true },
+    { id: "client-portal", label: "Client Portal", icon: <UserCheck className="h-4 w-4" />, adminOnly: true },
     { id: "preferences", label: "Preferences", icon: <Settings className="h-4 w-4" /> },
     { id: "integrations", label: "Integrations", icon: <Plug className="h-4 w-4" /> },
   ];
@@ -1023,7 +1023,7 @@ export default function SettingsPage() {
                 {!isOwner ? (
                   <div className="space-y-4">
                     {/* Read-only view for non-owners */}
-                    {["member", "viewer", "client"]?.map((role) => {
+                    {["member", "viewer"]?.map((role) => {
                       const perms = getEffectivePermissions(
                         activeWorkspace?.modulePermissions || null,
                         role
@@ -1050,10 +1050,10 @@ export default function SettingsPage() {
                 ) : (
                   <div className="space-y-6">
                     {/* Editable view for owners/admins */}
-                    {(["member", "viewer", "client"] as const).map((role) => (
+                    {(["member", "viewer"] as const).map((role) => (
                       <div key={role} className="space-y-3">
                         <h4 className="text-sm font-semibold capitalize">
-                          {role === "member" ? "Member" : role === "viewer" ? "Viewer" : "Client"} Permissions
+                          {role === "member" ? "Member" : "Viewer"} Permissions
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {controlledModuleIds.map((mod) => {
@@ -1079,12 +1079,6 @@ export default function SettingsPage() {
                             );
                           })}
                         </div>
-                        {role === "client" && (
-                          <p className="text-xs text-muted-foreground">
-                            Client permissions control module access via the /client portal. Clients
-                            use a separate portal interface rather than the main dashboard.
-                          </p>
-                        )}
                       </div>
                     ))}
 
@@ -1236,6 +1230,34 @@ export default function SettingsPage() {
         {activeTab === "integrations" && (
           <div className="space-y-6">
             <CalendarConnection />
+          </div>
+        )}
+
+        {/* Client Portal Tab */}
+        {activeTab === "client-portal" && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Client Portal Settings
+                </CardTitle>
+                <CardDescription>
+                  Configure what clients see and can do in their portal.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Manage portal visibility, module access, welcome card, checklist, and more.
+                </p>
+                <Button asChild>
+                  <Link href="/settings/client-portal">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Open Client Portal Settings
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         )}
 

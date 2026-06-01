@@ -77,6 +77,7 @@ function getLeadDisplay(conv: Conversation) {
 interface ConversationListProps {
   sections: ConversationSection[];
   members: WorkspaceMember[];
+  clientMembers: WorkspaceMember[];
   selectedId: string | null;
   currentUserId: string;
   memberMap: Map<string, string>;
@@ -90,6 +91,7 @@ interface ConversationListProps {
 export function ConversationList({
   sections,
   members,
+  clientMembers,
   selectedId,
   currentUserId,
   memberMap,
@@ -276,6 +278,40 @@ export function ConversationList({
           )}
         </div>
       ))}
+
+      {/* ── Client Members without existing conversation ─────────────── */}
+      {clientMembers.length > 0 && (
+        <div className="space-y-px pb-1">
+          {clientMembers.map((member) => {
+            const isSelected = selectedId === `member_${member.userId}`;
+            return (
+              <button
+                key={member.userId}
+                onClick={() => onSelectMember(member)}
+                className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/60 ${
+                  isSelected ? "bg-muted ring-1 ring-inset ring-primary/10" : ""
+                }`}
+              >
+                <Avatar className="h-9 w-9 border shrink-0">
+                  <AvatarFallback className={`text-xs ${
+                    isSelected
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-primary/10 text-primary"
+                  }`}>
+                    {getInitials(member.displayName)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className={`truncate text-sm ${isSelected ? "font-semibold" : "font-medium"}`}>
+                    {member.displayName}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{member.email}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Members Section (without existing conversation) ─────────────── */}
       {members.length > 0 && (

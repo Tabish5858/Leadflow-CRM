@@ -103,7 +103,7 @@ export type ModulePermissionsMap = Record<ModuleId, boolean>;
 export interface ModulePermissionsByRole {
   member: ModulePermissionsMap;
   viewer: ModulePermissionsMap;
-  client: ModulePermissionsMap;
+  client?: ModulePermissionsMap;
 }
 
 export const MODULE_LABELS: Record<ModuleId, string> = {

@@ -720,6 +720,11 @@ export default function MessagesPage() {
     );
   });
 
+  const hasClientsInWorkspace = useMemo(
+    () => workspaceMembers.some((m) => m.role === "client"),
+    [workspaceMembers]
+  );
+
   const conversationSections = useMemo((): ConversationSection[] => {
     const buckets = { clients: [] as Conversation[], team: [] as Conversation[], admin: [] as Conversation[] };
 
@@ -740,12 +745,14 @@ export default function MessagesPage() {
       buckets[cat].push(conv);
     }
 
-    return [
-      { key: "clients", label: "Clients", conversations: buckets.clients },
-      { key: "team", label: "Team Members", conversations: buckets.team },
-      { key: "admin", label: "Admin", conversations: buckets.admin },
-    ];
-  }, [filteredConversations, roleMap, user?.id]);
+    const sections: ConversationSection[] = [];
+    if (hasClientsInWorkspace) {
+      sections.push({ key: "clients", label: "Clients", conversations: buckets.clients });
+    }
+    sections.push({ key: "team", label: "Team Members", conversations: buckets.team });
+    sections.push({ key: "admin", label: "Admin", conversations: buckets.admin });
+    return sections;
+  }, [filteredConversations, roleMap, user?.id, hasClientsInWorkspace]);
 
   // Members without an existing conversation (exclude current user + exclude clients — they have their own section)
   const membersWithoutConvo = workspaceMembers.filter(
@@ -768,6 +775,23 @@ export default function MessagesPage() {
         m.email.toLowerCase().includes(searchQuery.toLowerCase())
     )
     : membersWithoutConvo;
+
+  // Clients without an existing conversation
+  const clientsWithoutConvo = workspaceMembers.filter(
+    (m) =>
+      m.role === "client" &&
+      !myConversations.some(
+        (c) => c.participantIds?.includes(m.userId)
+      )
+  );
+
+  const filteredClients = searchQuery
+    ? clientsWithoutConvo.filter(
+      (m) =>
+        m.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.email.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    : clientsWithoutConvo;
 
   // ─── Toggle reaction ──────────────────────────────────────────────────
 
@@ -828,6 +852,7 @@ export default function MessagesPage() {
               <ConversationList
                 sections={conversationSections}
                 members={filteredMembers}
+                clientMembers={filteredClients}
                 selectedId={selected?.id ?? (draftMember ? `member_${draftMember.userId}` : null)}
                 currentUserId={user?.id || ""}
                 memberMap={memberMap}
