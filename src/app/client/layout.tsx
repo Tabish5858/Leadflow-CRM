@@ -2,7 +2,9 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ClientUserProvider } from "@/contexts/client-user-context";
 import type { ClientUserData } from "@/contexts/client-user-context";
 import { auth, db } from "@/lib/firebase/client";
@@ -13,17 +15,22 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import {
   Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  File,
   FileText,
   FolderKanban,
   LayoutDashboard,
   LogOut,
   Menu,
   MessageSquare,
-  Clock,
+  Moon,
   Settings,
-  File,
+  Sun,
   X,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
@@ -34,7 +41,6 @@ interface ClientUser {
   displayName: string;
   email: string;
   photoURL: string | null;
-  /** Workspace ID where user has "client" role */
   clientWorkspaceId: string;
   workspaceName: string;
 }
@@ -57,54 +63,70 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { href: "/client/settings", label: "Settings", icon: Settings },
 ];
 
-function NavSkeleton() {
+function SidebarSkeleton() {
   return (
-    <div className="flex h-screen flex-col">
-      <header className="flex h-16 items-center justify-between border-b bg-background px-4 lg:px-6">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-8 w-8 rounded-lg" />
-          <Skeleton className="h-5 w-32" />
-        </div>
-        <div className="flex items-center gap-3">
+    <aside className="flex w-64 flex-col border-r bg-card">
+      <div className="flex h-16 items-center gap-3 px-6">
+        <Skeleton className="h-8 w-8 rounded-lg" />
+        <Skeleton className="h-5 w-24" />
+      </div>
+      <Separator />
+      <nav className="flex-1 space-y-1 p-3">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3 rounded-md px-3 py-2">
+            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-20" />
+          </div>
+        ))}
+      </nav>
+      <Separator />
+      <div className="p-3 space-y-2">
+        <div className="flex items-center gap-3 px-3 py-2">
           <Skeleton className="h-8 w-8 rounded-full" />
+          <div className="flex-1 space-y-1">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-3 w-32" />
+          </div>
         </div>
-      </header>
-      <main className="flex-1 overflow-auto p-4 sm:p-6">
-        <Skeleton className="h-8 w-48 mb-6" />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full" />
-          ))}
-        </div>
-      </main>
-    </div>
+      </div>
+    </aside>
   );
 }
 
 function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
   const [clientUser, setClientUser] = useState<ClientUser | null>(null);
   const [portalSettings, setPortalSettings] = useState<ClientPortalSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const isAuthRoute = pathname?.startsWith("/client/auth") ?? false;
 
   // Compute visible nav items based on portal settings
   const navItems: NavItem[] = ALL_NAV_ITEMS.filter((item) => {
-    // Dashboard and Settings always shown
-    if (!item.moduleKey) return true;
-    // If settings not loaded yet, show all (Dashboard is default)
-    if (!portalSettings) return true;
-    // Otherwise, respect the module toggle
+    if (!item.moduleKey) return true; // Dashboard and Settings always shown
+    if (!portalSettings) return true; // Default to showing all until settings load
     return portalSettings.modules[item.moduleKey] !== false;
   });
 
+  // Persist sidebar state
+  useEffect(() => {
+    const saved = localStorage.getItem("leadflow_client_sidebar_collapsed");
+    if (saved !== null) {
+      setSidebarCollapsed(saved === "true");
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("leadflow_client_sidebar_collapsed", String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
+  // Auth + user data loading
   useEffect(() => {
     if (isAuthRoute) {
-      // Auth routes (accept page) — accessible without authentication.
-      // The page component handles its own auth state internally.
       setLoading(false);
       return;
     }
@@ -127,20 +149,17 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
         const userData = userSnap.data();
         const workspaceRoles: Record<string, string> = userData.workspaceRoles || {};
 
-        // Find a workspace where the user has "client" role
         const clientEntry = Object.entries(workspaceRoles).find(
           ([_, role]) => role === "client"
         );
 
         if (!clientEntry) {
-          // Not a client — redirect to dashboard
           router.push("/dashboard");
           return;
         }
 
         const [clientWorkspaceId] = clientEntry;
 
-        // Fetch workspace name + portal settings in parallel
         const [workspaceSnap, settingsSnap] = await Promise.all([
           getDoc(doc(db, "workspaces", clientWorkspaceId)),
           getDoc(doc(db, "client_portal_settings", clientWorkspaceId)),
@@ -150,7 +169,6 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
           ? (workspaceSnap.data().name || "Workspace")
           : "Workspace";
 
-        // Load portal settings (use defaults if none exist)
         if (settingsSnap.exists()) {
           setPortalSettings(settingsSnap.data() as ClientPortalSettings);
         } else {
@@ -165,8 +183,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
           clientWorkspaceId,
           workspaceName,
         });
-      } catch (error) {
-        console.error("Client auth error:", error);
+      } catch {
         router.push("/login");
       } finally {
         setLoading(false);
@@ -176,11 +193,6 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, [router, isAuthRoute]);
 
-  // Auth routes — render children directly without header/nav
-  if (isAuthRoute) {
-    return <>{children}</>;
-  }
-
   const handleLogout = async () => {
     await signOut(auth);
     router.push("/login");
@@ -188,117 +200,298 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
 
   const currentPage = navItems.find((item) => pathname.startsWith(item.href));
 
-  if (loading) return <NavSkeleton />;
+  // Auth routes: render without sidebar
+  if (isAuthRoute) {
+    return <>{children}</>;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen">
+        <SidebarSkeleton />
+        <main className="flex-1 overflow-auto">
+          <div className="p-6 space-y-6">
+            <Skeleton className="h-8 w-48" />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-32 w-full" />
+              ))}
+            </div>
+            <Skeleton className="h-96 w-full" />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (!clientUser) return null;
 
   return (
     <ClientUserProvider clientUser={clientUser}>
-    <div className="flex h-screen flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm lg:px-6">
-        <div className="flex items-center gap-3">
-          {/* Mobile menu button */}
-          <button
-            className="lg:hidden"
-            onClick={() => setMobileOpen((prev) => !prev)}
-            aria-label="Toggle navigation menu"
-          >
-            {mobileOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </button>
-
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-sm shadow-sm">
-              LF
-            </div>
-            <span className="hidden text-lg font-bold tracking-tight sm:inline">
-              {clientUser.workspaceName}
-            </span>
-          </div>
-
-          {/* Desktop nav */}
-          <nav className="hidden lg:flex items-center gap-1 ml-6">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-destructive"
-            onClick={handleLogout}
-            title="Sign Out"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
-
-          <Avatar className="h-8 w-8 border">
-            <AvatarImage src={clientUser.photoURL || undefined} />
-            <AvatarFallback className="text-xs bg-primary/10 text-primary">
-              {clientUser.displayName.charAt(0) || "C"}
-            </AvatarFallback>
-          </Avatar>
-        </div>
-      </header>
-
-      {/* Mobile nav overlay */}
-      {mobileOpen && (
-        <>
+      <div className="flex h-screen">
+        {/* Mobile overlay */}
+        {mobileOpen && (
           <div
-            className="fixed inset-0 z-20 bg-black/50 lg:hidden"
+            className="fixed inset-0 z-40 bg-black/50 lg:hidden"
             onClick={() => setMobileOpen(false)}
           />
-          <nav className="fixed left-0 top-16 z-20 flex w-64 flex-col border-r bg-card p-4 shadow-lg lg:hidden">
+        )}
+
+        {/* Sidebar */}
+        <aside
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-all duration-200 lg:static lg:translate-x-0",
+            mobileOpen ? "translate-x-0" : "-translate-x-full",
+            sidebarCollapsed ? "lg:w-20" : "lg:w-64"
+          )}
+        >
+          {/* Logo + Controls */}
+          <div
+            className={cn(
+              "flex h-16 items-center justify-between gap-3 px-6",
+              sidebarCollapsed && "px-4"
+            )}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-sm shadow-sm">
+                LF
+              </div>
+              {!sidebarCollapsed && (
+                <span className="text-lg font-bold tracking-tight truncate">
+                  {clientUser.workspaceName}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="hidden lg:inline-flex"
+                    onClick={() => setSidebarCollapsed((prev) => !prev)}
+                    aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  >
+                    {sidebarCollapsed ? (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="lg:hidden"
+                    onClick={() => setMobileOpen(false)}
+                    aria-label="Close menu"
+                  >
+                    <X className="h-5 w-5 text-muted-foreground" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent><p>Close menu</p></TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Navigation */}
+          <nav
+            className={cn(
+              "flex-1 space-y-0.5 overflow-y-auto p-3",
+              sidebarCollapsed && "px-2"
+            )}
+          >
             {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              return (
+              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+
+              const linkContent = (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all",
+                    sidebarCollapsed && "justify-center px-2",
                     isActive
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                   )}
                 >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  {!sidebarCollapsed && (
+                    <>
+                      <span className="flex-1 truncate">{item.label}</span>
+                      {isActive && (
+                        <ChevronRight className="h-3.5 w-3.5 text-primary shrink-0" />
+                      )}
+                    </>
+                  )}
                 </Link>
               );
+
+              if (sidebarCollapsed) {
+                return (
+                  <Tooltip key={item.href}>
+                    <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p>{item.label}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+
+              return linkContent;
             })}
           </nav>
-        </>
-      )}
 
-      {/* Page content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-4 page-enter sm:p-6">{children}</div>
-      </main>
-    </div>
+          <Separator />
+
+          {/* Footer — user info + theme + logout */}
+          <div className={cn("p-3 space-y-2", sidebarCollapsed && "px-2")}>
+            {/* User info */}
+            <div
+              className={cn(
+                "flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2",
+                sidebarCollapsed && "justify-center px-2"
+              )}
+              title={sidebarCollapsed ? clientUser.displayName : undefined}
+            >
+              <Avatar className="h-8 w-8 border shrink-0">
+                <AvatarImage src={clientUser.photoURL || undefined} />
+                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                  {clientUser.displayName.charAt(0) || "C"}
+                </AvatarFallback>
+              </Avatar>
+              {!sidebarCollapsed && (
+                <div className="flex-1 overflow-hidden">
+                  <p className="truncate text-sm font-medium">
+                    {clientUser.displayName}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {clientUser.email}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-1">
+              {/* Theme toggle */}
+              {sidebarCollapsed ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                      className="flex h-9 w-full items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                      aria-label={theme === "dark" ? "Light Mode" : "Dark Mode"}
+                    >
+                      {theme === "dark" ? (
+                        <Sun className="h-4 w-4" />
+                      ) : (
+                        <Moon className="h-4 w-4" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>{theme === "dark" ? "Light Mode" : "Dark Mode"}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+                >
+                  {theme === "dark" ? (
+                    <Sun className="h-4 w-4" />
+                  ) : (
+                    <Moon className="h-4 w-4" />
+                  )}
+                  {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                </button>
+              )}
+
+              {/* Sign out */}
+              {sidebarCollapsed ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-full text-muted-foreground hover:text-destructive"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>Sign Out</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
+                </Button>
+              )}
+            </div>
+          </div>
+        </aside>
+
+        {/* Main content */}
+        <main className="flex flex-1 flex-col overflow-hidden">
+          {/* Header */}
+          <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm lg:px-6">
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="lg:hidden"
+                    onClick={() => setMobileOpen(true)}
+                    aria-label="Open navigation menu"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent><p>Open menu</p></TooltipContent>
+              </Tooltip>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="hidden sm:inline font-medium text-foreground">
+                  {clientUser.workspaceName}
+                </span>
+                <ChevronRight className="h-3.5 w-3.5 hidden sm:inline" />
+                <span className="font-medium text-foreground">
+                  {currentPage?.label || "Dashboard"}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-8 w-8 border sm:hidden">
+                <AvatarImage src={clientUser.photoURL || undefined} />
+                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                  {clientUser.displayName.charAt(0) || "C"}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </header>
+
+          {/* Page content */}
+          <div className="flex-1 overflow-auto">
+            <div className="p-4 page-enter sm:p-6">{children}</div>
+          </div>
+        </main>
+      </div>
     </ClientUserProvider>
   );
 }
