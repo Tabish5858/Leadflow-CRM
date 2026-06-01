@@ -6,15 +6,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useClientUser } from "@/contexts/client-user-context";
 import { fetchClientMeetings } from "@/lib/client/client-data";
 import { Calendar, ExternalLink, Video } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ErrorState, PageHeader, SkeletonList } from "@/components/client/module-layout";
 
 export default function ClientMeetingsPage() {
   const { clientWorkspaceId, email } = useClientUser();
-  const [meetings, setMeetings] = useState<
+  const [allMeetings, setAllMeetings] = useState<
     Awaited<ReturnType<typeof fetchClientMeetings>>
   >([]);
+  const [upcoming, setUpcoming] = useState<typeof allMeetings>([]);
+  const [past, setPast] = useState<typeof allMeetings>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -22,22 +24,22 @@ export default function ClientMeetingsPage() {
     if (!clientWorkspaceId || !email) return;
     setLoading(true);
     fetchClientMeetings(clientWorkspaceId, email, 100)
-      .then(setMeetings)
+      .then((data) => {
+        setAllMeetings(data);
+        // Split into upcoming/past once
+        const now = Date.now();
+        const up: typeof data = [];
+        const pa: typeof data = [];
+        for (const m of data) {
+          if (m.startTime.getTime() >= now) up.push(m);
+          else pa.push(m);
+        }
+        setUpcoming(up);
+        setPast(pa);
+      })
       .catch((e) => setError(e))
       .finally(() => setLoading(false));
   }, [clientWorkspaceId, email]);
-
-  const nowRef = useRef(Date.now());
-  const { upcoming, past } = useMemo(() => {
-    const now = nowRef.current;
-    const up: typeof meetings = [];
-    const pa: typeof meetings = [];
-    for (const m of meetings) {
-      if (m.startTime.getTime() >= now) up.push(m);
-      else pa.push(m);
-    }
-    return { upcoming: up, past: pa };
-  }, [meetings]);
 
   if (error) {
     return (
@@ -64,7 +66,7 @@ export default function ClientMeetingsPage() {
 
       {loading ? (
         <SkeletonList count={4} height="h-20" />
-      ) : meetings.length === 0 ? (
+      ) : allMeetings.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <Calendar className="h-12 w-12 text-muted-foreground/30 mb-4" />
