@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -170,11 +170,13 @@ function MessageThread({
   conversationId,
   userId,
   displayName,
+  workspaceId,
   onBack,
 }: {
   conversationId: string;
   userId: string;
   displayName: string;
+  workspaceId: string;
   onBack: () => void;
 }) {
   const [messages, setMessages] = useState<ClientMessage[]>([]);
@@ -257,7 +259,7 @@ function MessageThread({
       const msgsRef = collection(db, "messages");
       const docRef = await addDoc(msgsRef, {
         conversationId,
-        workspaceId: "",
+        workspaceId,
         senderId: userId,
         senderName: displayName,
         body: text,
@@ -555,9 +557,9 @@ function NewMessageDialog({
   );
 }
 
-// ─── Main Page ───────────────────────────────────────────────────────────────
+// ─── Main Page Content (wrapped in Suspense) ────────────────────────────────
 
-export default function ClientMessagesPage() {
+function ClientMessagesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { clientWorkspaceId, uid, displayName } = useClientUser();
@@ -566,23 +568,34 @@ export default function ClientMessagesPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const conversationId = searchParams.get("conversation");
+  // Use React state for selected conversation (not URL-dependent)
+  const initialConvId = searchParams.get("conversation");
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConvId);
 
-  // Fetch conversations where client is a participant
+  // Sync URL when selection changes (for bookmarking), without causing re-render
+  useEffect(() => {
+    if (selectedConversationId) {
+      router.replace(`/client/messages?conversation=${selectedConversationId}`, { scroll: false });
+    } else {
+      router.replace("/client/messages", { scroll: false });
+    }
+  }, [selectedConversationId, router]);
+
+  // Real-time conversations where client is a participant
   useEffect(() => {
     if (!clientWorkspaceId || !uid) return;
 
-    (async () => {
-      try {
-        const convRef = collection(db, "conversations");
-        const q = query(
-          convRef,
-          where("workspaceId", "==", clientWorkspaceId),
-          orderBy("lastMessageAt", "desc"),
-          limit(50)
-        );
-        const snap = await getDocs(q);
+    const convRef = collection(db, "conversations");
+    const q = query(
+      convRef,
+      where("workspaceId", "==", clientWorkspaceId),
+      orderBy("lastMessageAt", "desc"),
+      limit(50)
+    );
 
+    const unsubscribe = onSnapshot(
+      q,
+      (snap) => {
         const filtered = snap.docs
           .map((d) => {
             const data = d.data() as Conversation;
@@ -598,24 +611,27 @@ export default function ClientMessagesPage() {
           .filter((c) => c.participantIds.includes(uid));
 
         setConversations(filtered);
-      } catch {
+        setLoading(false);
+      },
+      () => {
         setConversations([]);
-      } finally {
         setLoading(false);
       }
-    })();
+    );
+
+    return unsubscribe;
   }, [clientWorkspaceId, uid]);
 
   const selectConversation = useCallback(
     (id: string) => {
-      router.push(`/client/messages?conversation=${id}`);
+      setSelectedConversationId(id);
     },
-    [router]
+    []
   );
 
   const goBackToList = useCallback(() => {
-    router.push("/client/messages");
-  }, [router]);
+    setSelectedConversationId(null);
+  }, []);
 
   const handleSelectContact = useCallback(
     async (contactId: string, contactName: string) => {
@@ -627,16 +643,17 @@ export default function ClientMessagesPage() {
           participantIds: [uid, contactId],
           participantNames: [displayName, contactName],
           type: "member",
+          lastMessage: "",
           createdAt: serverTimestamp(),
           lastMessageAt: serverTimestamp(),
           unreadCount: 0,
         });
-        router.push(`/client/messages?conversation=${convId}`);
+        setSelectedConversationId(convId);
       } catch {
         toast.error("Failed to create conversation");
       }
     },
-    [clientWorkspaceId, uid, displayName, router]
+    [clientWorkspaceId, uid, displayName]
   );
 
   return (
@@ -646,7 +663,7 @@ export default function ClientMessagesPage() {
         <div
           className={cn(
             "w-full lg:w-80 lg:border-r flex flex-col",
-            conversationId && "hidden lg:flex"
+            selectedConversationId && "hidden lg:flex"
           )}
         >
           <div className="border-b px-4 py-3">
@@ -696,7 +713,7 @@ export default function ClientMessagesPage() {
             ) : (
               <ConversationList
                 conversations={conversations}
-                selectedId={conversationId}
+                selectedId={selectedConversationId}
                 userId={uid}
                 onSelect={selectConversation}
               />
@@ -708,14 +725,15 @@ export default function ClientMessagesPage() {
         <div
           className={cn(
             "flex-1 flex flex-col",
-            !conversationId && "hidden lg:flex"
+            !selectedConversationId && "hidden lg:flex"
           )}
         >
-          {conversationId ? (
+          {selectedConversationId ? (
             <MessageThread
-              conversationId={conversationId}
+              conversationId={selectedConversationId}
               userId={uid}
               displayName={displayName}
+              workspaceId={clientWorkspaceId}
               onBack={goBackToList}
             />
           ) : (
@@ -740,5 +758,22 @@ export default function ClientMessagesPage() {
         onSelectContact={handleSelectContact}
       />
     </div>
+  );
+}
+
+// ─── Main Page Export — wrapped in Suspense for useSearchParams ─────────────
+
+export default function ClientMessagesPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-[calc(100vh-8rem)] -m-4 sm:-m-6 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Loading messages...</p>
+        </div>
+      </div>
+    }>
+      <ClientMessagesContent />
+    </Suspense>
   );
 }
