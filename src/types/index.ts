@@ -495,6 +495,72 @@ export interface AuditFilters {
   leadSearch?: string;
 }
 
+// ─── Project ─────────────────────────────────────────────────────────────────
+
+export type ProjectStatus = "active" | "completed" | "on_hold" | "cancelled";
+
+export interface Project {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description: string | null;
+  status: ProjectStatus;
+  /** User IDs of assigned clients */
+  clients: string[];
+  /** Lead ID this project is associated with (optional) */
+  leadId: string | null;
+  startDate: Timestamp | null;
+  dueDate: Timestamp | null;
+  completedDate: Timestamp | null;
+  /** Progress percentage 0–100 */
+  progress: number;
+  priority: "low" | "medium" | "high" | "urgent";
+  /** Budget / contract value */
+  budget: number | null;
+  currency: string;
+  createdBy: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+// ─── Invoice ─────────────────────────────────────────────────────────────────
+
+export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled" | "partial";
+
+export interface InvoiceLineItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface Invoice {
+  id: string;
+  workspaceId: string;
+  /** Client user ID */
+  clientId: string;
+  /** Project ID this invoice belongs to (optional) */
+  projectId: string | null;
+  invoiceNumber: string;
+  status: InvoiceStatus;
+  issueDate: Timestamp;
+  dueDate: Timestamp;
+  paidDate: Timestamp | null;
+  lineItems: InvoiceLineItem[];
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+  currency: string;
+  /** Notes visible to client */
+  notes: string | null;
+  /** URL to PDF version */
+  pdfUrl: string | null;
+  createdBy: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
 // ─── Client Portal Settings ──────────────────────────────────────────────────
 
 export interface ClientPortalSettings {

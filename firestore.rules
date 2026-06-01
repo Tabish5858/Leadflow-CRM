@@ -162,9 +162,14 @@ service cloud.firestore {
     // Time entries
     match /timeEntries/{entryId} {
       allow read: if isWorkspaceMember(resource.data.workspaceId);
-      allow create: if canWrite(request.resource.data.workspaceId);
-      allow update: if canWrite(resource.data.workspaceId) &&
-        resource.data.userId == request.auth.uid;
+      // Workspace members + clients can create their own entries
+      allow create: if canWrite(request.resource.data.workspaceId) ||
+        (isClient(request.resource.data.workspaceId) &&
+         request.resource.data.userId == request.auth.uid);
+      // Workspace members can update any; clients can update only their own
+      allow update: if canWrite(resource.data.workspaceId) ||
+        (isClient(resource.data.workspaceId) &&
+         resource.data.userId == request.auth.uid);
       allow delete: if hasRole(resource.data.workspaceId, 'admin') ||
         getWorkspace(resource.data.workspaceId).ownerId == request.auth.uid;
     }
@@ -195,7 +200,10 @@ service cloud.firestore {
     // Messages
     match /messages/{messageId} {
       allow read: if isWorkspaceMember(resource.data.workspaceId);
-      allow create: if canWrite(request.resource.data.workspaceId);
+      // Workspace members can create; clients can create where they are the sender
+      allow create: if canWrite(request.resource.data.workspaceId) ||
+        (isClient(request.resource.data.workspaceId) &&
+         request.resource.data.senderId == request.auth.uid);
       allow update: if canWrite(resource.data.workspaceId);
       allow delete: if canWrite(resource.data.workspaceId);
     }
@@ -245,6 +253,26 @@ service cloud.firestore {
     match /email_events/{eventId} {
       allow read: if isWorkspaceMember(resource.data.workspaceId);
       allow create: if true;  // Public tracking endpoints
+    }
+
+    // ─── Phase 3: Client-facing collections ──────────────────────────────────
+
+    // Projects
+    match /projects/{projectId} {
+      allow read: if isWorkspaceMember(resource.data.workspaceId);
+      allow create: if canWrite(request.resource.data.workspaceId);
+      allow update: if canWrite(resource.data.workspaceId);
+      allow delete: if hasRole(resource.data.workspaceId, 'admin') ||
+        getWorkspace(resource.data.workspaceId).ownerId == request.auth.uid;
+    }
+
+    // Invoices
+    match /invoices/{invoiceId} {
+      allow read: if isWorkspaceMember(resource.data.workspaceId);
+      allow create: if canWrite(request.resource.data.workspaceId);
+      allow update: if canWrite(resource.data.workspaceId);
+      allow delete: if hasRole(resource.data.workspaceId, 'admin') ||
+        getWorkspace(resource.data.workspaceId).ownerId == request.auth.uid;
     }
 
     // Calendar Tokens (subcollection under users)

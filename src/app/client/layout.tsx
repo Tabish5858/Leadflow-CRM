@@ -7,12 +7,21 @@ import { ClientUserProvider } from "@/contexts/client-user-context";
 import type { ClientUserData } from "@/contexts/client-user-context";
 import { auth, db } from "@/lib/firebase/client";
 import { cn } from "@/lib/utils";
+import type { ClientPortalSettings } from "@/types";
+import { DEFAULT_CLIENT_PORTAL_SETTINGS } from "@/types";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import {
+  Calendar,
+  FileText,
+  FolderKanban,
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageSquare,
+  Clock,
+  Settings,
+  File,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,8 +39,22 @@ interface ClientUser {
   workspaceName: string;
 }
 
-const navItems = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  moduleKey?: keyof ClientPortalSettings["modules"];
+}
+
+const ALL_NAV_ITEMS: NavItem[] = [
   { href: "/client/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/client/projects", label: "Projects", icon: FolderKanban, moduleKey: "projects" },
+  { href: "/client/messages", label: "Messages", icon: MessageSquare, moduleKey: "messages" },
+  { href: "/client/meetings", label: "Meetings", icon: Calendar, moduleKey: "meetings" },
+  { href: "/client/invoices", label: "Invoices", icon: FileText, moduleKey: "invoices" },
+  { href: "/client/documents", label: "Documents", icon: File, moduleKey: "documents" },
+  { href: "/client/time-tracker", label: "Time Tracker", icon: Clock, moduleKey: "time_tracking" },
+  { href: "/client/settings", label: "Settings", icon: Settings },
 ];
 
 function NavSkeleton() {
@@ -62,10 +85,21 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [clientUser, setClientUser] = useState<ClientUser | null>(null);
+  const [portalSettings, setPortalSettings] = useState<ClientPortalSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isAuthRoute = pathname?.startsWith("/client/auth") ?? false;
+
+  // Compute visible nav items based on portal settings
+  const navItems: NavItem[] = ALL_NAV_ITEMS.filter((item) => {
+    // Dashboard and Settings always shown
+    if (!item.moduleKey) return true;
+    // If settings not loaded yet, show all (Dashboard is default)
+    if (!portalSettings) return true;
+    // Otherwise, respect the module toggle
+    return portalSettings.modules[item.moduleKey] !== false;
+  });
 
   useEffect(() => {
     if (isAuthRoute) {
@@ -106,11 +140,22 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
 
         const [clientWorkspaceId] = clientEntry;
 
-        // Fetch workspace name
-        const workspaceSnap = await getDoc(doc(db, "workspaces", clientWorkspaceId));
+        // Fetch workspace name + portal settings in parallel
+        const [workspaceSnap, settingsSnap] = await Promise.all([
+          getDoc(doc(db, "workspaces", clientWorkspaceId)),
+          getDoc(doc(db, "client_portal_settings", clientWorkspaceId)),
+        ]);
+
         const workspaceName = workspaceSnap.exists()
           ? (workspaceSnap.data().name || "Workspace")
           : "Workspace";
+
+        // Load portal settings (use defaults if none exist)
+        if (settingsSnap.exists()) {
+          setPortalSettings(settingsSnap.data() as ClientPortalSettings);
+        } else {
+          setPortalSettings(DEFAULT_CLIENT_PORTAL_SETTINGS as ClientPortalSettings);
+        }
 
         setClientUser({
           uid: firebaseUser.uid,

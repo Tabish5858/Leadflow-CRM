@@ -1,0 +1,220 @@
+"use client";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useClientUser } from "@/contexts/client-user-context";
+import { fetchClientInvoices } from "@/lib/client/client-data";
+import type { InvoiceSummary } from "@/lib/client/client-data";
+import { cn } from "@/lib/utils";
+import { FileText, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+
+import {
+  ErrorState,
+  PageHeader,
+  SkeletonList,
+} from "@/components/client/module-layout";
+
+const STATUS_STYLES: Record<string, string> = {
+  paid: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+  sent: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  overdue: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  draft: "bg-muted text-muted-foreground",
+  cancelled: "bg-muted text-muted-foreground",
+  partial: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+};
+
+function formatCurrency(amount: number, currency: string) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency || "USD",
+  }).format(amount);
+}
+
+export default function ClientInvoicesPage() {
+  const { clientWorkspaceId, uid } = useClientUser();
+  const [invoices, setInvoices] = useState<InvoiceSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  useEffect(() => {
+    if (!clientWorkspaceId || !uid) return;
+    setLoading(true);
+    fetchClientInvoices(clientWorkspaceId, uid, 100)
+      .then(setInvoices)
+      .catch((e) => setError(e))
+      .finally(() => setLoading(false));
+  }, [clientWorkspaceId, uid]);
+
+  const filtered = useMemo(() => {
+    if (statusFilter === "all") return invoices;
+    return invoices.filter((inv) => inv.status === statusFilter);
+  }, [invoices, statusFilter]);
+
+  const totalOutstanding = useMemo(
+    () =>
+      invoices
+        .filter((inv) => inv.status === "sent" || inv.status === "overdue" || inv.status === "partial")
+        .reduce((sum, inv) => sum + inv.total, 0),
+    [invoices]
+  );
+
+  if (error) {
+    return (
+      <div>
+        <PageHeader title="Invoices" />
+        <ErrorState
+          message={error.message}
+          onRetry={() => window.location.reload()}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <PageHeader
+        title="Invoices"
+        description={
+          loading
+            ? "Loading..."
+            : `${invoices.length} invoice${invoices.length !== 1 ? "s" : ""}`
+        }
+      />
+
+      {/* Summary cards */}
+      {!loading && invoices.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-3 mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground mb-1">Total Invoices</p>
+              <p className="text-2xl font-bold">{invoices.length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground mb-1">Paid</p>
+              <p className="text-2xl font-bold text-green-600">
+                {formatCurrency(
+                  invoices
+                    .filter((inv) => inv.status === "paid")
+                    .reduce((sum, inv) => sum + inv.total, 0),
+                  "USD"
+                )}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-xs text-muted-foreground mb-1">Outstanding</p>
+              <p className="text-2xl font-bold text-red-600">
+                {formatCurrency(totalOutstanding, "USD")}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Filter */}
+      {!loading && invoices.length > 0 && (
+        <div className="mb-4">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="sent">Sent</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="partial">Partial</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* List */}
+      {loading ? (
+        <SkeletonList count={4} height="h-24" />
+      ) : filtered.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <FileText className="h-12 w-12 text-muted-foreground/30 mb-4" />
+            <h3 className="text-lg font-semibold">
+              {statusFilter !== "all"
+                ? "No invoices match this filter"
+                : "No invoices yet"}
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {statusFilter !== "all"
+                ? "Try a different filter."
+                : "Invoices will appear here once issued."}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((inv) => (
+            <Link
+              key={inv.id}
+              href={`/client/invoices/${inv.id}`}
+              className="block"
+            >
+              <Card className="transition-all hover:border-primary/50 hover:shadow-sm">
+                <CardContent className="flex items-center justify-between p-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="font-semibold text-sm">
+                        {inv.invoiceNumber}
+                      </h3>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-[10px] px-1.5 py-0",
+                          STATUS_STYLES[inv.status] || ""
+                        )}
+                      >
+                        {inv.status}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Issued{" "}
+                      {inv.issueDate.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}{" "}
+                      · Due{" "}
+                      {inv.dueDate.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0 ml-4">
+                    <p className="text-lg font-bold">
+                      {formatCurrency(inv.total, inv.currency)}
+                    </p>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground ml-auto" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
