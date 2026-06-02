@@ -96,7 +96,8 @@ export type ModuleId =
   | "automations"
   | "meetings"
   | "settings"
-  | "clients";
+  | "clients"
+  | "projects";
 
 export type ModulePermissionsMap = Record<ModuleId, boolean>;
 
@@ -117,6 +118,7 @@ export const MODULE_LABELS: Record<ModuleId, string> = {
   meetings: "Meetings",
   settings: "Settings",
   clients: "Clients",
+  projects: "Projects",
 } as const;
 
 export const DEFAULT_MEMBER_PERMISSIONS: ModulePermissionsMap = {
@@ -129,7 +131,8 @@ export const DEFAULT_MEMBER_PERMISSIONS: ModulePermissionsMap = {
   automations: false,
   meetings: true,
   settings: true,
-  clients: true,
+  clients: false,
+  projects: true,
 };
 
 export const DEFAULT_VIEWER_PERMISSIONS: ModulePermissionsMap = {
@@ -143,6 +146,7 @@ export const DEFAULT_VIEWER_PERMISSIONS: ModulePermissionsMap = {
   meetings: false,
   settings: true,
   clients: true,
+  projects: true,
 };
 
 export const DEFAULT_CLIENT_PERMISSIONS: ModulePermissionsMap = {
@@ -156,6 +160,7 @@ export const DEFAULT_CLIENT_PERMISSIONS: ModulePermissionsMap = {
   meetings: false,
   settings: false,
   clients: false,
+  projects: false,
 };
 
 export interface WorkspaceMember {

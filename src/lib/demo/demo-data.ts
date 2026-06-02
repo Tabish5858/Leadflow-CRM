@@ -9,6 +9,7 @@ import type {
   Notification,
   Activity,
   Meeting,
+  Project,
   PipelineStage,
 } from "@/types";
 
@@ -844,21 +845,88 @@ export class DemoStore {
     ];
   }
 
-  getProjects() {
-    return [
-      {
-        id: "demo-project-001",
-        name: "TechSphere Onboarding",
-        clients: ["demo-client-001"],
-        status: "active" as const,
-      },
-      {
-        id: "demo-project-002",
-        name: "GreenLeaf Analytics Suite",
-        clients: ["demo-client-001", "demo-client-002"],
-        status: "active" as const,
-      },
-    ];
+  private _projects: Project[] = [
+    {
+      id: "demo-project-001",
+      workspaceId: "demo-workspace",
+      name: "TechSphere Onboarding",
+      description: "Full onboarding campaign for TechSphere including email sequences and landing pages.",
+      status: "active",
+      clients: ["demo-client-001"],
+      leadId: null,
+      startDate: daysAgo(30),
+      dueDate: daysAgo(-14),
+      completedDate: null,
+      progress: 65,
+      priority: "high",
+      budget: 15000,
+      currency: "USD",
+      createdBy: DEMO_USER_ID,
+      createdAt: daysAgo(30),
+      updatedAt: daysAgo(1),
+    },
+    {
+      id: "demo-project-002",
+      workspaceId: "demo-workspace",
+      name: "GreenLeaf Analytics Suite",
+      description: "Building a custom analytics dashboard for GreenLeaf with real-time reporting.",
+      status: "active",
+      clients: ["demo-client-001", "demo-client-002"],
+      leadId: null,
+      startDate: daysAgo(14),
+      dueDate: daysAgo(-45),
+      completedDate: null,
+      progress: 30,
+      priority: "medium",
+      budget: 25000,
+      currency: "USD",
+      createdBy: DEMO_USER_ID,
+      createdAt: daysAgo(14),
+      updatedAt: daysAgo(0),
+    },
+  ];
+
+  getProjects(): Project[] {
+    return [...this._projects];
+  }
+
+  getProject(id: string): Project | null {
+    return this._projects.find((p) => p.id === id) ?? null;
+  }
+
+  createProject(workspaceId: string, userId: string, data: Record<string, unknown>): string {
+    const id = `demo-project-${Date.now()}`;
+    const project: Project = {
+      id,
+      workspaceId,
+      name: data.name as string,
+      description: (data.description as string) || null,
+      status: (data.status as Project["status"]) || "active",
+      clients: (data.clients as string[]) || [],
+      leadId: null,
+      startDate: (data.startDate as Timestamp) || null,
+      dueDate: (data.dueDate as Timestamp) || null,
+      completedDate: null,
+      progress: 0,
+      priority: (data.priority as Project["priority"]) || "medium",
+      budget: (data.budget as number) || null,
+      currency: (data.currency as string) || "USD",
+      createdBy: userId,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+    this._projects.unshift(project);
+    return id;
+  }
+
+  updateProject(id: string, data: Record<string, unknown>): void {
+    const idx = this._projects.findIndex((p) => p.id === id);
+    if (idx === -1) return;
+    this._projects[idx] = { ...this._projects[idx], ...data, updatedAt: Timestamp.now() } as Project;
+  }
+
+  deleteProject(id: string): void {
+    this._projects = this._projects.filter((p) => p.id !== id);
   }
 
   // ── Time Entry Operations ──
