@@ -75,7 +75,7 @@ export function WorkspaceSwitcher({ collapsed = false }: { collapsed?: boolean }
   return (
     <>
       {/* Workspace Selector */}
-      <div className="px-3 pt-3">
+      <div className="pt-3 px-3 flex justify-center items-center w-full">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             {collapsed ? (
@@ -85,7 +85,7 @@ export function WorkspaceSwitcher({ collapsed = false }: { collapsed?: boolean }
                 className="h-10 w-10"
                 title={activeWorkspace.name}
               >
-                <Avatar className="h-6 w-6 border bg-primary/10">
+                <Avatar className="h-8 w-8 border bg-primary/10">
                   <AvatarFallback className="text-xs bg-primary/10 text-primary">
                     {getWorkspaceInitials(activeWorkspace.name)}
                   </AvatarFallback>

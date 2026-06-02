@@ -192,121 +192,127 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         {/* Sidebar */}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r bg-card transition-all duration-200 lg:static lg:translate-x-0",
+            "fixed inset-y-0 left-0 z-50 flex flex-col border-r bg-card transition-all duration-300 lg:relative lg:translate-x-0",
             sidebarOpen ? "translate-x-0" : "-translate-x-full",
             sidebarCollapsed ? "lg:w-20" : "lg:w-64"
           )}
         >
-          {/* Logo + Controls */}
+          {/* ── Logo + Collapse Toggle ── */}
           <div
             className={cn(
-              "flex h-16 items-center justify-between gap-3 px-6",
-              sidebarCollapsed && "px-4"
+              "flex h-16 shrink-0 items-center border-b px-4",
+              sidebarCollapsed ? "justify-center" : "justify-between"
             )}
           >
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-sm shadow-sm">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-sm shadow-sm">
                 LF
               </div>
               {!sidebarCollapsed && (
-                <span className="text-lg font-bold tracking-tight">LeadFlow</span>
+                <span className="text-lg font-bold tracking-tight truncate">
+                  {activeWorkspace?.name || "LeadFlow"}
+                </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="hidden lg:inline-flex"
-                    onClick={() => setSidebarCollapsed((prev) => !prev)}
-                  >
-                    {sidebarCollapsed ? (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="lg:hidden"
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <X className="h-5 w-5 text-muted-foreground" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent><p>Close menu</p></TooltipContent>
-              </Tooltip>
-            </div>
+            {!sidebarCollapsed && (
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed(true)}
+                className="hidden lg:inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
+            {sidebarCollapsed && (
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed(false)}
+                className="hidden lg:inline-flex absolute -right-3 top-5 z-10 h-6 w-6 items-center justify-center rounded-full border bg-background shadow-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <ChevronRight className="h-3 w-3" />
+              </button>
+            )}
+            {/* Mobile close */}
+            <button
+              type="button"
+              className="lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <X className="h-5 w-5 text-muted-foreground" />
+            </button>
           </div>
 
-          <Separator />
+          {/* ── Workspace Switcher ── */}
+          <div className={cn(sidebarCollapsed ? "flex justify-center pt-3 flex-col" : "pt-3")}>
+            <WorkspaceSwitcher collapsed={sidebarCollapsed} />
+          </div>
 
-          {/* Workspace Switcher */}
-          <WorkspaceSwitcher collapsed={sidebarCollapsed} />
-
-          {/* Navigation */}
-          <nav className={cn("flex-1 space-y-0.5 p-3", sidebarCollapsed && "px-2")}
+          {/* ── Navigation ── */}
+          <nav
+            className={cn(
+              "flex-1 overflow-y-auto py-3",
+              sidebarCollapsed ? "px-2 space-y-1 flex flex-col items-center" : "px-3 space-y-0.5"
+            )}
           >
             {navItems
               .filter((item) => canAccess(item.moduleId))
               .map((item) => {
                 const isActive = pathname.startsWith(item.href);
-                const navLink = (
+
+                return sidebarCollapsed ? (
+                  <Tooltip key={item.href}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href={item.href}
+                        onClick={() => setSidebarOpen(false)}
+                        className={cn(
+                          "flex items-center justify-center rounded-lg px-2.5 py-2.5 text-sm font-medium transition-all w-max",
+                          isActive
+                            ? "bg-primary/10 text-primary shadow-sm"
+                            : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                        )}
+                      >
+                        <item.icon className="h-5 w-5 shrink-0" />
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="flex items-center gap-2">
+                      <p>{item.label}</p>
+                      {item.href === "/messages" && (
+                        <UnreadBadge
+                          workspaceId={activeWorkspace?.id || ""}
+                          userId={user?.id || ""}
+                        />
+                      )}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
                     className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all",
-                      sidebarCollapsed && "justify-center px-2",
+                      "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
                       isActive
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                     )}
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
-                    {!sidebarCollapsed && (
-                      <>
-                        <span className="flex-1">{item.label}</span>
-                        {item.href === "/messages" && (
-                          <UnreadBadge
-                            workspaceId={activeWorkspace?.id || ""}
-                            userId={user?.id || ""}
-                          />
-                        )}
-                      </>
-                    )}
-                    {!sidebarCollapsed && isActive && (
-                      <ChevronRight className="h-3.5 w-3.5 text-primary" />
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {item.href === "/messages" && (
+                      <UnreadBadge
+                        workspaceId={activeWorkspace?.id || ""}
+                        userId={user?.id || ""}
+                      />
                     )}
                   </Link>
-                );
-
-                if (!sidebarCollapsed) return navLink;
-
-                return (
-                  <Tooltip key={item.href}>
-                    <TooltipTrigger asChild>{navLink}</TooltipTrigger>
-                    <TooltipContent side="right">
-                      <p>{item.label}</p>
-                    </TooltipContent>
-                  </Tooltip>
                 );
               })}
           </nav>
 
-          <Separator />
-
-          {/* Footer */}
-          <div className={cn("p-3 space-y-2", sidebarCollapsed && "px-2")}>
-            {/* User Info */}
+          {/* ── Footer ── */}
+          <div className="border-t">
+            {/* User info */}
             <Link
               href="/settings"
               onClick={() => {
@@ -314,19 +320,19 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 setSidebarOpen(false);
               }}
               className={cn(
-                "flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2 transition-colors hover:bg-muted/60",
-                sidebarCollapsed && "justify-center px-2"
+                "flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-accent/50",
+                sidebarCollapsed ? "justify-center mx-2 mt-2 rounded-lg hover:bg-accent/50" : ""
               )}
-              title={sidebarCollapsed ? "Profile" : undefined}
+              title={sidebarCollapsed ? user?.displayName || "Profile" : undefined}
             >
-              <Avatar className="h-8 w-8 border">
+              <Avatar className="h-8 w-8 shrink-0 border">
                 <AvatarImage src={user?.photoURL || undefined} />
                 <AvatarFallback className="text-xs bg-primary/10 text-primary">
                   {user?.displayName?.charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
               {!sidebarCollapsed && (
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 min-w-0">
                   <p className="truncate text-sm font-medium">
                     {user?.displayName || "User"}
                   </p>
@@ -337,69 +343,63 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               )}
             </Link>
 
-            <div className="grid gap-1">
-              {/* Theme Toggle */}
-              {sidebarCollapsed ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                      className="flex h-9 w-full items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
-                    >
-                      {theme === "dark" ? (
-                        <Sun className="h-4 w-4" />
-                      ) : (
-                        <Moon className="h-4 w-4" />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p>{theme === "dark" ? "Light Mode" : "Dark Mode"}</p>
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
-                >
-                  {theme === "dark" ? (
-                    <Sun className="h-4 w-4" />
-                  ) : (
-                    <Moon className="h-4 w-4" />
-                  )}
-                  {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                </button>
+            {/* Theme + Sign Out */}
+            <div
+              className={cn(
+                "p-3",
+                sidebarCollapsed && "flex flex-col items-center gap-1 px-2 pb-3"
               )}
-
-              {/* Sign Out */}
+            >
               {sidebarCollapsed ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-full text-muted-foreground hover:text-destructive"
-                      onClick={handleLogout}
-                    >
-                      <LogOut className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p>Sign Out</p>
-                  </TooltipContent>
-                </Tooltip>
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                      >
+                        {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p>{theme === "dark" ? "Light Mode" : "Dark Mode"}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
+                      >
+                        <LogOut className="h-4 w-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p>Sign Out</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </>
               ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sign Out
-                </Button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                    title={theme === "dark" ? "Light Mode" : "Dark Mode"}
+                  >
+                    {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
+                    title="Sign Out"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </div>
               )}
             </div>
           </div>
