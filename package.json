@@ -48,7 +48,7 @@
     "firebase-admin": "^13.10.0",
     "googleapis": "^172.0.0",
     "lucide-react": "^0.475.0",
-    "next": "^16.2.6",
+    "next": "^16.2.7",
     "next-themes": "^0.4.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -57,6 +57,7 @@
     "resend": "^6.12.3",
     "sonner": "^2.0.5",
     "tailwind-merge": "^3.3.1",
+    "uuid": "^11.1.1",
     "zod": "^3.25.64",
     "zustand": "^5.0.5"
   },
