@@ -145,23 +145,35 @@ export async function getWorkspaceMembers(
   const workspace = await getWorkspace(workspaceId);
   if (!workspace) return [];
 
-  const membersRef = collection(db, USERS_COLLECTION);
-  const q = query(membersRef, where("__name__", "in", workspace.memberIds.slice(0, 10)));
-  const snapshot = await getDocs(q);
+  const memberIds = workspace.memberIds || [];
+  if (memberIds.length === 0) return [];
 
-  return snapshot.docs.map((d) => {
-    const user = d.data();
-    // Read workspace-specific role first, fall back to top-level role
-    const workspaceRole = user.workspaceRoles?.[workspaceId] || user.role || "member";
-    return {
-      userId: d.id,
-      email: user.email || "",
-      displayName: user.displayName || "",
-      photoURL: user.photoURL || null,
-      role: workspaceRole,
-      joinedAt: user.createdAt || Timestamp.now(),
-    } as WorkspaceMember;
-  });
+  // Firestore "in" operator maxes out at 30 values — batch if needed
+  const batches: string[][] = [];
+  for (let i = 0; i < memberIds.length; i += 30) {
+    batches.push(memberIds.slice(i, i + 30));
+  }
+
+  const results: WorkspaceMember[] = [];
+  const membersRef = collection(db, USERS_COLLECTION);
+  for (const ids of batches) {
+    const q = query(membersRef, where("__name__", "in", ids));
+    const snapshot = await getDocs(q);
+    for (const d of snapshot.docs) {
+      const user = d.data();
+      const workspaceRole = user.workspaceRoles?.[workspaceId] || user.role || "member";
+      results.push({
+        userId: d.id,
+        email: user.email || "",
+        displayName: user.displayName || "",
+        photoURL: user.photoURL || null,
+        role: workspaceRole,
+        joinedAt: user.createdAt || Timestamp.now(),
+      } as WorkspaceMember);
+    }
+  }
+
+  return results;
 }
 
 export async function addMemberToWorkspace(

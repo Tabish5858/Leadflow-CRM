@@ -466,28 +466,34 @@ function NewMessageDialog({
           setContacts([]);
           return;
         }
-        const usersSnap = await getDocs(
-          query(
-            collection(db, "users"),
-            where("__name__", "in", memberIds.slice(0, 10))
-          )
-        );
+
+        // Batch Firestore queries to avoid "in" limit of 30
+        const batch: string[][] = [];
+        for (let i = 0; i < memberIds.length; i += 30) {
+          batch.push(memberIds.slice(i, i + 30));
+        }
         const result: WorkspaceContact[] = [];
-        usersSnap.forEach((d) => {
-          const data = d.data();
-          const role = data.workspaceRoles?.[workspaceId];
-          if (
-            d.id !== clientId &&
-            (role === "owner" || role === "admin")
-          ) {
-            result.push({
-              id: d.id,
-              displayName: data.displayName || "Unknown",
-              email: data.email || "",
-              photoURL: data.photoURL || null,
-            });
-          }
-        });
+        for (const ids of batch) {
+          const usersSnap = await getDocs(
+            query(collection(db, "users"), where("__name__", "in", ids))
+          );
+          usersSnap.forEach((d) => {
+            const data = d.data();
+            const role = data.workspaceRoles?.[workspaceId];
+            if (
+              d.id !== clientId &&
+              role &&
+              role !== "client"
+            ) {
+              result.push({
+                id: d.id,
+                displayName: data.displayName || "Unknown",
+                email: data.email || "",
+                photoURL: data.photoURL || null,
+              });
+            }
+          });
+        }
         setContacts(result);
       } catch {
         setError("Failed to load contacts");
@@ -707,9 +713,17 @@ function ClientMessagesContent() {
                 <p className="text-sm text-muted-foreground">
                   No conversations yet
                 </p>
-                <p className="text-xs text-muted-foreground/60 mt-1">
-                  When a team member messages you, it will appear here.
+                <p className="text-xs text-muted-foreground/60 mt-1 mb-4">
+                  Start a conversation with a team member.
                 </p>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setDialogOpen(true)}
+                >
+                  <MessageSquarePlus className="h-4 w-4 mr-2" />
+                  Start a Conversation
+                </Button>
               </div>
             ) : (
               <ConversationList
