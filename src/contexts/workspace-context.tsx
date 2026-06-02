@@ -21,6 +21,13 @@ import {
 } from "@/lib/firebase/workspaces";
 import { canCreateWorkspace } from "@/lib/workspace-permissions";
 import { useDemoMode } from "@/lib/demo/demo-context";
+import { DEMO_USER, DEMO_WORKSPACE } from "@/lib/demo/demo-data";
+
+// Synchronous check — doesn't depend on React state propagation
+function isDemoModeSync(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem("leadflow_demo_mode") === "true";
+}
 
 const LOCAL_STORAGE_KEY = "leadflow_active_workspace";
 
@@ -55,21 +62,27 @@ export function useWorkspace() {
 }
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [activeWorkspace, setActiveWorkspaceState] = useState<Workspace | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Synchronous demo mode check — runs during render, before any effects
+  const [user, setUser] = useState<User | null>(
+    () => isDemoModeSync() ? DEMO_USER : null
+  );
+  const [workspaces, setWorkspaces] = useState<Workspace[]>(
+    () => isDemoModeSync() ? [DEMO_WORKSPACE] : []
+  );
+  const [activeWorkspace, setActiveWorkspaceState] = useState<Workspace | null>(
+    () => isDemoModeSync() ? DEMO_WORKSPACE : null
+  );
+  const [loading, setLoading] = useState(!isDemoModeSync());
   const unsubscribeWsRef = useRef<(() => void) | null>(null);
   const demoMode = useDemoMode();
 
   // Load user and workspaces on auth change
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     // If demo mode is active, skip Firebase entirely and use mock data
-    if (demoMode.isDemoMode) {
-      setUser(demoMode.demoUser);
-      setWorkspaces([demoMode.demoWorkspace]);
-      setActiveWorkspaceState(demoMode.demoWorkspace);
+    if (isDemoModeSync() || demoMode.isDemoMode) {
+      setUser(DEMO_USER);
+      setWorkspaces([DEMO_WORKSPACE]);
+      setActiveWorkspaceState(DEMO_WORKSPACE);
       setLoading(false);
       return;
     }

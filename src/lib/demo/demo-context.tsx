@@ -22,21 +22,10 @@ import {
   DEMO_NOTIFICATIONS,
   DEMO_MEETINGS,
   DEMO_STATS,
-  DEMO_USER_ID,
-  DEMO_WORKSPACE_ID,
   demoStore,
   DEMO_TEAM_MEMBERS,
 } from "./demo-data";
-import type {
-  User,
-  Workspace,
-  Lead,
-  Conversation,
-  Message,
-  TimeEntry,
-  Notification,
-  Meeting,
-} from "@/types";
+import type { User, Workspace } from "@/types";
 
 const DEMO_FLAG_KEY = "leadflow_demo_mode";
 
@@ -63,16 +52,11 @@ export function useDemoMode() {
 
 export function DemoProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [isDemoMode, setIsDemoMode] = useState(false);
-
-  // Check localStorage on mount for demo mode persistence
-  useEffect(() => {
-    const stored = localStorage.getItem(DEMO_FLAG_KEY);
-    if (stored === "true") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setIsDemoMode(true);
-    }
-  }, []);
+  // Initialize synchronously from localStorage so workspace context sees the correct value
+  // on first render (not waiting for useEffect)
+  const [isDemoMode, setIsDemoMode] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem(DEMO_FLAG_KEY) === "true"
+  );
 
   const enterDemo = useCallback(() => {
     localStorage.setItem(DEMO_FLAG_KEY, "true");
