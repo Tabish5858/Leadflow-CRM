@@ -494,6 +494,12 @@ export default function ProjectDetailPage() {
                   onTaskStatusChange={handleTaskStatusChange}
                   onDeleteTask={handleDeleteTask}
                   onAddTask={() => setShowCreateTask(true)}
+                  onAddMilestone={() => {
+                    const ms = milestones.length > 0 ? milestones[0] : null;
+                    // Show milestone creation dialog using inline form
+                    const name = prompt("Milestone name:");
+                    if (name?.trim()) handleCreateMilestone({ milestoneName: name.trim(), description: "", dueDate: null });
+                  }}
                   getSubtasks={getSubtasks}
                   expandedTasks={expandedTasks}
                   onToggleSubtaskExpand={toggleSubtaskExpand}
