@@ -76,6 +76,7 @@ import CustomFieldsCard from "@/components/projects/project-detail/sidebar-cards
 import ActivityLogCard from "@/components/projects/project-detail/sidebar-cards/activity-log-card";
 import ProjectFiles from "@/components/projects/project-detail/project-files";
 import ProjectTimeTracking from "@/components/projects/project-detail/project-time-tracking";
+import DeliverablesTab from "@/components/projects/project-detail/deliverables-tab";
 import {
   ArrowLeft,
   Calendar,
@@ -128,6 +129,7 @@ function formatDate(date: Date | null): string {
 const TABS = [
   { id: "overview", label: "Overview" },
   { id: "tasks", label: "Tasks" },
+  { id: "deliverables", label: "Deliverables" },
   { id: "notes", label: "Notes" },
   { id: "files", label: "Files" },
   { id: "time", label: "Time" },
@@ -580,6 +582,11 @@ export default function ProjectDetailPage() {
 
             <TaskCreateDialog open={showCreateTask} onOpenChange={setShowCreateTask} onSubmit={handleCreateTask} members={members} saving={taskSaving} />
           </div>
+        )}
+
+        {/* ─── DELIVERABLES ─── */}
+        {activeTab === "deliverables" && (
+          <DeliverablesTab projectId={projectId} workspaceId={project.workspaceId} userId={firebaseUser?.uid || "demo"} onProjectUpdated={loadProject} hasFinalPackage={project.hasFinalPackage} />
         )}
 
         {/* ─── NOTES ─── */}
