@@ -70,6 +70,7 @@ import NotesCard from "@/components/projects/project-detail/sidebar-cards/notes-
 import ContractsCard from "@/components/projects/project-detail/sidebar-cards/contracts-card";
 import InvoicesCard from "@/components/projects/project-detail/sidebar-cards/invoices-card";
 import ProfitabilityCard from "@/components/projects/project-detail/sidebar-cards/profitability-card";
+import LinksCard from "@/components/projects/project-detail/sidebar-cards/links-card";
 import ProjectFiles from "@/components/projects/project-detail/project-files";
 import ProjectTimeTracking from "@/components/projects/project-detail/project-time-tracking";
 import {
@@ -462,6 +463,7 @@ export default function ProjectDetailPage() {
               <div className="w-full lg:w-[35%] space-y-4">
                 <ProjectInfoCard project={project} memberMap={memberMap} />
                 <TeamCard members={members} memberIds={project.memberIds} />
+                <LinksCard project={project} onProjectUpdated={loadProject} />
                 <NotesCard notes={notes} onCreateNote={handleCreateNote} onDeleteNote={handleDeleteNote} />
                 <ContractsCard projectId={projectId} />
                 <InvoicesCard projectId={projectId} />

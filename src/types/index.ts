@@ -545,7 +545,7 @@ export interface LinkEmbed {
   url?: string;
   embedCode?: string;
   addedBy: string;
-  addedAt: Timestamp;
+  addedAt: Timestamp | { seconds: number; nanoseconds: number };
 }
 
 export interface ProjectDeliveryFlow {
