@@ -12,7 +12,6 @@ import {
   Loader2,
   MoreHorizontal,
   Trash2,
-  Plus,
   User,
 } from "lucide-react";
 import {
@@ -22,8 +21,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-// ─── Status Options ───────────────────────────────────────────────────────────
 
 const STATUS_OPTIONS = [
   { parent: "To Do" as const, name: "Not Started", color: "#DDDDDD" },
@@ -45,20 +42,11 @@ function getStatusStyle(color: string) {
   return { backgroundColor: color, color: "#374151" };
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function parseDueDate(dueDate: unknown): Date | null {
   if (!dueDate) return null;
-  // Firestore Timestamp with toDate()
   if (typeof (dueDate as any).toDate === "function") return (dueDate as any).toDate();
-  // Plain object { seconds, nanoseconds } from optimistic update
   if (typeof dueDate === "object" && "seconds" in (dueDate as any)) return new Date((dueDate as any).seconds * 1000);
-  // ISO string or other string
-  if (typeof dueDate === "string") {
-    const d = new Date(dueDate);
-    return isNaN(d.getTime()) ? null : d;
-  }
-  // Date object
+  if (typeof dueDate === "string") { const d = new Date(dueDate); return isNaN(d.getTime()) ? null : d; }
   if (dueDate instanceof Date) return dueDate;
   return null;
 }
@@ -68,29 +56,19 @@ function formatDate(date: Date | null): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// ─── Inline Title Edit ────────────────────────────────────────────────────────
+function getInitials(name: string): string {
+  return name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
+}
 
 function TitleEdit({
-  title,
-  isEditing,
-  onStartEdit,
-  onSubmit,
-  onCancel,
+  title, isEditing, onStartEdit, onSubmit, onCancel,
 }: {
-  title: string;
-  isEditing: boolean;
-  onStartEdit: () => void;
-  onSubmit: (newTitle: string) => void;
-  onCancel: () => void;
+  title: string; isEditing: boolean; onStartEdit: () => void; onSubmit: (newTitle: string) => void; onCancel: () => void;
 }) {
   const [val, setVal] = useState(title);
   const ref = useRef<HTMLInputElement>(null);
-
   useEffect(() => { setVal(title); }, [title]);
-  useEffect(() => {
-    if (isEditing && ref.current) { ref.current.focus(); ref.current.select(); }
-  }, [isEditing]);
-
+  useEffect(() => { if (isEditing && ref.current) { ref.current.focus(); ref.current.select(); } }, [isEditing]);
   useEffect(() => {
     if (!isEditing) return;
     const handle = (e: MouseEvent) => {
@@ -102,7 +80,6 @@ function TitleEdit({
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
   }, [isEditing, val, title, onSubmit, onCancel]);
-
   if (isEditing) {
     return (
       <input ref={ref} value={val} onChange={(e) => setVal(e.target.value)}
@@ -112,17 +89,12 @@ function TitleEdit({
       />
     );
   }
-
   return (
     <span onClick={(e) => { e.stopPropagation(); onStartEdit(); }}
       className="cursor-pointer hover:bg-accent px-1.5 py-0.5 -ml-1.5 rounded text-sm font-medium text-foreground truncate"
-    >
-      {title}
-    </span>
+    >{title}</span>
   );
 }
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TaskCardProps {
   task: ProjectTask;
@@ -146,28 +118,12 @@ interface TaskCardProps {
   className?: string;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export function TaskCard({
-  task,
-  memberMap,
-  onToggleComplete,
-  onStatusChange,
-  onTitleChange,
-  onDelete,
-  onAssigneeChange,
-  onDueDateChange,
-  members = [],
-  showSubtasks,
-  onToggleSubtasks,
-  isSubtask,
-  onDragStart,
-  onDragEnd,
-  onDragOver,
-  onDrop,
-  isDragging,
-  saving,
-  className,
+  task, memberMap, onToggleComplete, onStatusChange, onTitleChange, onDelete,
+  onAssigneeChange, onDueDateChange, members = [],
+  showSubtasks, onToggleSubtasks, isSubtask,
+  onDragStart, onDragEnd, onDragOver, onDrop,
+  isDragging, saving, className,
 }: TaskCardProps) {
   const isComplete = task.status.parent === "Complete";
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
@@ -179,6 +135,7 @@ export function TaskCard({
   const assignee = task.assigneeId ? memberMap?.get(task.assigneeId) : null;
   const hasSubtasks = task.hasSubtasks && !isSubtask;
   const dueDateValue = parseDueDate(task.dueDate);
+  const isRealSubtask = !!task.parentTaskId;
 
   const handleDragStart = (e: React.DragEvent) => { onDragStart?.(e, task); };
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); onDragOver?.(e); };
@@ -197,19 +154,17 @@ export function TaskCard({
         >
           <div className="flex-1 min-w-0">
             <div className="transition-all">
-              {/* Main row */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 {/* LEFT SIDE */}
-                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   {/* Drag handle */}
                   {!isSubtask && onDragStart && (
                     <div className="text-muted-foreground/30 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                       <GripVertical className="h-4 w-4" />
                     </div>
                   )}
-
-                  {/* Status icon button */}
-                  <button onClick={() => onToggleComplete?.(task)} className="shrink-0 hover:opacity-80 transition-opacity" title={isComplete ? "Mark incomplete" : "Mark complete"}>
+                  {/* Status icon */}
+                  <button onClick={() => onToggleComplete?.(task)} className="shrink-0 hover:opacity-80" title={isComplete ? "Mark incomplete" : "Mark complete"}>
                     {isComplete ? (
                       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                         <rect x="1" y="1" width="18" height="18" rx="9" className="fill-foreground" />
@@ -222,17 +177,79 @@ export function TaskCard({
                     )}
                   </button>
 
+                  {/* Assignee + Due date inline */}
+                  {!isRealSubtask && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                      {/* Assignee */}
+                      <div className="relative">
+                        <button onClick={(e) => { e.stopPropagation(); setShowAssigneeDropdown(!showAssigneeDropdown); }}
+                          className="flex items-center justify-center w-5 h-5 rounded-full bg-muted hover:bg-accent transition-colors shrink-0"
+                          title={assignee ? assignee.displayName : "Assign"}
+                        >
+                          {assignee ? (
+                            <span className="text-[9px] font-medium text-foreground">{getInitials(assignee.displayName)}</span>
+                          ) : (
+                            <User className="h-3 w-3 text-muted-foreground" />
+                          )}
+                        </button>
+                        {showAssigneeDropdown && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setShowAssigneeDropdown(false)} />
+                            <div className="absolute left-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[160px] max-h-[200px] overflow-y-auto">
+                              <button onClick={() => { setShowAssigneeDropdown(false); onAssigneeChange?.(task, null); }}
+                                className={cn("w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-accent text-foreground", !task.assigneeId && "font-semibold")}
+                              >
+                                <div className="w-4 h-4 rounded-full bg-muted shrink-0" /> Unassigned
+                              </button>
+                              {members.map((m) => (
+                                <button key={m.userId} onClick={() => { setShowAssigneeDropdown(false); onAssigneeChange?.(task, m.userId); }}
+                                  className={cn("w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-accent text-foreground", task.assigneeId === m.userId && "font-semibold")}
+                                >
+                                  <div className="w-4 h-4 bg-muted rounded-full flex items-center justify-center text-[8px] font-medium shrink-0">{getInitials(m.displayName)}</div>
+                                  {m.displayName}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      {/* Due date */}
+                      <div className="relative">
+                        <button onClick={(e) => { e.stopPropagation(); setShowDueDatePicker(!showDueDatePicker); }}
+                          className={cn("flex items-center gap-0.5 hover:bg-accent rounded px-1 py-0.5 transition-colors", dueDateValue && dueDateValue < new Date() && !isComplete ? "text-destructive" : "text-muted-foreground")}
+                          title={dueDateValue ? `Due ${formatDate(dueDateValue)}` : "Set due date"}
+                        >
+                          <Calendar className="h-3 w-3" />
+                          {dueDateValue && <span className="text-[11px] whitespace-nowrap">{formatDate(dueDateValue)}</span>}
+                        </button>
+                        {showDueDatePicker && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setShowDueDatePicker(false)} />
+                            <div className="absolute left-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg p-3">
+                              <input type="date"
+                                className="w-full px-2 py-1.5 text-xs border border-border rounded bg-background text-foreground"
+                                value={dueDateValue ? dueDateValue.toISOString().split("T")[0] : ""}
+                                onChange={(e) => { const v = e.target.value; onDueDateChange?.(task, v ? new Date(v + "T00:00:00") : null); setShowDueDatePicker(false); }}
+                                autoFocus
+                              />
+                              {dueDateValue && (
+                                <button onClick={() => { onDueDateChange?.(task, null); setShowDueDatePicker(false); }}
+                                  className="w-full text-left mt-1.5 px-2 py-1 text-[10px] text-destructive hover:bg-accent rounded"
+                                >Clear date</button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Title */}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <TitleEdit
-                        title={task.taskName}
-                        isEditing={isEditingTitle}
+                      <TitleEdit title={task.taskName} isEditing={isEditingTitle}
                         onStartEdit={() => setIsEditingTitle(true)}
-                        onSubmit={(newTitle) => {
-                          setIsEditingTitle(false);
-                          if (newTitle !== task.taskName) onTitleChange?.(task, newTitle);
-                        }}
+                        onSubmit={(t) => { setIsEditingTitle(false); if (t !== task.taskName) onTitleChange?.(task, t); }}
                         onCancel={() => setIsEditingTitle(false)}
                       />
                       {hasSubtasks && (
@@ -245,18 +262,16 @@ export function TaskCard({
                 </div>
 
                 {/* RIGHT SIDE */}
-                <div className="flex items-center gap-3 flex-1 justify-end ml-3">
+                <div className="flex items-center gap-2 shrink-0">
                   {task.createdAt && !isSubtask && (
                     <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">
                       {task.createdAt.toDate ? new Date(task.createdAt.toDate()).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""}
                     </span>
                   )}
-
-                  {/* Status dropdown */}
+                  {/* Status */}
                   <div className="relative">
                     <button onClick={(e) => { e.stopPropagation(); setShowStatusDropdown(!showStatusDropdown); }}
-                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap hover:opacity-80 transition-opacity"
-                      style={statusStyle}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap hover:opacity-80 transition-opacity" style={statusStyle}
                     >
                       {task.status.name || task.status.parent}
                       <ChevronDown className="h-3 w-3" />
@@ -267,9 +282,8 @@ export function TaskCard({
                         <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1.5 min-w-[150px]">
                           <div className="px-3 pb-1.5 text-xs font-medium text-muted-foreground">Change Status</div>
                           {STATUS_OPTIONS.map((opt) => (
-                            <button key={opt.name}
-                              onClick={(e) => { e.stopPropagation(); setShowStatusDropdown(false); onStatusChange?.(task, opt); }}
-                              className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-accent transition-colors"
+                            <button key={opt.name} onClick={() => { setShowStatusDropdown(false); onStatusChange?.(task, opt); }}
+                              className="w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-accent"
                             >
                               <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: opt.color }} />
                               <span className={cn("text-foreground", opt.name === task.status.name && "font-semibold")}>{opt.name}</span>
@@ -279,8 +293,7 @@ export function TaskCard({
                       </>
                     )}
                   </div>
-
-                  {/* Context menu */}
+                  {/* 3-dot menu */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded transition-all shrink-0">
@@ -298,118 +311,9 @@ export function TaskCard({
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-
                   {saving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />}
                 </div>
               </div>
-
-              {/* SECOND ROW: metadata - only for non-subtasks */}
-              {!task.parentTaskId && (
-                <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1 ml-9">
-                  {/* Assignee picker */}
-                  <div className="relative">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setShowAssigneeDropdown(!showAssigneeDropdown); }}
-                      className="flex items-center gap-1 hover:bg-accent rounded px-1.5 py-0.5 -ml-1.5 transition-colors"
-                    >
-                      {assignee ? (
-                        <>
-                          <div className="w-5 h-5 bg-muted rounded-full flex items-center justify-center text-[9px] font-medium text-foreground overflow-hidden">
-                            {assignee.photoURL ? (
-                              <Avatar className="h-5 w-5"><AvatarFallback className="text-[8px]">{assignee.displayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}</AvatarFallback></Avatar>
-                            ) : assignee.displayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
-                          </div>
-                          <span className="text-foreground">{assignee.displayName}</span>
-                        </>
-                      ) : (
-                        <>
-                          <User className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="text-muted-foreground hover:text-foreground">Assign</span>
-                        </>
-                      )}
-                    </button>
-                    {showAssigneeDropdown && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowAssigneeDropdown(false)} />
-                        <div className="absolute left-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[180px] max-h-[200px] overflow-y-auto">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setShowAssigneeDropdown(false); onAssigneeChange?.(task, null); }}
-                            className={cn("w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-accent transition-colors text-foreground",
-                              !task.assigneeId && "font-semibold"
-                            )}
-                          >
-                            <div className="w-4 h-4 rounded-full bg-muted" />
-                            Unassigned
-                          </button>
-                          {members.map((m) => (
-                            <button key={m.userId}
-                              onClick={(e) => { e.stopPropagation(); setShowAssigneeDropdown(false); onAssigneeChange?.(task, m.userId); }}
-                              className={cn("w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-accent transition-colors text-foreground",
-                                task.assigneeId === m.userId && "font-semibold"
-                              )}
-                            >
-                              <div className="w-4 h-4 bg-muted rounded-full flex items-center justify-center text-[8px] font-medium shrink-0">
-                                {m.displayName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="truncate">{m.displayName}</p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Due date picker */}
-                  <div className="relative">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setShowDueDatePicker(!showDueDatePicker); }}
-                      className={cn("flex items-center gap-1 hover:bg-accent rounded px-1.5 py-0.5 -ml-1.5 transition-colors",
-                        dueDateValue && dueDateValue < new Date() && !isComplete ? "text-destructive font-medium" : ""
-                      )}
-                    >
-                      <Calendar className="h-3 w-3" />
-                      {dueDateValue ? (
-                        <span>{formatDate(dueDateValue)}{dueDateValue < new Date() && !isComplete && " (overdue)"}</span>
-                      ) : (
-                        <span className="text-muted-foreground hover:text-foreground">Add due date</span>
-                      )}
-                    </button>
-                    {showDueDatePicker && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowDueDatePicker(false)} />
-                        <div className="absolute left-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg p-3">
-                          <input
-                            type="date"
-                            className="w-full px-2 py-1.5 text-xs border border-border rounded bg-background text-foreground"
-                            value={dueDateValue ? dueDateValue.toISOString().split("T")[0] : ""}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val) {
-                                const d = new Date(val + "T00:00:00");
-                                onDueDateChange?.(task, d);
-                              } else {
-                                onDueDateChange?.(task, null);
-                              }
-                              setShowDueDatePicker(false);
-                            }}
-                            autoFocus
-                          />
-                          {dueDateValue && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); onDueDateChange?.(task, null); setShowDueDatePicker(false); }}
-                              className="w-full text-left mt-1.5 px-2 py-1 text-[10px] text-destructive hover:bg-accent rounded transition-colors"
-                            >
-                              Clear due date
-                            </button>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
