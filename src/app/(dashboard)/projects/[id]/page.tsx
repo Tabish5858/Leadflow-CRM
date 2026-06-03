@@ -31,10 +31,9 @@ import type {
   ProjectNote,
   WorkspaceMember,
 } from "@/types";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -53,33 +52,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RequireModuleAccess } from "@/components/shared/require-module-access";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
-import { ProjectTabs } from "@/components/projects/shared/project-tabs";
-import type { ProjectTabId } from "@/components/projects/shared/project-tabs";
 import { TaskCard } from "@/components/projects/shared/task-card";
 import { TaskCreateDialog } from "@/components/projects/shared/task-create-dialog";
 import type { TaskFormData } from "@/components/projects/shared/task-create-dialog";
 import { MilestoneList } from "@/components/projects/shared/milestone-list";
 import { ProjectNotes } from "@/components/projects/shared/project-notes";
+import ProjectHeader from "@/components/projects/project-detail/project-header";
+import ProgressTimeline from "@/components/projects/project-detail/progress-timeline";
+import WorkflowSection from "@/components/projects/project-detail/workflow-section";
+import ProjectInfoCard from "@/components/projects/project-detail/sidebar-cards/project-info-card";
+import TeamCard from "@/components/projects/project-detail/sidebar-cards/team-card";
+import NotesCard from "@/components/projects/project-detail/sidebar-cards/notes-card";
+import ContractsCard from "@/components/projects/project-detail/sidebar-cards/contracts-card";
+import InvoicesCard from "@/components/projects/project-detail/sidebar-cards/invoices-card";
+import ProfitabilityCard from "@/components/projects/project-detail/sidebar-cards/profitability-card";
 import {
   ArrowLeft,
   Calendar,
   CheckCircle2,
   ChevronLeft,
-  DollarSign,
-  Edit3,
   FileText,
   Flag,
+  FolderKanban,
   ListTodo,
   Loader2,
   MessageSquare,
-  MoreHorizontal,
   Plus,
   Trash2,
   Users,
+  Clock,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/hooks/use-auth";
@@ -89,26 +94,10 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 // ─── Status Config ────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<string, { label: string; class: string }> = {
-  active: {
-    label: "Active",
-    class:
-      "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400",
-  },
-  on_hold: {
-    label: "On Hold",
-    class:
-      "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400",
-  },
-  completed: {
-    label: "Completed",
-    class:
-      "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400",
-  },
-  cancelled: {
-    label: "Cancelled",
-    class:
-      "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400",
-  },
+  active: { label: "Active", class: "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400" },
+  on_hold: { label: "On Hold", class: "bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400" },
+  completed: { label: "Completed", class: "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400" },
+  cancelled: { label: "Cancelled", class: "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400" },
 };
 
 const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
@@ -121,31 +110,26 @@ const STATUS_OPTIONS: { value: ProjectStatus; label: string }[] = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 }
 
 function formatDate(date: Date | null): string {
   if (!date) return "Not set";
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+  return date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-// ─── Tabs config ──────────────────────────────────────────────────────────────
+// ─── Tab Definitions ──────────────────────────────────────────────────────────
 
-const TABS: { id: ProjectTabId; label: string }[] = [
+const TABS = [
   { id: "overview", label: "Overview" },
   { id: "tasks", label: "Tasks" },
   { id: "milestones", label: "Milestones" },
   { id: "notes", label: "Notes" },
-];
+  { id: "files", label: "Files" },
+  { id: "time", label: "Time" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -166,7 +150,7 @@ export default function ProjectDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Tab
-  const [activeTab, setActiveTab] = useState<ProjectTabId>("overview");
+  const [activeTab, setActiveTab] = useState<TabId>("overview");
 
   // Task data
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
@@ -212,10 +196,7 @@ export default function ProjectDetailPage() {
         getProject(projectId),
         getWorkspaceMembers(activeWorkspace.id),
       ]);
-      if (!data) {
-        setError("Project not found");
-        return;
-      }
+      if (!data) { setError("Project not found"); return; }
       setProject(data);
       setMembers(memberData);
     } catch {
@@ -225,42 +206,31 @@ export default function ProjectDetailPage() {
     }
   }, [activeWorkspace?.id, projectId]);
 
-  useEffect(() => {
-    loadProject();
-  }, [loadProject]);
+  useEffect(() => { loadProject(); }, [loadProject]);
 
   // ─── Load Tab Data ───────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!projectId) return;
-
-    if (activeTab === "tasks") {
+    if (activeTab === "tasks" || activeTab === "overview") {
       setTasksLoading(true);
       getProjectTasks(projectId)
         .then(setTasks)
-        .catch((err) => {
-          console.error("Failed to load tasks:", err);
-          toast.error("Failed to load tasks");
-        })
+        .catch((err) => { console.error("Failed to load tasks:", err); toast.error("Failed to load tasks"); })
         .finally(() => setTasksLoading(false));
     }
-
-    if (activeTab === "milestones") {
+    if (activeTab === "milestones" || activeTab === "overview") {
       setMilestonesLoading(true);
       getProjectMilestones(projectId)
         .then(setMilestones)
-        .catch((err) => {
-          console.error("Failed to load milestones:", err);
-          toast.error("Failed to load milestones");
-        })
+        .catch((err) => { console.error("Failed to load milestones:", err); toast.error("Failed to load milestones"); })
         .finally(() => setMilestonesLoading(false));
     }
-
-    if (activeTab === "notes") {
+    if (activeTab === "notes" || activeTab === "overview") {
       setNotesLoading(true);
       getProjectNotes(projectId)
         .then(setNotes)
-        .catch(() => toast.error("Failed to load notes"))
+        .catch((err) => { console.error("Failed to load notes:", err); toast.error("Failed to load notes"); })
         .finally(() => setNotesLoading(false));
     }
   }, [projectId, activeTab]);
@@ -288,25 +258,11 @@ export default function ProjectDetailPage() {
         progress: Math.min(100, Math.max(0, parseInt(editProgress) || 0)),
         budget: editBudget ? parseFloat(editBudget) : null,
       });
-      setProject((prev) =>
-        prev
-          ? {
-              ...prev,
-              name: editName.trim(),
-              description: editDesc.trim() || null,
-              status: editStatus,
-              progress: Math.min(100, Math.max(0, parseInt(editProgress) || 0)),
-              budget: editBudget ? parseFloat(editBudget) : null,
-            }
-          : prev
-      );
+      setProject((prev) => prev ? { ...prev, name: editName.trim(), description: editDesc.trim() || null, status: editStatus, progress: Math.min(100, Math.max(0, parseInt(editProgress) || 0)), budget: editBudget ? parseFloat(editBudget) : null } : prev);
       setEditing(false);
       toast.success("Project updated");
-    } catch {
-      toast.error("Failed to update project");
-    } finally {
-      setSaving(false);
-    }
+    } catch { toast.error("Failed to update project"); }
+    finally { setSaving(false); }
   };
 
   const handleDelete = async () => {
@@ -316,12 +272,8 @@ export default function ProjectDetailPage() {
       await deleteProjectFB(project.id);
       toast.success("Project deleted");
       router.push("/projects");
-    } catch {
-      toast.error("Failed to delete project");
-    } finally {
-      setDeleting(false);
-      setShowDeleteDialog(false);
-    }
+    } catch { toast.error("Failed to delete project"); }
+    finally { setDeleting(false); setShowDeleteDialog(false); }
   };
 
   // ─── Task Handlers ───────────────────────────────────────────────────────────
@@ -330,32 +282,21 @@ export default function ProjectDetailPage() {
     if (!projectId || !project) return;
     setTaskSaving(true);
     try {
-      await createTask(
-        projectId,
-        project.workspaceId,
-        firebaseUser?.uid || "demo",
-        {
-          taskName: data.taskName,
-          description: data.description || null,
-          assigneeId: data.assigneeId && data.assigneeId !== "none" ? data.assigneeId : null,
-          priority: data.priority && data.priority !== "none" ? (data.priority as "low" | "medium" | "high") : null,
-          parentTaskId: data.parentTaskId || null,
-          startDate: data.startDate || null,
-          dueDate: data.dueDate || null,
-        }
-      );
-
+      await createTask(projectId, project.workspaceId, firebaseUser?.uid || "demo", {
+        taskName: data.taskName,
+        description: data.description || null,
+        assigneeId: data.assigneeId && data.assigneeId !== "none" ? data.assigneeId : null,
+        priority: data.priority && data.priority !== "none" ? (data.priority as "low" | "medium" | "high") : null,
+        parentTaskId: data.parentTaskId || null,
+        startDate: data.startDate || null,
+        dueDate: data.dueDate || null,
+      });
       setShowCreateTask(false);
       toast.success("Task created");
-      // Reload
       const updated = await getProjectTasks(projectId);
       setTasks(updated);
-    } catch (err) {
-      console.error("Failed to create task:", err);
-      toast.error("Failed to create task");
-    } finally {
-      setTaskSaving(false);
-    }
+    } catch (err) { console.error("Failed to create task:", err); toast.error("Failed to create task"); }
+    finally { setTaskSaving(false); }
   };
 
   const handleToggleTaskComplete = async (task: ProjectTask) => {
@@ -366,23 +307,13 @@ export default function ProjectDetailPage() {
           ? { parent: "To Do", name: "Not Started", color: "#F5EFCF" }
           : { parent: "Complete", name: "Complete", color: "#E8F5E9" },
       } as any);
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.id === task.id
-            ? {
-                ...t,
-                status: isComplete
-                  ? { parent: "To Do", name: "Not Started", color: "#F5EFCF" }
-                  : { parent: "Complete", name: "Complete", color: "#E8F5E9" },
-                completedAt: isComplete ? null : ({ seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as any),
-              }
-            : t
-        )
-      );
+      setTasks((prev) => prev.map((t) => t.id === task.id ? {
+        ...t,
+        status: isComplete ? { parent: "To Do", name: "Not Started", color: "#F5EFCF" } : { parent: "Complete", name: "Complete", color: "#E8F5E9" },
+        completedAt: isComplete ? null : ({ seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as any),
+      } : t));
       toast.success(isComplete ? "Task reopened" : "Task completed");
-    } catch {
-      toast.error("Failed to update task");
-    }
+    } catch { toast.error("Failed to update task"); }
   };
 
   const handleDeleteTask = async (task: ProjectTask) => {
@@ -390,18 +321,11 @@ export default function ProjectDetailPage() {
       await deleteTask(task.id);
       setTasks((prev) => prev.filter((t) => t.id !== task.id));
       toast.success("Task deleted");
-    } catch {
-      toast.error("Failed to delete task");
-    }
+    } catch { toast.error("Failed to delete task"); }
   };
 
   const toggleSubtaskExpand = (task: ProjectTask) => {
-    setExpandedTasks((prev) => {
-      const next = new Set(prev);
-      if (next.has(task.id)) next.delete(task.id);
-      else next.add(task.id);
-      return next;
-    });
+    setExpandedTasks((prev) => { const next = new Set(prev); if (next.has(task.id)) next.delete(task.id); else next.add(task.id); return next; });
   };
 
   // ─── Milestone Handlers ──────────────────────────────────────────────────────
@@ -416,14 +340,10 @@ export default function ProjectDetailPage() {
         dueDate: data.dueDate,
       } as any);
       toast.success("Milestone created");
-      // Reload
       const updated = await getProjectMilestones(projectId);
       setMilestones(updated);
-    } catch {
-      toast.error("Failed to create milestone");
-    } finally {
-      setMilestoneSaving(false);
-    }
+    } catch { toast.error("Failed to create milestone"); }
+    finally { setMilestoneSaving(false); }
   };
 
   const handleDeleteMilestone = async (milestoneId: string) => {
@@ -431,9 +351,7 @@ export default function ProjectDetailPage() {
       await deleteMilestone(milestoneId);
       setMilestones((prev) => prev.filter((m) => m.id !== milestoneId));
       toast.success("Milestone deleted");
-    } catch {
-      toast.error("Failed to delete milestone");
-    }
+    } catch { toast.error("Failed to delete milestone"); }
   };
 
   // ─── Note Handlers ───────────────────────────────────────────────────────────
@@ -441,18 +359,11 @@ export default function ProjectDetailPage() {
   const handleCreateNote = async (data: { title: string; content: string }) => {
     if (!projectId || !project) return;
     try {
-      await createNote(projectId, project.workspaceId, firebaseUser?.uid || "demo", {
-        title: data.title,
-        content: data.content || null,
-        taskId: null,
-      } as any);
+      await createNote(projectId, project.workspaceId, firebaseUser?.uid || "demo", { title: data.title, content: data.content || null, taskId: null } as any);
       toast.success("Note created");
       const updated = await getProjectNotes(projectId);
       setNotes(updated);
-    } catch (err) {
-      console.error("Failed to create note:", err);
-      toast.error("Failed to create note");
-    }
+    } catch (err) { console.error("Failed to create note:", err); toast.error("Failed to create note"); }
   };
 
   const handleDeleteNote = async (noteId: string) => {
@@ -460,354 +371,131 @@ export default function ProjectDetailPage() {
       await deleteNote(noteId);
       setNotes((prev) => prev.filter((n) => n.id !== noteId));
       toast.success("Note deleted");
-    } catch (err) {
-      console.error("Failed to delete note:", err);
-      toast.error("Failed to delete note");
-    }
+    } catch (err) { console.error("Failed to delete note:", err); toast.error("Failed to delete note"); }
   };
 
   // ─── Derived Data ────────────────────────────────────────────────────────────
 
-  const tabBadges = useMemo(() => {
-    return {
-      tasks: tasks.length > 0 ? String(tasks.length) : undefined,
-      milestones: milestones.length > 0 ? String(milestones.length) : undefined,
-      notes: notes.length > 0 ? String(notes.length) : undefined,
-    };
-  }, [tasks.length, milestones.length, notes.length]);
+  const topLevelTasks = useMemo(() => tasks.filter((t) => !t.parentTaskId && !t.isSubtask), [tasks]);
+  const getSubtasks = useCallback((parentId: string) => tasks.filter((t) => t.parentTaskId === parentId && t.isSubtask), [tasks]);
+  const clientMembers = useMemo(() => members.filter((m) => project?.clients?.includes(m.userId)), [members, project?.clients]);
+  const tasksCompleted = useMemo(() => tasks.filter((t) => t.status.parent === "Complete").length, [tasks]);
 
-  const tabsWithBadges = useMemo(
-    () =>
-      TABS.map((t) => ({
-        ...t,
-        badge: tabBadges[t.id as keyof typeof tabBadges],
-      })),
-    [tabBadges]
-  );
-
-  const clientMembers = useMemo(
-    () => members.filter((m) => project?.clients?.includes(m.userId)),
-    [members, project?.clients]
-  );
-
-  const topLevelTasks = useMemo(
-    () => tasks.filter((t) => !t.parentTaskId && !t.isSubtask),
-    [tasks]
-  );
-
-  const getSubtasks = useCallback(
-    (parentId: string) => tasks.filter((t) => t.parentTaskId === parentId && t.isSubtask),
-    [tasks]
-  );
-
-  // ═══ RENDER ═══════════════════════════════════════════════════════════════════
-
-  // ─── Loading State ───────────────────────────────────────────────────────────
+  // ═══ RENDER ──────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <Skeleton className="h-5 w-32" />
         <Skeleton className="h-8 w-64" />
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
-            ))}
-          </CardContent>
-        </Card>
+        <Card><CardContent className="p-6 space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (<Skeleton key={i} className="h-10 w-full" />))}
+        </CardContent></Card>
       </div>
     );
   }
-
-  // ─── Error State ─────────────────────────────────────────────────────────────
 
   if (error || !project) {
     return (
       <div className="max-w-5xl mx-auto">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-sm font-medium text-destructive">
-              {error || "Project not found"}
-            </p>
-            <Button variant="outline" size="sm" className="mt-4" asChild>
-              <Link href="/projects">Back to Projects</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="flex flex-col items-center justify-center py-12 text-center">
+          <p className="text-sm font-medium text-destructive">{error || "Project not found"}</p>
+          <Button variant="outline" size="sm" className="mt-4" asChild><Link href="/projects">Back to Projects</Link></Button>
+        </CardContent></Card>
       </div>
     );
   }
 
-  // ─── Normal Render ───────────────────────────────────────────────────────────
-
-  const statusCfg = STATUS_CONFIG[project.status] || STATUS_CONFIG.active;
-
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      {/* ── Back Link ── */}
-      <Link
-        href="/projects"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Back to Projects
-      </Link>
+    <RequireModuleAccess moduleId="projects">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* ─── Header ─── */}
+        <ProjectHeader project={project} onEdit={startEditing} onDelete={() => setShowDeleteDialog(true)} />
 
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold tracking-tight truncate">
-              {project.name}
-            </h1>
-            <Badge variant="outline" className={statusCfg.class}>
-              {statusCfg.label}
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Created{" "}
-            {project.createdAt
-              ? formatDate(project.createdAt.toDate())
-              : "Unknown"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={startEditing}
-            className="gap-2"
-          >
-            <Edit3 className="h-4 w-4" />
-            Edit
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="text-destructive"
-            onClick={() => setShowDeleteDialog(true)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+        {/* ─── Tabs ─── */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}
+          className="rounded-lg border border-border bg-card p-1"
+        >
+          <TabsList className="w-full justify-start bg-transparent gap-0 h-auto">
+            {TABS.map((tab) => (
+              <TabsTrigger key={tab.id} value={tab.id}
+                className="data-[state=active]:bg-muted data-[state=active]:text-foreground text-muted-foreground rounded-md px-3 py-1.5 text-sm font-medium"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
-      {/* ── Tabs ── */}
-      <ProjectTabs
-        tabs={tabsWithBadges}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+        {/* ═══ TAB CONTENT ═════════════════════════════════════════════════ */}
 
-      {/* ── Tab Content ── */}
-      <div className="min-h-[300px]">
-        {/* ═══ OVERVIEW ════════════════════════════════════════════════════════ */}
+        {/* ─── OVERVIEW ─── */}
         {activeTab === "overview" && (
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Left column */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Description */}
-              {project.description && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Description</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {project.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+          <div className="space-y-6">
+            {/* Progress timeline (full width) */}
+            <Card className="border-border">
+              <CardContent className="p-5">
+                <ProgressTimeline progress={project.progress} tasksCompleted={tasksCompleted} tasksTotal={tasks.length} />
+              </CardContent>
+            </Card>
 
-              {/* Progress */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Progress</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Completion</span>
-                      <span className="font-medium">{project.progress}%</span>
-                    </div>
-                    <div className="h-3 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{
-                          width: `${Math.min(project.progress, 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+            {/* Two-column layout: Workflow + Sidebar */}
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Left: Workflow */}
+              <div className="w-full lg:w-[65%] space-y-6">
+                <WorkflowSection
+                  tasks={tasks}
+                  milestones={milestones}
+                  memberMap={memberMap}
+                  onToggleTaskComplete={handleToggleTaskComplete}
+                  onDeleteTask={handleDeleteTask}
+                  onAddTask={() => setShowCreateTask(true)}
+                  getSubtasks={getSubtasks}
+                  expandedTasks={expandedTasks}
+                  onToggleSubtaskExpand={toggleSubtaskExpand}
+                />
+              </div>
 
-              {/* Clients */}
-              {clientMembers.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      Clients
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {clientMembers.map((client) => (
-                      <div
-                        key={client.userId}
-                        className="flex items-center gap-3"
-                      >
-                        <Avatar className="h-9 w-9 border">
-                          <AvatarImage src={client.photoURL || undefined} />
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                            {getInitials(client.displayName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {client.displayName}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {client.email}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
+              {/* Right: Sidebar cards */}
+              <div className="w-full lg:w-[35%] space-y-4">
+                <ProjectInfoCard project={project} memberMap={memberMap} />
+                <TeamCard members={members} memberIds={project.memberIds} />
+                <NotesCard notes={notes} onCreateNote={handleCreateNote} onDeleteNote={handleDeleteNote} />
+                <ContractsCard projectId={projectId} />
+                <InvoicesCard projectId={projectId} />
+                <ProfitabilityCard budget={project.budget} />
+              </div>
             </div>
 
-            {/* Right column */}
-            <div className="space-y-4">
-              {/* Details */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Status</p>
-                    <Badge variant="outline" className={statusCfg.class}>
-                      {statusCfg.label}
-                    </Badge>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">Priority</p>
-                    <p className="text-sm font-medium capitalize">
-                      {project.priority}
-                    </p>
-                  </div>
-                  {project.budget && (
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">Budget</p>
-                      <p className="text-sm font-medium">
-                        {new Intl.NumberFormat("en-US", {
-                          style: "currency",
-                          currency: project.currency,
-                        }).format(project.budget)}
-                      </p>
-                    </div>
-                  )}
-                  <Separator />
-                  {project.startDate && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>
-                        Start: {formatDate(project.startDate.toDate())}
-                      </span>
-                    </div>
-                  )}
-                  {project.dueDate && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>
-                        Due: {formatDate(project.dueDate.toDate())}
-                      </span>
-                    </div>
-                  )}
-                  {project.completedDate && (
-                    <div className="flex items-center gap-2 text-sm text-green-600">
-                      <Calendar className="h-4 w-4" />
-                      <span>
-                        Completed:{" "}
-                        {formatDate(project.completedDate.toDate())}
-                      </span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Recent Notes (compact) */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium">Notes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ProjectNotes
-                    notes={notes.slice(0, 3)}
-                    memberMap={memberMap}
-                    onCreateNote={handleCreateNote}
-                    onDeleteNote={handleDeleteNote}
-                    compact
-                  />
-                </CardContent>
-              </Card>
-            </div>
+            {/* Create Task Dialog */}
+            <TaskCreateDialog open={showCreateTask} onOpenChange={setShowCreateTask} onSubmit={handleCreateTask} members={members} saving={taskSaving} />
           </div>
         )}
 
-        {/* ═══ TASKS ═══════════════════════════════════════════════════════════ */}
+        {/* ─── TASKS ─── */}
         {activeTab === "tasks" && (
           <div className="space-y-4">
-            {/* Task header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <ListTodo className="h-4 w-4" />
-                <span>
-                  {tasks.length} task{tasks.length !== 1 ? "s" : ""}
-                </span>
+                <span>{tasks.length} task{tasks.length !== 1 ? "s" : ""}</span>
                 <span className="text-muted-foreground/40">|</span>
-                <span>
-                  {tasks.filter((t) => t.status.parent === "Complete").length}{" "}
-                  complete
-                </span>
+                <span>{tasksCompleted} complete</span>
               </div>
-              <Button
-                variant="default"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setShowCreateTask(true)}
-              >
-                <Plus className="h-4 w-4" />
-                Add Task
+              <Button variant="default" size="sm" className="gap-1.5" onClick={() => setShowCreateTask(true)}>
+                <Plus className="h-4 w-4" /> Add Task
               </Button>
             </div>
 
-            {/* Task list */}
             {tasksLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
-                ))}
-              </div>
+              <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => (<Skeleton key={i} className="h-16 w-full rounded-lg" />))}</div>
             ) : topLevelTasks.length === 0 ? (
               <div className="text-center py-12 border rounded-lg border-dashed">
                 <ListTodo className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
-                <p className="text-sm text-muted-foreground mb-1">
-                  No tasks yet
-                </p>
-                <p className="text-xs text-muted-foreground/60 mb-4">
-                  Break your project into manageable tasks.
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCreateTask(true)}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Create your first task
+                <p className="text-sm text-muted-foreground mb-1">No tasks yet</p>
+                <p className="text-xs text-muted-foreground/60 mb-4">Break your project into manageable tasks.</p>
+                <Button variant="outline" size="sm" onClick={() => setShowCreateTask(true)}>
+                  <Plus className="h-4 w-4 mr-1" /> Create your first task
                 </Button>
               </div>
             ) : (
@@ -817,27 +505,10 @@ export default function ProjectDetailPage() {
                   const isExpanded = expandedTasks.has(task.id);
                   return (
                     <div key={task.id}>
-                      <TaskCard
-                        task={task}
-                        memberMap={memberMap}
-                        onToggleComplete={handleToggleTaskComplete}
-                        onDelete={handleDeleteTask}
-                        showSubtasks={isExpanded}
-                        onToggleSubtasks={toggleSubtaskExpand}
-                      />
-                      {/* Subtasks */}
+                      <TaskCard task={task} memberMap={memberMap} onToggleComplete={handleToggleTaskComplete} onDelete={handleDeleteTask} showSubtasks={isExpanded} onToggleSubtasks={toggleSubtaskExpand} />
                       {isExpanded && subtasks.length > 0 && (
                         <div className="mt-1 space-y-1 pl-4 border-l-2 border-muted ml-6">
-                          {subtasks.map((sub) => (
-                            <TaskCard
-                              key={sub.id}
-                              task={sub}
-                              memberMap={memberMap}
-                              onToggleComplete={handleToggleTaskComplete}
-                              onDelete={handleDeleteTask}
-                              isSubtask
-                            />
-                          ))}
+                          {subtasks.map((sub) => (<TaskCard key={sub.id} task={sub} memberMap={memberMap} onToggleComplete={handleToggleTaskComplete} onDelete={handleDeleteTask} isSubtask />))}
                         </div>
                       )}
                     </div>
@@ -846,185 +517,111 @@ export default function ProjectDetailPage() {
               </div>
             )}
 
-            {/* Create Task Dialog */}
-            <TaskCreateDialog
-              open={showCreateTask}
-              onOpenChange={setShowCreateTask}
-              onSubmit={handleCreateTask}
-              members={members}
-              saving={taskSaving}
-            />
+            <TaskCreateDialog open={showCreateTask} onOpenChange={setShowCreateTask} onSubmit={handleCreateTask} members={members} saving={taskSaving} />
           </div>
         )}
 
-        {/* ═══ MILESTONES ═════════════════════════════════════════════════════ */}
+        {/* ─── MILESTONES ─── */}
         {activeTab === "milestones" && (
           <div>
             {milestonesLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 2 }).map((_, i) => (
-                  <Skeleton key={i} className="h-20 w-full rounded-lg" />
-                ))}
-              </div>
+              <div className="space-y-2">{Array.from({ length: 2 }).map((_, i) => (<Skeleton key={i} className="h-20 w-full rounded-lg" />))}</div>
             ) : (
-              <MilestoneList
-                milestones={milestones}
-                onCreate={handleCreateMilestone}
-                onDelete={handleDeleteMilestone}
-                saving={milestoneSaving}
-              />
+              <MilestoneList milestones={milestones} onCreate={handleCreateMilestone} onDelete={handleDeleteMilestone} saving={milestoneSaving} />
             )}
           </div>
         )}
 
-        {/* ═══ NOTES ══════════════════════════════════════════════════════════ */}
+        {/* ─── NOTES ─── */}
         {activeTab === "notes" && (
           <div>
             {notesLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-24 w-full rounded-lg" />
-                ))}
-              </div>
+              <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => (<Skeleton key={i} className="h-24 w-full rounded-lg" />))}</div>
             ) : (
               <div className="max-w-2xl">
-                <ProjectNotes
-                  notes={notes}
-                  memberMap={memberMap}
-                  onCreateNote={handleCreateNote}
-                  onDeleteNote={handleDeleteNote}
-                />
+                <ProjectNotes notes={notes} memberMap={memberMap} onCreateNote={handleCreateNote} onDeleteNote={handleDeleteNote} />
               </div>
             )}
           </div>
         )}
-      </div>
 
-      {/* ── Edit Dialog ── */}
-      <Dialog open={editing} onOpenChange={setEditing}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Edit Project</DialogTitle>
-            <DialogDescription>
-              Update project details and progress.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Name</Label>
-              <Input
-                id="edit-name"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-desc">Description</Label>
-              <Textarea
-                id="edit-desc"
-                value={editDesc}
-                onChange={(e) => setEditDesc(e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-status">Status</Label>
-                <Select
-                  value={editStatus}
-                  onValueChange={(v) => setEditStatus(v as ProjectStatus)}
-                >
-                  <SelectTrigger id="edit-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-progress">Progress (%)</Label>
-                <Input
-                  id="edit-progress"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={editProgress}
-                  onChange={(e) => setEditProgress(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-budget">Budget (USD)</Label>
-              <Input
-                id="edit-budget"
-                type="number"
-                min="0"
-                step="0.01"
-                value={editBudget}
-                onChange={(e) => setEditBudget(e.target.value)}
-              />
-            </div>
+        {/* ─── FILES (placeholder) ─── */}
+        {activeTab === "files" && (
+          <div className="text-center py-16 border rounded-lg border-dashed">
+            <FolderKanban className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
+            <h3 className="text-lg font-semibold text-foreground">Project Files</h3>
+            <p className="text-sm text-muted-foreground mt-1">File management coming soon.</p>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={saving || !editName.trim()}
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}
 
-      {/* ── Delete Dialog ── */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete Project?</DialogTitle>
-            <DialogDescription>
-              This will permanently delete &ldquo;{project.name}&rdquo; and all
-              its data. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete Project"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+        {/* ─── TIME (placeholder) ─── */}
+        {activeTab === "time" && (
+          <div className="text-center py-16 border rounded-lg border-dashed">
+            <Clock className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
+            <h3 className="text-lg font-semibold text-foreground">Time Tracking</h3>
+            <p className="text-sm text-muted-foreground mt-1">Time tracking coming soon.</p>
+          </div>
+        )}
+
+        {/* ── Edit Dialog ── */}
+        <Dialog open={editing} onOpenChange={setEditing}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Edit Project</DialogTitle>
+              <DialogDescription>Update project details and progress.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Name</Label>
+                <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-desc">Description</Label>
+                <Textarea id="edit-desc" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={3} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-status">Status</Label>
+                  <Select value={editStatus} onValueChange={(v) => setEditStatus(v as ProjectStatus)}>
+                    <SelectTrigger id="edit-status"><SelectValue /></SelectTrigger>
+                    <SelectContent>{STATUS_OPTIONS.map((opt) => (<SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>))}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-progress">Progress (%)</Label>
+                  <Input id="edit-progress" type="number" min="0" max="100" value={editProgress} onChange={(e) => setEditProgress(e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-budget">Budget (USD)</Label>
+                <Input id="edit-budget" type="number" min="0" step="0.01" value={editBudget} onChange={(e) => setEditBudget(e.target.value)} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
+              <Button onClick={handleSave} disabled={saving || !editName.trim()}>
+                {saving ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>) : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Delete Dialog ── */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete Project?</DialogTitle>
+              <DialogDescription>This will permanently delete &ldquo;{project.name}&rdquo; and all its data. This action cannot be undone.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
+              <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+                {deleting ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Deleting...</>) : "Delete Project"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </RequireModuleAccess>
   );
 }
