@@ -13,6 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { TaskCard } from "@/components/projects/shared/task-card";
 import {
   Plus,
@@ -25,6 +32,7 @@ import {
   Loader2,
   ChevronDown,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -286,6 +294,11 @@ interface WorkflowSectionProps {
   milestoneTaskMap?: Map<string, ProjectTask[]>;
   expandedMilestones?: Set<string>;
   onToggleMilestoneExpand?: (milestoneId: string) => void;
+  // New milestone handlers
+  onToggleMilestoneComplete?: (milestone: ProjectMilestone) => void;
+  onMilestoneStatusChange?: (milestone: ProjectMilestone, newStatus: "Pending" | "Completed" | "Failed") => void;
+  onMilestoneNameChange?: (milestone: ProjectMilestone, newName: string) => void;
+  onDeleteMilestone?: (milestoneId: string) => void;
 }
 
 export default function WorkflowSection({
@@ -320,8 +333,13 @@ export default function WorkflowSection({
   milestoneTaskMap,
   expandedMilestones,
   onToggleMilestoneExpand,
+  onToggleMilestoneComplete,
+  onMilestoneStatusChange,
+  onMilestoneNameChange,
+  onDeleteMilestone,
 }: WorkflowSectionProps) {
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
+  const [activeMsDropdown, setActiveMsDropdown] = useState<string | null>(null);
   const topLevelTasks = tasks.filter((t) => !t.parentTaskId && !t.isSubtask);
   const completedTasks = tasks.filter((t) => t.status.parent === "Complete").length;
 
@@ -412,8 +430,12 @@ export default function WorkflowSection({
                               <GripVertical className="h-4 w-4" />
                             </div>
                           )}
-                          {/* Status icon */}
-                          <button className="mt-0.5 shrink-0 cursor-pointer hover:opacity-80" title={ms.status === "Completed" ? "Mark incomplete" : "Mark complete"}>
+                          {/* Status icon - click to toggle complete */}
+                          <button
+                            onClick={() => onToggleMilestoneComplete?.(ms)}
+                            className="mt-0.5 shrink-0 cursor-pointer hover:opacity-80"
+                            title={ms.status === "Completed" ? "Reopen milestone" : "Complete milestone"}
+                          >
                             {ms.status === "Completed" ? (
                               <div className="w-5 h-5 rounded-sm bg-foreground flex items-center justify-center">
                                 <CheckCircle2 className="h-3.5 w-3.5 text-background" />
@@ -450,16 +472,61 @@ export default function WorkflowSection({
                               {ms.dueDate.toDate().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                             </span>
                           )}
-                          <span className={cn("text-xs font-medium px-2.5 py-0.5 rounded-full",
-                            ms.status === "Completed" ? "bg-success/20 text-success" :
-                            ms.status === "Failed" ? "bg-destructive/20 text-destructive" :
-                            "bg-muted text-muted-foreground"
-                          )}>
-                            {ms.status}
+                          {/* Status badge with dropdown */}
+                          <span className="relative">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setActiveMsDropdown(activeMsDropdown === ms.id ? null : ms.id); }}
+                              className={cn("text-xs font-medium px-2.5 py-0.5 rounded-full hover:opacity-80 transition-opacity",
+                                ms.status === "Completed" ? "bg-success/20 text-success" :
+                                ms.status === "Failed" ? "bg-destructive/20 text-destructive" :
+                                "bg-muted text-muted-foreground"
+                              )}
+                            >
+                              {ms.status}
+                            </button>
+                            {activeMsDropdown === ms.id && (
+                              <>
+                                <div className="fixed inset-0 z-40" onClick={() => setActiveMsDropdown(null)} />
+                                <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1.5 min-w-[140px]">
+                                  <div className="px-3 pb-1.5 text-xs font-medium text-muted-foreground">Change Status</div>
+                                  {["Pending", "Completed", "Failed"].map((s) => (
+                                    <button key={s}
+                                      onClick={(e) => { e.stopPropagation(); setActiveMsDropdown(null); onMilestoneStatusChange?.(ms, s as "Pending" | "Completed" | "Failed"); }}
+                                      className={cn("w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-accent transition-colors text-foreground",
+                                        s === ms.status && "font-semibold"
+                                      )}
+                                    >
+                                      <span className={cn("w-2 h-2 rounded-full shrink-0",
+                                        s === "Completed" ? "bg-success" : s === "Failed" ? "bg-destructive" : "bg-muted-foreground"
+                                      )} />
+                                      {s}
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
                           </span>
-                          <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded transition-all">
-                            <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                          </button>
+                          {/* 3-dot menu */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded transition-all shrink-0">
+                                <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem onClick={() => {
+                                const name = prompt("Rename milestone:", ms.milestoneName);
+                                if (name?.trim()) onMilestoneNameChange?.(ms, name.trim());
+                              }} className="text-foreground">
+                                <svg className="h-3.5 w-3.5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg>
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive" onClick={() => onDeleteMilestone?.(ms.id)}>
+                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
 

@@ -678,6 +678,7 @@ export interface ProjectMilestone {
   description: string | null;
   dueDate: Timestamp | null;
   status: "Pending" | "Completed" | "Failed";
+  order: number;
   createdBy: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;

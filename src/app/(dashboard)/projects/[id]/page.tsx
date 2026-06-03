@@ -15,6 +15,7 @@ import {
 import {
   getProjectMilestones,
   createMilestone,
+  updateMilestone,
   deleteMilestone,
 } from "@/lib/firebase/project-milestones";
 import {
@@ -421,6 +422,31 @@ export default function ProjectDetailPage() {
     } catch { toast.error("Failed to delete milestone"); }
   };
 
+  const handleMilestoneStatusChange = async (milestone: ProjectMilestone, newStatus: "Pending" | "Completed" | "Failed") => {
+    try {
+      await updateMilestone(milestone.id, { status: newStatus });
+      setMilestones((prev) => prev.map((m) => m.id === milestone.id ? { ...m, status: newStatus } : m));
+    } catch { toast.error("Failed to update milestone status"); }
+  };
+
+  const handleMilestoneNameChange = async (milestone: ProjectMilestone, newName: string) => {
+    if (newName === milestone.milestoneName) return;
+    try {
+      await updateMilestone(milestone.id, { milestoneName: newName });
+      setMilestones((prev) => prev.map((m) => m.id === milestone.id ? { ...m, milestoneName: newName } : m));
+      toast.success("Milestone renamed");
+    } catch { toast.error("Failed to rename milestone"); }
+  };
+
+  const handleToggleMilestoneComplete = async (milestone: ProjectMilestone) => {
+    const newStatus = milestone.status === "Completed" ? "Pending" : "Completed";
+    try {
+      await updateMilestone(milestone.id, { status: newStatus });
+      setMilestones((prev) => prev.map((m) => m.id === milestone.id ? { ...m, status: newStatus } : m));
+      toast.success(newStatus === "Completed" ? "Milestone completed" : "Milestone reopened");
+    } catch { toast.error("Failed to update milestone"); }
+  };
+
   // ─── Inline Task Creation Handlers ───────────────────────────────────────────
 
   const handleStartInlineTask = () => {
@@ -553,9 +579,10 @@ export default function ProjectDetailPage() {
     if (fromIdx < 0 || toIdx < 0) return;
     const [moved] = allMilestones.splice(fromIdx, 1);
     allMilestones.splice(toIdx, 0, moved);
-    setMilestones(allMilestones);
+    const reordered = allMilestones.map((m, i) => ({ ...m, order: i }));
+    setMilestones(reordered);
     try {
-      await Promise.all(allMilestones.map((m, i) => updateTask(m.id, { order: i } as any)));
+      await Promise.all(reordered.map((m) => updateMilestone(m.id, { order: m.order })));
     } catch { toast.error("Failed to save milestone order"); }
   };
 
@@ -693,6 +720,11 @@ export default function ProjectDetailPage() {
                   milestoneTaskMap={milestoneTaskMap}
                   expandedMilestones={expandedMilestones}
                   onToggleMilestoneExpand={toggleMilestoneExpand}
+                  // Milestone actions
+                  onToggleMilestoneComplete={handleToggleMilestoneComplete}
+                  onMilestoneStatusChange={handleMilestoneStatusChange}
+                  onMilestoneNameChange={handleMilestoneNameChange}
+                  onDeleteMilestone={handleDeleteMilestone}
                 />
               </div>
 

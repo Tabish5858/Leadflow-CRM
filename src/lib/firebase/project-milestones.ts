@@ -48,6 +48,7 @@ export async function createMilestone(
     description: data.description || null,
     dueDate: data.dueDate ? Timestamp.fromDate(data.dueDate) : null,
     status: "Pending",
+    order: 0,
     createdBy: userId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -72,7 +73,7 @@ export async function getProjectMilestones(projectId: string): Promise<ProjectMi
   let results = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }) as ProjectMilestone)
     .filter((m) => !m.isDeleted);
-  results.sort((a, b) => (a.createdAt?.seconds ?? 0) - (b.createdAt?.seconds ?? 0));
+  results.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.createdAt?.seconds ?? 0) - (b.createdAt?.seconds ?? 0));
   return results;
 }
 
@@ -89,7 +90,7 @@ export async function getMilestone(id: string): Promise<ProjectMilestone | null>
 // ── Update ───────────────────────────────────────────────────────────────────
 
 export type UpdateMilestoneData = Partial<
-  Pick<ProjectMilestone, "milestoneName" | "description" | "status">
+  Pick<ProjectMilestone, "milestoneName" | "description" | "status" | "order">
 > & {
   dueDate?: Date | null;
 };
