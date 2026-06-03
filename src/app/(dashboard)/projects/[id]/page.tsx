@@ -731,8 +731,12 @@ export default function ProjectDetailPage() {
               {/* Right: Sidebar cards - sticky & scrollable */}
               <div className="w-full lg:w-[35%] space-y-4 lg:sticky lg:top-4 lg:self-start max-h-[calc(100vh-180px)] overflow-y-auto custom-scrollbar">
                 <ProjectInfoCard project={project} memberMap={memberMap} onProjectUpdated={loadProject} />
-                <TeamCard projectId={projectId} members={members} memberIds={project.memberIds} onProjectUpdated={loadProject} />
-                <ClientsCard projectId={projectId} members={members} clientIds={project.clients || []} onProjectUpdated={loadProject} />
+                <TeamCard projectId={projectId} members={members} memberIds={project.memberIds} onMembersChange={(newIds) => {
+                  setProject((prev) => prev ? { ...prev, memberIds: newIds } : prev);
+                }} />
+                <ClientsCard projectId={projectId} members={members} clientIds={project.clients || []} onClientsChange={(newIds) => {
+                  setProject((prev) => prev ? { ...prev, clients: newIds } : prev);
+                }} />
                 <LinksCard project={project} onProjectUpdated={loadProject} />
                 <DeliveryFlowCard project={project} onProjectUpdated={loadProject} />
                 <NotesCard notes={notes} onCreateNote={handleCreateNote} onDeleteNote={handleDeleteNote} />

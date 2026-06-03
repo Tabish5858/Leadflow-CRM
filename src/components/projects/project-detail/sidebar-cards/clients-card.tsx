@@ -15,10 +15,10 @@ interface ClientsCardProps {
   projectId: string;
   members: WorkspaceMember[];
   clientIds: string[];
-  onProjectUpdated: () => void;
+  onClientsChange: (clientIds: string[]) => void;
 }
 
-export default function ClientsCard({ projectId, members, clientIds, onProjectUpdated }: ClientsCardProps) {
+export default function ClientsCard({ projectId, members, clientIds, onClientsChange }: ClientsCardProps) {
   const [showAddDropdown, setShowAddDropdown] = useState(false);
   const [expandedClient, setExpandedClient] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -42,27 +42,33 @@ export default function ClientsCard({ projectId, members, clientIds, onProjectUp
   const availableMembers = members.filter((m) => !clientIds.includes(m.userId) && m.role !== "client");
 
   const handleAddClient = async (userId: string) => {
+    const newIds = [...clientIds, userId];
+    // Optimistic update
+    onClientsChange(newIds);
+    setShowAddDropdown(false);
     setSaving(true);
     try {
-      await updateProject(projectId, { clients: [...clientIds, userId] } as any);
+      await updateProject(projectId, { clients: newIds } as any);
       toast.success("Client added");
-      setShowAddDropdown(false);
-      onProjectUpdated();
     } catch {
       toast.error("Failed to add client");
+      onClientsChange(clientIds); // Rollback
     } finally {
       setSaving(false);
     }
   };
 
   const handleRemoveClient = async (userId: string) => {
+    const newIds = clientIds.filter((id) => id !== userId);
+    // Optimistic update
+    onClientsChange(newIds);
     setSaving(true);
     try {
-      await updateProject(projectId, { clients: clientIds.filter((id) => id !== userId) } as any);
+      await updateProject(projectId, { clients: newIds } as any);
       toast.success("Client removed");
-      onProjectUpdated();
     } catch {
       toast.error("Failed to remove client");
+      onClientsChange(clientIds); // Rollback
     } finally {
       setSaving(false);
     }

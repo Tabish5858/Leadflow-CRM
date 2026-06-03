@@ -15,10 +15,10 @@ interface TeamCardProps {
   projectId: string;
   members: WorkspaceMember[];
   memberIds: string[];
-  onProjectUpdated: () => void;
+  onMembersChange: (memberIds: string[]) => void;
 }
 
-export default function TeamCard({ projectId, members, memberIds, onProjectUpdated }: TeamCardProps) {
+export default function TeamCard({ projectId, members, memberIds, onMembersChange }: TeamCardProps) {
   const [showAddDropdown, setShowAddDropdown] = useState(false);
   const [saving, setSaving] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -38,14 +38,17 @@ export default function TeamCard({ projectId, members, memberIds, onProjectUpdat
   const availableMembers = members.filter((m) => !memberIds.includes(m.userId));
 
   const handleAddMember = async (userId: string) => {
+    const newIds = [...memberIds, userId];
+    // Optimistic update
+    onMembersChange(newIds);
+    setShowAddDropdown(false);
     setSaving(true);
     try {
-      await updateProject(projectId, { memberIds: [...memberIds, userId] } as any);
+      await updateProject(projectId, { memberIds: newIds } as any);
       toast.success("Member added");
-      setShowAddDropdown(false);
-      onProjectUpdated();
     } catch {
       toast.error("Failed to add member");
+      onMembersChange(memberIds); // Rollback
     } finally {
       setSaving(false);
     }
@@ -53,13 +56,16 @@ export default function TeamCard({ projectId, members, memberIds, onProjectUpdat
 
   const handleRemoveMember = async (userId: string) => {
     if (!confirm("Remove this member from the project?")) return;
+    const newIds = memberIds.filter((id) => id !== userId);
+    // Optimistic update
+    onMembersChange(newIds);
     setSaving(true);
     try {
-      await updateProject(projectId, { memberIds: memberIds.filter((id) => id !== userId) } as any);
+      await updateProject(projectId, { memberIds: newIds } as any);
       toast.success("Member removed");
-      onProjectUpdated();
     } catch {
       toast.error("Failed to remove member");
+      onMembersChange(memberIds); // Rollback
     } finally {
       setSaving(false);
     }
