@@ -358,6 +358,20 @@ export default function ProjectDetailPage() {
     } catch { toast.error("Failed to rename task"); }
   };
 
+  const handleTaskAssigneeChange = async (task: ProjectTask, assigneeId: string | null) => {
+    try {
+      await updateTask(task.id, { assigneeId } as any);
+      setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, assigneeId } as ProjectTask : t));
+    } catch { toast.error("Failed to update assignee"); }
+  };
+
+  const handleTaskDueDateChange = async (task: ProjectTask, dueDate: Date | null) => {
+    try {
+      await updateTask(task.id, { dueDate } as any);
+      setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, dueDate: dueDate ? { seconds: Math.floor(dueDate.getTime() / 1000), nanoseconds: 0 } as any : null } as ProjectTask : t));
+    } catch { toast.error("Failed to update due date"); }
+  };
+
   const handleDeleteTask = async (task: ProjectTask) => {
     try {
       await deleteTask(task.id);
@@ -692,6 +706,9 @@ export default function ProjectDetailPage() {
                   onTaskStatusChange={handleTaskStatusChange}
                   onDeleteTask={handleDeleteTask}
                   onTitleChange={handleTitleChange}
+                  onAssigneeChange={handleTaskAssigneeChange}
+                  onDueDateChange={handleTaskDueDateChange}
+                  taskMembers={members}
                   onAddTask={handleStartInlineTask}
                   onAddMilestone={handleOpenMilestoneModal}
                   getSubtasks={getSubtasks}
@@ -785,7 +802,7 @@ export default function ProjectDetailPage() {
                     const isExpanded = expandedTasks.has(task.id);
                     return (
                       <div key={task.id}>
-                        <TaskCard task={task} memberMap={memberMap} onToggleComplete={handleToggleTaskComplete} onStatusChange={handleTaskStatusChange} onDelete={handleDeleteTask} showSubtasks={isExpanded} onToggleSubtasks={toggleSubtaskExpand} onDragStart={handleTaskDragStart} onDrop={handleTaskDrop} onDragOver={(e) => { e.preventDefault(); }} />
+                        <TaskCard task={task} memberMap={memberMap} onToggleComplete={handleToggleTaskComplete} onStatusChange={handleTaskStatusChange} onDelete={handleDeleteTask} onTitleChange={handleTitleChange} onAssigneeChange={handleTaskAssigneeChange} onDueDateChange={handleTaskDueDateChange} members={members} showSubtasks={isExpanded} onToggleSubtasks={toggleSubtaskExpand} onDragStart={handleTaskDragStart} onDrop={handleTaskDrop} onDragOver={(e) => { e.preventDefault(); }} />
                         {isExpanded && subtasks.length > 0 && (
                           <div className="mt-1 space-y-1 pl-4 border-l-2 border-muted ml-6">
                             {subtasks.map((sub) => (<TaskCard key={sub.id} task={sub} memberMap={memberMap} onToggleComplete={handleToggleTaskComplete} onStatusChange={handleTaskStatusChange} onDelete={handleDeleteTask} isSubtask />))}

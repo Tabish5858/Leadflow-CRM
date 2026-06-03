@@ -1,6 +1,7 @@
 "use client";
 
 import type { ProjectTask } from "@/types";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
 import {
@@ -11,6 +12,8 @@ import {
   Loader2,
   MoreHorizontal,
   Trash2,
+  Plus,
+  User,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -112,6 +115,9 @@ interface TaskCardProps {
   onStatusChange?: (task: ProjectTask, newStatus: { parent: string; name: string; color: string }) => void;
   onTitleChange?: (task: ProjectTask, newTitle: string) => void;
   onDelete?: (task: ProjectTask) => void;
+  onAssigneeChange?: (task: ProjectTask, assigneeId: string | null) => void;
+  onDueDateChange?: (task: ProjectTask, dueDate: Date | null) => void;
+  members?: Array<{ userId: string; displayName: string; email: string }>;
   showSubtasks?: boolean;
   onToggleSubtasks?: (task: ProjectTask) => void;
   isSubtask?: boolean;
@@ -133,6 +139,9 @@ export function TaskCard({
   onStatusChange,
   onTitleChange,
   onDelete,
+  onAssigneeChange,
+  onDueDateChange,
+  members = [],
   showSubtasks,
   onToggleSubtasks,
   isSubtask,
@@ -146,6 +155,8 @@ export function TaskCard({
 }: TaskCardProps) {
   const isComplete = task.status.parent === "Complete";
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+  const [showDueDatePicker, setShowDueDatePicker] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const statusStyle = getStatusStyle(task.status.color || "#DDDDDD");
 
@@ -281,21 +292,108 @@ export function TaskCard({
               {/* SECOND ROW: metadata */}
               {!isSubtask && (
                 <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1 ml-9">
-                  {assignee && (
-                    <div className="flex items-center gap-1">
-                      <div className="w-5 h-5 bg-muted rounded-full flex items-center justify-center text-[9px] font-medium text-foreground">
-                        {assignee.displayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
-                      </div>
-                      <span>{assignee.displayName}</span>
-                    </div>
-                  )}
-                  {dueDateValue && (
-                    <span className={cn("flex items-center gap-1", dueDateValue < new Date() && !isComplete ? "text-destructive font-medium" : "")}>
+                  {/* Assignee picker */}
+                  <div className="relative">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowAssigneeDropdown(!showAssigneeDropdown); }}
+                      className="flex items-center gap-1 hover:bg-accent rounded px-1.5 py-0.5 -ml-1.5 transition-colors"
+                    >
+                      {assignee ? (
+                        <>
+                          <div className="w-5 h-5 bg-muted rounded-full flex items-center justify-center text-[9px] font-medium text-foreground overflow-hidden">
+                            {assignee.photoURL ? (
+                              <Avatar className="h-5 w-5"><AvatarFallback className="text-[8px]">{assignee.displayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}</AvatarFallback></Avatar>
+                            ) : assignee.displayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                          </div>
+                          <span className="text-foreground">{assignee.displayName}</span>
+                        </>
+                      ) : (
+                        <>
+                          <User className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-muted-foreground hover:text-foreground">Assign</span>
+                        </>
+                      )}
+                    </button>
+                    {showAssigneeDropdown && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowAssigneeDropdown(false)} />
+                        <div className="absolute left-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[180px] max-h-[200px] overflow-y-auto">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setShowAssigneeDropdown(false); onAssigneeChange?.(task, null); }}
+                            className={cn("w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-accent transition-colors text-foreground",
+                              !task.assigneeId && "font-semibold"
+                            )}
+                          >
+                            <div className="w-4 h-4 rounded-full bg-muted" />
+                            Unassigned
+                          </button>
+                          {members.map((m) => (
+                            <button key={m.userId}
+                              onClick={(e) => { e.stopPropagation(); setShowAssigneeDropdown(false); onAssigneeChange?.(task, m.userId); }}
+                              className={cn("w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-accent transition-colors text-foreground",
+                                task.assigneeId === m.userId && "font-semibold"
+                              )}
+                            >
+                              <div className="w-4 h-4 bg-muted rounded-full flex items-center justify-center text-[8px] font-medium shrink-0">
+                                {m.displayName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate">{m.displayName}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Due date picker */}
+                  <div className="relative">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowDueDatePicker(!showDueDatePicker); }}
+                      className={cn("flex items-center gap-1 hover:bg-accent rounded px-1.5 py-0.5 -ml-1.5 transition-colors",
+                        dueDateValue && dueDateValue < new Date() && !isComplete ? "text-destructive font-medium" : ""
+                      )}
+                    >
                       <Calendar className="h-3 w-3" />
-                      {formatDate(dueDateValue)}
-                      {dueDateValue < new Date() && !isComplete && " (overdue)"}
-                    </span>
-                  )}
+                      {dueDateValue ? (
+                        <span>{formatDate(dueDateValue)}{dueDateValue < new Date() && !isComplete && " (overdue)"}</span>
+                      ) : (
+                        <span className="text-muted-foreground hover:text-foreground">Add due date</span>
+                      )}
+                    </button>
+                    {showDueDatePicker && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowDueDatePicker(false)} />
+                        <div className="absolute left-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg p-3">
+                          <input
+                            type="date"
+                            className="w-full px-2 py-1.5 text-xs border border-border rounded bg-background text-foreground"
+                            value={dueDateValue ? dueDateValue.toISOString().split("T")[0] : ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val) {
+                                const d = new Date(val + "T00:00:00");
+                                onDueDateChange?.(task, d);
+                              } else {
+                                onDueDateChange?.(task, null);
+                              }
+                              setShowDueDatePicker(false);
+                            }}
+                            autoFocus
+                          />
+                          {dueDateValue && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onDueDateChange?.(task, null); setShowDueDatePicker(false); }}
+                              className="w-full text-left mt-1.5 px-2 py-1 text-[10px] text-destructive hover:bg-accent rounded transition-colors"
+                            >
+                              Clear due date
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

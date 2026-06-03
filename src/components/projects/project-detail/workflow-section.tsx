@@ -270,6 +270,9 @@ interface WorkflowSectionProps {
   onTaskStatusChange: (task: ProjectTask, newStatus: { parent: string; name: string; color: string }) => void;
   onDeleteTask: (task: ProjectTask) => void;
   onTitleChange?: (task: ProjectTask, newTitle: string) => void;
+  onAssigneeChange?: (task: ProjectTask, assigneeId: string | null) => void;
+  onDueDateChange?: (task: ProjectTask, dueDate: Date | null) => void;
+  taskMembers?: Array<{ userId: string; displayName: string; email: string }>;
   onAddTask: () => void;
   onAddMilestone: () => void;
   getSubtasks: (parentId: string) => ProjectTask[];
@@ -309,6 +312,9 @@ export default function WorkflowSection({
   onTaskStatusChange,
   onDeleteTask,
   onTitleChange,
+  onAssigneeChange,
+  onDueDateChange,
+  taskMembers = [],
   onAddTask,
   onAddMilestone,
   getSubtasks,
@@ -340,7 +346,7 @@ export default function WorkflowSection({
 }: WorkflowSectionProps) {
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
   const [activeMsDropdown, setActiveMsDropdown] = useState<string | null>(null);
-  const topLevelTasks = tasks.filter((t) => !t.parentTaskId && !t.isSubtask);
+  const topLevelTasks = tasks.filter((t) => !t.parentTaskId && !t.isSubtask && !t.milestoneId);
   const completedTasks = tasks.filter((t) => t.status.parent === "Complete").length;
 
   return (
@@ -415,18 +421,18 @@ export default function WorkflowSection({
                   const nestedTasks = milestoneTaskMap?.get(ms.id) || [];
                   return (
                     <div key={ms.id} className="flex flex-col">
-                      {/* Milestone row */}
+                        {/* Milestone row */}
                       <div
                         className="flex items-start gap-2.5 p-2 rounded-md hover:bg-accent/30 transition-colors group border border-transparent hover:border-border"
                         draggable={!!onMilestoneDragStart}
                         onDragStart={(e) => onMilestoneDragStart?.(e, ms)}
-                        onDragOver={(e) => { e.preventDefault(); }}
+                        onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = "move"; }}
                         onDrop={(e) => { e.preventDefault(); onMilestoneDrop?.(e, ms); }}
                       >
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           {/* Drag handle */}
                           {onMilestoneDragStart && (
-                            <div className="text-muted-foreground/30 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <div className="text-muted-foreground/30 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0" draggable="false">
                               <GripVertical className="h-4 w-4" />
                             </div>
                           )}
@@ -435,6 +441,7 @@ export default function WorkflowSection({
                             onClick={() => onToggleMilestoneComplete?.(ms)}
                             className="mt-0.5 shrink-0 cursor-pointer hover:opacity-80"
                             title={ms.status === "Completed" ? "Reopen milestone" : "Complete milestone"}
+                            draggable="false"
                           >
                             {ms.status === "Completed" ? (
                               <div className="w-5 h-5 rounded-sm bg-foreground flex items-center justify-center">
@@ -451,6 +458,7 @@ export default function WorkflowSection({
                                 onClick={() => onAddNestedTask?.(ms.id)}
                                 className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-accent rounded transition-all"
                                 title="Add task to milestone"
+                                draggable="false"
                               >
                                 <Plus className="h-3.5 w-3.5 text-muted-foreground" />
                               </button>
@@ -458,6 +466,7 @@ export default function WorkflowSection({
                                 <button
                                   onClick={() => onToggleMilestoneExpand?.(ms.id)}
                                   className="p-0.5 hover:bg-accent rounded shrink-0"
+                                  draggable="false"
                                 >
                                   {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
                                 </button>
@@ -481,6 +490,7 @@ export default function WorkflowSection({
                                 ms.status === "Failed" ? "bg-destructive/20 text-destructive" :
                                 "bg-muted text-muted-foreground"
                               )}
+                              draggable="false"
                             >
                               {ms.status}
                             </button>
@@ -534,7 +544,7 @@ export default function WorkflowSection({
                       {isExpanded && (nestedTasks.length > 0 || (isCreatingNestedTask && nestedMilestoneId === ms.id)) && (
                         <div className="ml-12 mt-1.5 space-y-1.5 border-l-2 border-border pl-4">
                           {nestedTasks.map((task) => (
-                            <TaskCard key={task.id} task={task} memberMap={memberMap} onToggleComplete={onToggleTaskComplete} onStatusChange={onTaskStatusChange} onDelete={onDeleteTask} onTitleChange={onTitleChange} isSubtask />
+                            <TaskCard key={task.id} task={task} memberMap={memberMap} onToggleComplete={onToggleTaskComplete} onStatusChange={onTaskStatusChange} onDelete={onDeleteTask} onTitleChange={onTitleChange} onAssigneeChange={onAssigneeChange} onDueDateChange={onDueDateChange} members={taskMembers} isSubtask />
                           ))}
                           {isCreatingNestedTask && nestedMilestoneId === ms.id && (
                             <InlineTaskCreator
@@ -564,8 +574,11 @@ export default function WorkflowSection({
                           onToggleComplete={onToggleTaskComplete}
                           onStatusChange={onTaskStatusChange}
                           onDelete={onDeleteTask}
-                          onTitleChange={onTitleChange}
-                          showSubtasks={isExpanded}
+                onTitleChange={onTitleChange}
+                onAssigneeChange={onAssigneeChange}
+                onDueDateChange={onDueDateChange}
+                members={taskMembers}
+                showSubtasks={isExpanded}
                           onToggleSubtasks={onToggleSubtaskExpand}
               onDragStart={onTaskDragStart}
               onDrop={onTaskDrop}
