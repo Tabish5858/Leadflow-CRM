@@ -115,7 +115,7 @@ export async function getProjectTasks(projectId: string): Promise<ProjectTask[]>
     where("projectId", "==", projectId)
   );
   const snap = await getDocs(q);
-  let results = snap.docs
+  const results = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }) as ProjectTask)
     .filter((t) => !t.isDeleted);
   // Sort in-memory to avoid needing composite index
@@ -131,7 +131,7 @@ export async function getSubtasks(parentTaskId: string): Promise<ProjectTask[]> 
     where("parentTaskId", "==", parentTaskId)
   );
   const snap = await getDocs(q);
-  let results = snap.docs
+  const results = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }) as ProjectTask)
     .filter((t) => !t.isDeleted);
   // Sort in-memory
@@ -170,7 +170,7 @@ export async function updateTask(id: string, data: UpdateTaskData): Promise<void
   }
 
   // If status set to Complete, set completedAt
-  if (data.status && typeof data.status === "object" && (data.status as any).parent === "Complete") {
+  if (data.status && typeof data.status === "object" && (data.status as { parent: string }).parent === "Complete") {
     updatePayload.completedAt = Timestamp.now();
   }
 

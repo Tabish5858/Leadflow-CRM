@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import type { ProjectTask } from "@/types";
+import type { ProjectTask, ProjectTaskStatus } from "@/types";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
@@ -102,7 +102,7 @@ interface TaskCardProps {
   task: ProjectTask;
   memberMap?: Map<string, { displayName: string; photoURL?: string | null }>;
   onToggleComplete?: (task: ProjectTask) => void;
-  onStatusChange?: (task: ProjectTask, newStatus: { parent: string; name: string; color: string }) => void;
+  onStatusChange?: (task: ProjectTask, newStatus: ProjectTaskStatus) => void;
   onTitleChange?: (task: ProjectTask, newTitle: string) => void;
   onDelete?: (task: ProjectTask) => void;
   onAssigneeChange?: (task: ProjectTask, assigneeId: string | null) => void;

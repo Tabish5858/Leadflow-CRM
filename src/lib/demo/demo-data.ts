@@ -1389,7 +1389,7 @@ export class DemoStore {
     const idx = this._tasks.findIndex((t) => t.id === id);
     if (idx === -1) return;
     const updated = { ...this._tasks[idx], ...data, updatedAt: Timestamp.now() } as ProjectTask;
-    if (data.status && typeof data.status === "object" && (data.status as any).parent === "Complete") {
+    if (data.status && typeof data.status === "object" && (data.status as { parent: string }).parent === "Complete") {
       updated.completedAt = Timestamp.now();
     }
     this._tasks[idx] = updated;

@@ -70,7 +70,7 @@ export async function getProjectMilestones(projectId: string): Promise<ProjectMi
     where("projectId", "==", projectId)
   );
   const snap = await getDocs(q);
-  let results = snap.docs
+  const results = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }) as ProjectMilestone)
     .filter((m) => !m.isDeleted);
   results.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || (a.createdAt?.seconds ?? 0) - (b.createdAt?.seconds ?? 0));

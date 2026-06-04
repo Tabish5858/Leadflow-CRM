@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Timestamp } from "firebase/firestore";
 import { Link as LinkIcon, Plus, Trash2, ExternalLink } from "lucide-react";
 import type { Project, LinkEmbed } from "@/types";
 import { updateProject } from "@/lib/firebase/projects";
@@ -27,11 +28,11 @@ export default function LinksCard({ project, onProjectUpdated }: LinksCardProps)
         title: title.trim(),
         url: url.trim().startsWith("http") ? url.trim() : `https://${url.trim()}`,
         addedBy: "",
-        addedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as any,
+        addedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as Timestamp,
       };
       await updateProject(project.id, {
         linksAndEmbeds: [...(project.linksAndEmbeds || []), newLink],
-      } as any);
+      });
       toast.success("Link added");
       setTitle("");
       setUrl("");
@@ -48,7 +49,7 @@ export default function LinksCard({ project, onProjectUpdated }: LinksCardProps)
     try {
       await updateProject(project.id, {
         linksAndEmbeds: (project.linksAndEmbeds || []).filter((l) => l.id !== linkId),
-      } as any);
+      });
       toast.success("Link removed");
       onProjectUpdated();
     } catch {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { ProjectTask, ProjectMilestone, WorkspaceMember } from "@/types";
+import type { ProjectTask, ProjectMilestone, ProjectTaskStatus, WorkspaceMember } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,8 +41,8 @@ import { cn } from "@/lib/utils";
 
 function parseMsDate(dueDate: unknown): Date | null {
   if (!dueDate) return null;
-  if (typeof (dueDate as any).toDate === "function") return (dueDate as any).toDate();
-  if (typeof dueDate === "object" && "seconds" in (dueDate as any)) return new Date((dueDate as any).seconds * 1000);
+  if (typeof (dueDate as Record<string, unknown>).toDate === "function") return (dueDate as { toDate: () => Date }).toDate();
+  if (typeof dueDate === "object" && "seconds" in (dueDate as Record<string, unknown>)) return new Date((dueDate as { seconds: number }).seconds * 1000);
   if (typeof dueDate === "string") { const d = new Date(dueDate); return isNaN(d.getTime()) ? null : d; }
   if (dueDate instanceof Date) return dueDate;
   return null;
@@ -163,7 +163,7 @@ function BoardView({
   milestones: ProjectMilestone[];
   memberMap: Map<string, { displayName: string; photoURL?: string | null }>;
   onToggleTaskComplete: (task: ProjectTask) => void;
-  onTaskStatusChange: (task: ProjectTask, newStatus: { parent: string; name: string; color: string }) => void;
+  onTaskStatusChange: (task: ProjectTask, newStatus: ProjectTaskStatus) => void;
   onDeleteTask: (task: ProjectTask) => void;
   onTitleChange?: (task: ProjectTask, newTitle: string) => void;
 }) {
@@ -248,7 +248,7 @@ function BoardView({
                     </div>
                     <div className="flex items-center gap-2 mt-1.5">
                       {task.dueDate && (() => {
-                        const d = typeof (task.dueDate as any).toDate === "function" ? (task.dueDate as any).toDate() : new Date(task.dueDate as any);
+                        const d = task.dueDate.toDate();
                         return (
                           <span className="text-[10px] text-muted-foreground">
                             {d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
@@ -279,7 +279,7 @@ interface WorkflowSectionProps {
   milestones: ProjectMilestone[];
   memberMap: Map<string, { displayName: string; photoURL?: string | null }>;
   onToggleTaskComplete: (task: ProjectTask) => void;
-  onTaskStatusChange: (task: ProjectTask, newStatus: { parent: string; name: string; color: string }) => void;
+  onTaskStatusChange: (task: ProjectTask, newStatus: ProjectTaskStatus) => void;
   onDeleteTask: (task: ProjectTask) => void;
   onTitleChange?: (task: ProjectTask, newTitle: string) => void;
   onAssigneeChange?: (task: ProjectTask, assigneeId: string | null) => void;

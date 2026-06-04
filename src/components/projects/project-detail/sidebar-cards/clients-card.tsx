@@ -48,7 +48,7 @@ export default function ClientsCard({ projectId, members, clientIds, onClientsCh
     setShowAddDropdown(false);
     setSaving(true);
     try {
-      await updateProject(projectId, { clients: newIds } as any);
+      await updateProject(projectId, { clients: newIds });
       toast.success("Client added");
     } catch {
       toast.error("Failed to add client");
@@ -64,7 +64,7 @@ export default function ClientsCard({ projectId, members, clientIds, onClientsCh
     onClientsChange(newIds);
     setSaving(true);
     try {
-      await updateProject(projectId, { clients: newIds } as any);
+      await updateProject(projectId, { clients: newIds });
       toast.success("Client removed");
     } catch {
       toast.error("Failed to remove client");

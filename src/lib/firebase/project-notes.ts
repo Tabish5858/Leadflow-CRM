@@ -68,7 +68,7 @@ export async function getProjectNotes(projectId: string): Promise<ProjectNote[]>
     where("projectId", "==", projectId)
   );
   const snap = await getDocs(q);
-  let results = snap.docs
+  const results = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }) as ProjectNote)
     .filter((n) => !n.isDeleted);
   results.sort((a, b) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));

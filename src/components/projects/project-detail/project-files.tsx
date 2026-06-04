@@ -81,7 +81,7 @@ export default function ProjectFiles({ projectId, workspaceId, userId }: Project
           data.documents.map((d: Record<string, unknown>) => ({
             ...d,
             createdAt: d.createdAt
-              ? { toDate: () => new Date((d.createdAt as any).seconds * 1000) }
+              ? { toDate: () => new Date((d.createdAt as { seconds: number }).seconds * 1000) }
               : undefined,
           })) as ProjectFile[]
         );

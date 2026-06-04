@@ -403,8 +403,8 @@ export default function DeliverablesTab({ projectId, workspaceId, userId, onProj
               fileType: doc.fileType as string,
               fileSize: doc.fileSize as number,
               cloudinaryUrl: doc.cloudinaryUrl as string,
-              uploadedAt: (doc.createdAt as any)?.seconds
-                ? new Date((doc.createdAt as any).seconds * 1000).toISOString()
+              uploadedAt: (doc.createdAt as Record<string, unknown>)?.seconds
+                ? new Date((doc.createdAt as Record<string, unknown>).seconds as number * 1000).toISOString()
                 : new Date().toISOString(),
             });
             grouped.set(deliverableName, existing);
@@ -484,7 +484,7 @@ export default function DeliverablesTab({ projectId, workspaceId, userId, onProj
   const handleDeliverFinalPackage = async () => {
     setDelivering(true);
     try {
-      await updateProject(projectId, { hasFinalPackage: true, finalPackageDelivered: true } as any);
+      await updateProject(projectId, { hasFinalPackage: true, finalPackageDelivered: true });
       toast.success("Final package delivered");
       setShowDeliverModal(false);
       onProjectUpdated();

@@ -26,12 +26,12 @@ export default function DeliveryFlowCard({ project, onProjectUpdated }: Delivery
     upsellServices: [],
   };
 
-  const updateSetting = async (key: keyof ProjectDeliveryFlow, value: boolean | string | any[]) => {
+  const updateSetting = async (key: keyof ProjectDeliveryFlow, value: boolean | string | unknown[]) => {
     setSaving(true);
     try {
       await updateProject(project.id, {
         deliveryFlowSettings: { ...settings, [key]: value },
-      } as any);
+      });
       toast.success("Delivery flow updated");
       onProjectUpdated();
     } catch {

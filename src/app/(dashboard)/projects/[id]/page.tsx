@@ -24,10 +24,12 @@ import {
   deleteNote,
 } from "@/lib/firebase/project-notes";
 import { getWorkspaceMembers } from "@/lib/firebase/workspaces";
+import { Timestamp } from "firebase/firestore";
 import type {
   Project,
   ProjectStatus,
   ProjectTask,
+  ProjectTaskStatus,
   ProjectMilestone,
   ProjectNote,
   WorkspaceMember,
@@ -349,19 +351,19 @@ export default function ProjectDetailPage() {
         status: isComplete
           ? { parent: "To Do", name: "Not Started", color: "#DDDDDD" }
           : { parent: "Complete", name: "Complete", color: "#D1F5CF" },
-      } as any);
+      });
       setTasks((prev) => prev.map((t) => t.id === task.id ? {
         ...t,
         status: isComplete ? { parent: "To Do", name: "Not Started", color: "#DDDDDD" } : { parent: "Complete", name: "Complete", color: "#D1F5CF" },
-        completedAt: isComplete ? null : ({ seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as any),
+        completedAt: isComplete ? null : ({ seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as Timestamp),
       } : t));
       toast.success(isComplete ? "Task reopened" : "Task completed");
     } catch { toast.error("Failed to update task"); }
   };
 
-  const handleTaskStatusChange = async (task: ProjectTask, newStatus: { parent: string; name: string; color: string }) => {
+  const handleTaskStatusChange = async (task: ProjectTask, newStatus: ProjectTaskStatus) => {
     try {
-      await updateTask(task.id, { status: newStatus } as any);
+      await updateTask(task.id, { status: newStatus });
       setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, status: newStatus } as ProjectTask : t));
       toast.success(`Task status: ${newStatus.name}`);
     } catch { toast.error("Failed to update task status"); }
@@ -370,7 +372,7 @@ export default function ProjectDetailPage() {
   const handleTitleChange = async (task: ProjectTask, newTitle: string) => {
     if (newTitle === task.taskName) return;
     try {
-      await updateTask(task.id, { taskName: newTitle } as any);
+      await updateTask(task.id, { taskName: newTitle });
       setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, taskName: newTitle } as ProjectTask : t));
       toast.success("Task renamed");
     } catch { toast.error("Failed to rename task"); }
@@ -378,16 +380,16 @@ export default function ProjectDetailPage() {
 
   const handleTaskAssigneeChange = async (task: ProjectTask, assigneeId: string | null) => {
     try {
-      await updateTask(task.id, { assigneeId } as any);
+      await updateTask(task.id, { assigneeId });
       setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, assigneeId } as ProjectTask : t));
     } catch { toast.error("Failed to update assignee"); }
   };
 
   const handleTaskDueDateChange = async (task: ProjectTask, dueDate: Date | null) => {
     try {
-      await updateTask(task.id, { dueDate } as any);
+      await updateTask(task.id, { dueDate });
       // Store as ISO string for optimistic update (safely parseable)
-      setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, dueDate: dueDate ? dueDate.toISOString() as any : null } as ProjectTask : t));
+      setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, dueDate: dueDate ? dueDate.toISOString() as unknown as Timestamp : null } as ProjectTask : t));
     } catch { toast.error("Failed to update due date"); }
   };
 
@@ -427,7 +429,7 @@ export default function ProjectDetailPage() {
     setTasks(reordered);
     // Persist order to Firestore
     try {
-      await Promise.all(reordered.map((t) => updateTask(t.id, { order: t.order } as any)));
+      await Promise.all(reordered.map((t) => updateTask(t.id, { order: t.order })));
     } catch { toast.error("Failed to save task order"); }
   };
 
@@ -437,7 +439,7 @@ export default function ProjectDetailPage() {
     if (!project || newStatus === project.status) return;
     const oldStatus = project.status;
     setProject((prev) => (prev ? { ...prev, status: newStatus } : prev));
-    updateProjectFB(project.id, { status: newStatus } as any)
+    updateProjectFB(project.id, { status: newStatus })
       .then(() => toast.success(`Status changed to ${STATUS_CONFIG[newStatus]?.label || newStatus}`))
       .catch(() => {
         setProject((prev) => (prev ? { ...prev, status: oldStatus } : prev));
@@ -455,7 +457,7 @@ export default function ProjectDetailPage() {
         milestoneName: data.milestoneName,
         description: data.description || null,
         dueDate: data.dueDate,
-      } as any);
+      });
       toast.success("Milestone created");
       const updated = await getProjectMilestones(projectId);
       setMilestones(updated);
@@ -503,8 +505,8 @@ export default function ProjectDetailPage() {
 
   const handleMilestoneDueDateChange = async (milestone: ProjectMilestone, dueDate: Date | null) => {
     try {
-      await updateMilestone(milestone.id, { dueDate } as any);
-      setMilestones((prev) => prev.map((m) => m.id === milestone.id ? { ...m, dueDate: dueDate ? dueDate.toISOString() as any : null } : m));
+      await updateMilestone(milestone.id, { dueDate });
+      setMilestones((prev) => prev.map((m) => m.id === milestone.id ? { ...m, dueDate: dueDate ? dueDate.toISOString() as unknown as Timestamp : null } : m));
     } catch { toast.error("Failed to update milestone due date"); }
   };
 
@@ -584,7 +586,7 @@ export default function ProjectDetailPage() {
         milestoneName: newMilestoneName.trim(),
         description: null,
         dueDate: null,
-      } as any);
+      });
       setShowMilestoneModal(false);
       toast.success("Milestone created");
       const updated = await getProjectMilestones(projectId);
@@ -619,7 +621,7 @@ export default function ProjectDetailPage() {
     if (!data.startsWith("milestone:")) {
       const taskId = data;
       try {
-        await updateTask(taskId, { milestoneId: targetMilestone.id } as any);
+        await updateTask(taskId, { milestoneId: targetMilestone.id });
         toast.success("Task moved to milestone");
         const [updatedTasks, updatedMilestones] = await Promise.all([
           getProjectTasks(projectId),
@@ -652,7 +654,7 @@ export default function ProjectDetailPage() {
   const handleCreateNote = async (data: { title: string; content: string }) => {
     if (!projectId || !project) return;
     try {
-      await createNote(projectId, project.workspaceId, firebaseUser?.uid || "demo", { title: data.title, content: data.content || null, taskId: null } as any);
+      await createNote(projectId, project.workspaceId, firebaseUser?.uid || "demo", { title: data.title, content: data.content || "", taskId: null });
       toast.success("Note created");
       const updated = await getProjectNotes(projectId);
       setNotes(updated);

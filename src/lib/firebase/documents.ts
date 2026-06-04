@@ -84,7 +84,7 @@ export async function getProjectDocuments(
   if (isDemoMode()) {
     const { demoStore } = await import("@/lib/demo/demo-data");
     return demoStore.getDocuments().filter(
-      (d) => d.workspaceId === workspaceId && (d as any).projectId === projectId
+      (d) => d.workspaceId === workspaceId && (d as Document).projectId === projectId
     );
   }
 

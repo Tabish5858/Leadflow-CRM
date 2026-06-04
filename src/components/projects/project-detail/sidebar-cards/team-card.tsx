@@ -44,7 +44,7 @@ export default function TeamCard({ projectId, members, memberIds, onMembersChang
     setShowAddDropdown(false);
     setSaving(true);
     try {
-      await updateProject(projectId, { memberIds: newIds } as any);
+      await updateProject(projectId, { memberIds: newIds });
       toast.success("Member added");
     } catch {
       toast.error("Failed to add member");
@@ -61,7 +61,7 @@ export default function TeamCard({ projectId, members, memberIds, onMembersChang
     onMembersChange(newIds);
     setSaving(true);
     try {
-      await updateProject(projectId, { memberIds: newIds } as any);
+      await updateProject(projectId, { memberIds: newIds });
       toast.success("Member removed");
     } catch {
       toast.error("Failed to remove member");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, DollarSign, User, ChevronDown } from "lucide-react";
 import type { Project, ProjectStatus, WorkspaceMember } from "@/types";
 
@@ -25,9 +25,11 @@ export default function ProjectInfoCard({ project, memberMap, onStatusChange }: 
     .filter(Boolean)
     .join(", ");
 
-  const daysLeft = project.dueDate
-    ? Math.ceil((project.dueDate.toDate().getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-    : null;
+  const [daysLeft, setDaysLeft] = useState<number | null>(null);
+  useEffect(() => {
+    if (!project.dueDate) { setDaysLeft(null); return; }
+    setDaysLeft(Math.ceil((project.dueDate.toDate().getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+  }, [project.dueDate]);
 
   const handleStatusChange = (newStatus: ProjectStatus) => {
     if (newStatus === project.status) return;
