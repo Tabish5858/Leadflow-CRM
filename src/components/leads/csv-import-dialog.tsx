@@ -190,7 +190,7 @@ export function CsvImportDialog({
 
       toImport.push({
         workspaceId: "", // Will be set by caller
-        sr: lead.sr,
+        sr: lead.sr ?? undefined,
         firstName: lead.firstName,
         lastName: lead.lastName,
         email: lead.email,
