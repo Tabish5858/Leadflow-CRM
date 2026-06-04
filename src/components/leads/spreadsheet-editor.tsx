@@ -186,21 +186,23 @@ export function SpreadsheetEditor({
       const container = containerRef.current;
 
       /* eslint-disable @typescript-eslint/no-explicit-any */
+      const allLocales = mergeLocales(
+        UniverPresetSheetsCoreEnUS as any,
+        UniverPresetSheetsDataValidationEnUS as any,
+        UniverPresetSheetsFilterEnUS as any,
+        UniverPresetSheetsConditionalFormattingEnUS as any,
+        UniverPresetSheetsFindReplaceEnUS as any,
+        UniverPresetSheetsSortEnUS as any,
+        UniverPresetSheetsHyperLinkEnUS as any,
+        UniverPresetSheetsNoteEnUS as any,
+        UniverPresetSheetsThreadCommentEnUS as any,
+        UniverPresetSheetsDrawingEnUS as any,
+      );
+
       const { univerAPI } = createUniver({
         locale: LocaleType.EN_US,
         locales: {
-          [LocaleType.EN_US]: mergeLocales(
-            UniverPresetSheetsCoreEnUS as any,
-            UniverPresetSheetsDataValidationEnUS as any,
-            UniverPresetSheetsFilterEnUS as any,
-            UniverPresetSheetsConditionalFormattingEnUS as any,
-            UniverPresetSheetsFindReplaceEnUS as any,
-            UniverPresetSheetsSortEnUS as any,
-            UniverPresetSheetsHyperLinkEnUS as any,
-            UniverPresetSheetsNoteEnUS as any,
-            UniverPresetSheetsThreadCommentEnUS as any,
-            UniverPresetSheetsDrawingEnUS as any,
-          ),
+          [LocaleType.EN_US]: allLocales,
         },
         presets: [
           UniverSheetsCorePreset({ container }),
@@ -214,6 +216,12 @@ export function SpreadsheetEditor({
           UniverSheetsThreadCommentPreset(),
           UniverSheetsDrawingPreset(),
         ],
+      });
+
+      // Force-reload all locale namespaces after plugins register (they may overwrite)
+      // Use requestAnimationFrame to ensure locale is loaded before toolbar renders
+      requestAnimationFrame(() => {
+        univerAPI.loadLocales(LocaleType.EN_US, allLocales);
       });
       /* eslint-enable @typescript-eslint/no-explicit-any */
 
