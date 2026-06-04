@@ -818,7 +818,7 @@ export default function ProjectDetailPage() {
 
         {/* ─── TASKS (same WorkflowSection as overview, full-width) ─── */}
         {activeTab === "tasks" && (
-          <div className="w-full max-w-4xl">
+          <div className="w-full">
             <WorkflowSection
               tasks={tasks}
               milestones={milestones}
