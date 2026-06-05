@@ -110,8 +110,10 @@ service cloud.firestore {
       // Authenticated workspace members can create
       allow create: if isAuthenticated() && isWorkspaceMember(workspaceId) &&
         request.resource.data.workspaceId == workspaceId;
-      // Authenticated workspace members can update
-      allow update: if isAuthenticated() && isWorkspaceMember(workspaceId);
+      // Authenticated workspace members can update (cannot change workspaceId)
+      allow update: if isAuthenticated() && isWorkspaceMember(workspaceId) &&
+        request.resource.data.workspaceId == workspaceId &&
+        request.resource.data.snapshot.size() < 1000000;
       // Only owner/admin can delete
       allow delete: if isAuthenticated() &&
         (get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerId == request.auth.uid ||

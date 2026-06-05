@@ -12,7 +12,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { X, BarChart3, Hash, Type, AlertCircle } from "lucide-react";
+import { X, BarChart3, Hash, Type, AlertCircle, Maximize2, Minimize2 } from "lucide-react";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -56,9 +56,11 @@ interface Props {
   univerAPI: any;
   open: boolean;
   onClose: () => void;
+  panelExpanded: boolean;
+  onTogglePanelExpand: () => void;
 }
 
-export function SpreadsheetAnalyticsPanel({ univerAPI, open, onClose }: Props) {
+export function SpreadsheetAnalyticsPanel({ univerAPI, open, onClose, panelExpanded, onTogglePanelExpand }: Props) {
   const [columns, setColumns] = useState<ColumnProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [totalRows, setTotalRows] = useState(0);
@@ -101,21 +103,32 @@ export function SpreadsheetAnalyticsPanel({ univerAPI, open, onClose }: Props) {
   return (
     <div
       ref={panelRef}
-      className="w-96 border-l bg-background flex flex-col h-full overflow-hidden animate-in slide-in-from-right"
+      className={`border-l bg-background flex flex-col h-full overflow-hidden animate-in slide-in-from-right ${
+        panelExpanded ? "w-[600px] max-w-[70vw]" : "w-96"
+      }`}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b shrink-0">
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <BarChart3 className="h-4 w-4" />
-          Analytics
+        <div className="flex items-center gap-2 text-sm font-semibold min-w-0">
+          <BarChart3 className="h-4 w-4 shrink-0" />
+          <span className="truncate">Analytics</span>
         </div>
-        <button
-          onClick={onClose}
-          className="p-1 rounded-md hover:bg-muted transition-colors"
-          aria-label="Close analytics"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onTogglePanelExpand}
+            className="p-1 rounded-md hover:bg-muted transition-colors"
+            aria-label={panelExpanded ? "Collapse panel" : "Expand panel"}
+          >
+            {panelExpanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1 rounded-md hover:bg-muted transition-colors"
+            aria-label="Close analytics"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Body */}
@@ -370,7 +383,7 @@ function analyzeSheet(univerAPI: any): {
     // Determine column type
     const isDropdown = name in DROPDOWN_COLUMNS;
     const numValues = values.map(Number).filter((n) => !isNaN(n));
-    const isNumeric = !isDropdown && numValues.length > 0 && numValues.length >= filled * 0.5;
+    const isNumeric = !isDropdown && filled > 0 && numValues.length > 0 && numValues.length >= filled * 0.5;
     const uniqueValues = [...new Set(values.filter((v) => v.length > 0))];
 
     const col: ColumnProfile = {

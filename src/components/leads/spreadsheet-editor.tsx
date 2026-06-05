@@ -10,7 +10,8 @@ import {
   updateSpreadsheetSnapshot,
   updateSpreadsheetName,
 } from "@/lib/firebase/spreadsheets";
-import { Upload, Loader2, Save, BarChart3 } from "lucide-react";
+import Link from "next/link";
+import { Upload, Loader2, Save, BarChart3, Maximize2, Minimize2, ArrowLeft } from "lucide-react";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { IWorkbookData } from "@univerjs/core";
 import { SpreadsheetAnalyticsPanel } from "./spreadsheet-analytics-panel";
@@ -83,7 +84,10 @@ export function SpreadsheetEditor({
   const [saving, setSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [initError, setInitError] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [panelExpanded, setPanelExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [univerAPI, setUniverAPI] = useState<UniverAPI | null>(null);
   const univerRef = useRef<{
     univerAPI: UniverAPI;
@@ -95,56 +99,49 @@ export function SpreadsheetEditor({
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── Debounced save to Firestore (only calls getSnapshot() once at save time) ─
+  const doSave = useCallback(async (showToast: boolean) => {
+    if (!univerRef.current || !dirtyRef.current) return;
+    dirtyRef.current = false;
+
+    setSaving(true);
+    try {
+      const { univerAPI } = univerRef.current;
+      const workbook = univerAPI.getActiveWorkbook();
+      const snapshot = workbook.getSnapshot() as unknown as IWorkbookData;
+
+      // Size check — warn if approaching Firestore 1MB limit
+      const size = new Blob([JSON.stringify(snapshot)]).size;
+      if (size > SNAPSHOT_SIZE_WARN_BYTES) {
+        console.warn(`Spreadsheet snapshot is ${(size / 1024).toFixed(0)}KB — approaching Firestore 1MB limit`);
+      }
+
+      await updateSpreadsheetSnapshot(workspaceId, spreadsheetId, snapshot);
+    } catch {
+      if (showToast) toast.error("Failed to auto-save spreadsheet");
+    } finally {
+      setSaving(false);
+    }
+  }, [workspaceId, spreadsheetId]);
+
   const triggerSave = useCallback(() => {
     if (!univerRef.current) return;
     if (!dirtyRef.current) return;
 
-    // Clear pending timers
+    // Clear debounce timer only (NOT maxTimer — that's an absolute deadline)
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    if (maxTimerRef.current) clearTimeout(maxTimerRef.current);
 
-    saveTimerRef.current = setTimeout(async () => {
-      if (!univerRef.current || !dirtyRef.current) return;
-      dirtyRef.current = false;
-
-      setSaving(true);
-      try {
-        const { univerAPI } = univerRef.current;
-        const workbook = univerAPI.getActiveWorkbook();
-        const snapshot = workbook.getSnapshot() as unknown as IWorkbookData;
-
-        // Size check — warn if approaching Firestore 1MB limit
-        const size = new Blob([JSON.stringify(snapshot)]).size;
-        if (size > SNAPSHOT_SIZE_WARN_BYTES) {
-          console.warn(`Spreadsheet snapshot is ${(size / 1024).toFixed(0)}KB — approaching Firestore 1MB limit`);
-        }
-
-        await updateSpreadsheetSnapshot(workspaceId, spreadsheetId, snapshot);
-      } catch {
-        toast.error("Failed to auto-save spreadsheet");
-      } finally {
-        setSaving(false);
-      }
+    saveTimerRef.current = setTimeout(() => {
+      doSave(true);
     }, SAVE_DEBOUNCE_MS);
 
-    // Force save after MAX_SAVE_INTERVAL_MS even if user keeps editing
-    maxTimerRef.current = setTimeout(async () => {
-      if (!univerRef.current || !dirtyRef.current) return;
-      dirtyRef.current = false;
-
-      setSaving(true);
-      try {
-        const { univerAPI } = univerRef.current;
-        const workbook = univerAPI.getActiveWorkbook();
-        const snapshot = workbook.getSnapshot() as unknown as IWorkbookData;
-        await updateSpreadsheetSnapshot(workspaceId, spreadsheetId, snapshot);
-      } catch {
-        // silent — user will see next save attempt
-      } finally {
-        setSaving(false);
-      }
-    }, MAX_SAVE_INTERVAL_MS);
-  }, [workspaceId, spreadsheetId]);
+    // Force save after MAX_SAVE_INTERVAL_MS since first edit (set once only)
+    if (!maxTimerRef.current) {
+      maxTimerRef.current = setTimeout(() => {
+        maxTimerRef.current = null;
+        doSave(false);
+      }, MAX_SAVE_INTERVAL_MS);
+    }
+  }, [doSave]);
 
   const markDirty = useCallback(() => {
     dirtyRef.current = true;
@@ -274,8 +271,8 @@ export function SpreadsheetEditor({
         }
       })();
 
-      // Expose for dev testing
-      if (typeof window !== "undefined") {
+      // Expose for dev testing (never in production)
+      if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
         (window as any).__univerAPI = univerAPI;
       }
       /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -313,14 +310,39 @@ export function SpreadsheetEditor({
     return () => {
       disposed = true;
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      if (maxTimerRef.current) clearTimeout(maxTimerRef.current);
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      if (maxTimerRef.current) { clearTimeout(maxTimerRef.current); maxTimerRef.current = null; }
       if (univerRef.current) {
         univerRef.current.dispose();
         univerRef.current = null;
       }
     };
   }, []); // Only run once on mount — no deps needed since initialSnapshot is loaded once
+
+  // ─── Init timeout: show error if Univer fails to load within 30s ──────
+  useEffect(() => {
+    if (initialized || initError) return;
+    const timer = setTimeout(() => {
+      if (!initialized) setInitError(true);
+    }, 30000);
+    return () => clearTimeout(timer);
+  }, [initialized, initError]);
+
+  const handleRetry = useCallback(() => {
+    setInitError(false);
+    // Re-run the init effect by toggling a key — easiest: reload the page
+    window.location.reload();
+  }, []);
+
+  // ─── Escape exits fullscreen ───────────────────────────────────────────
+  useEffect(() => {
+    if (!expanded) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [expanded]);
 
   // ─── Sync Univer theme with app theme ───────────────────────────────────
   useEffect(() => {
@@ -399,7 +421,8 @@ export function SpreadsheetEditor({
     setImporting(true);
     try {
       const text = await file.text();
-      const lines = text.split("\n").filter((l) => l.trim());
+      // Normalise Windows line endings
+      const lines = text.replace(/\r\n/g, "\n").split("\n").filter((l) => l.trim());
 
       if (lines.length < 2) { toast.error("CSV is empty"); return; }
       if (lines.length > MAX_CSV_ROWS) {
@@ -423,6 +446,13 @@ export function SpreadsheetEditor({
         // Truncate extra values, pad missing ones
         const row = values.slice(0, headers.length);
         while (row.length < headers.length) row.push("");
+        // Sanitise: prefix cells starting with = + - @ to prevent formula injection
+        for (let c = 0; c < row.length; c++) {
+          const v = row[c];
+          if (v.length > 0 && (v[0] === "=" || v[0] === "+" || v[0] === "-" || v[0] === "@")) {
+            row[c] = "'" + v;
+          }
+        }
         data.push(row);
       }
 
@@ -447,7 +477,6 @@ export function SpreadsheetEditor({
     if (!univerRef.current) return;
     dirtyRef.current = false;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    if (maxTimerRef.current) clearTimeout(maxTimerRef.current);
 
     setSaving(true);
     try {
@@ -463,15 +492,26 @@ export function SpreadsheetEditor({
     }
   };
 
+  const containerHeight = expanded
+    ? "calc(100vh - 140px)"
+    : "70vh";
+
   return (
-    <div className="space-y-3">
+    <div className={expanded ? "fixed inset-0 z-50 bg-background flex flex-col p-4 pt-2" : "space-y-3"}>
       {/* Header bar */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <Link
+            href="/leads/spreadsheet"
+            className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors shrink-0"
+            aria-label="Back to Spreadsheets"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
           <Input
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
-            className="h-8 w-64 text-sm font-medium border-none px-0 focus-visible:ring-0 focus-visible:border-b focus-visible:rounded-none"
+            className="h-8 w-48 sm:w-64 text-sm font-medium border-none px-0 focus-visible:ring-0 focus-visible:border-b focus-visible:rounded-none"
           />
           {saving && (
             <span className="text-xs text-muted-foreground flex items-center gap-1 animate-in fade-in">
@@ -479,7 +519,7 @@ export function SpreadsheetEditor({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <input
             ref={fileInputRef}
             type="file"
@@ -509,6 +549,14 @@ export function SpreadsheetEditor({
             <BarChart3 className="mr-1.5 h-4 w-4" />
             {analyticsOpen ? "Close" : "Analytics"}
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExpanded((p) => !p)}
+            aria-label={expanded ? "Collapse" : "Expand"}
+          >
+            {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </Button>
           <Button variant="outline" size="sm" onClick={handleManualSave}>
             <Save className="mr-1.5 h-4 w-4" />
             Save
@@ -517,9 +565,21 @@ export function SpreadsheetEditor({
       </div>
 
       {/* Univer container + analytics panel */}
-      <div className="flex gap-0 rounded-lg border overflow-hidden" style={{ height: "70vh" }}>
-        {!initialized && (
+      <div
+        className={`flex gap-0 rounded-lg border overflow-hidden mt-3 ${expanded ? "flex-1" : ""}`}
+        style={{ height: expanded ? undefined : containerHeight }}
+      >
+        {!initialized && !initError && (
           <Skeleton className="h-full w-full rounded-lg" />
+        )}
+        {!initialized && initError && (
+          <div className="flex flex-col items-center justify-center w-full h-full text-center gap-3">
+            <p className="text-sm text-muted-foreground">Failed to initialize spreadsheet editor.</p>
+            <Button variant="outline" size="sm" onClick={handleRetry}>
+              <Loader2 className="mr-1.5 h-4 w-4" />
+              Retry
+            </Button>
+          </div>
         )}
         <div
           ref={containerRef}
@@ -531,6 +591,8 @@ export function SpreadsheetEditor({
             univerAPI={univerAPI}
             open={analyticsOpen}
             onClose={() => setAnalyticsOpen(false)}
+            panelExpanded={panelExpanded}
+            onTogglePanelExpand={() => setPanelExpanded((p) => !p)}
           />
         )}
       </div>
