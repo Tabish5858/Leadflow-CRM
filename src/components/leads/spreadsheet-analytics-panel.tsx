@@ -12,9 +12,31 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { X, BarChart3, Hash, Type, AlertCircle, Maximize2, Minimize2 } from "lucide-react";
+import {
+  X, BarChart3, Hash, Type, AlertCircle, Maximize2, Minimize2, PieChart as PieIcon, LayoutList,
+} from "lucide-react";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+// ─── Module-level analysis cache ────────────────────────────────────────
+// Keyed by `sheetId:lastRow:lastCol` — invalidates when data shape changes.
+const analysisCache = new Map<string, {
+  columns: ColumnProfile[];
+  rowCount: number;
+}>();
+
+function getSheetFingerprint(univerAPI: any): string | null {
+  try {
+    const workbook = univerAPI.getActiveWorkbook();
+    const sheet = workbook.getActiveSheet();
+    return `${sheet.getSheetId()}:${sheet.getLastRow()}:${sheet.getLastColumn()}`;
+  } catch {
+    return null;
+  }
+}
+
+const CHUNK_SIZE = 3; // columns per idle callback
+// ─────────────────────────────────────────────────────────────────────────
 
 const COLORS = [
   "#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#8b5cf6",
@@ -66,26 +88,45 @@ export function SpreadsheetAnalyticsPanel({ univerAPI, open, onClose, panelExpan
   const [totalRows, setTotalRows] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef(false);
 
   useEffect(() => {
     if (!open || !univerAPI) return;
+
+    // Fast-path: check cache
+    const fp = getSheetFingerprint(univerAPI);
+    if (fp && analysisCache.has(fp)) {
+      const cached = analysisCache.get(fp)!;
+      setColumns(cached.columns);
+      setTotalRows(cached.rowCount);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    cancelRef.current = false;
     setLoading(true);
     setError(null);
 
-    // Use requestIdleCallback or setTimeout to avoid blocking the UI
-    const timer = setTimeout(() => {
-      try {
-        const { columns: cols, rowCount } = analyzeSheet(univerAPI);
-        setColumns(cols);
-        setTotalRows(rowCount);
-      } catch (err: any) {
-        setError(err.message || "Failed to analyze sheet");
-      } finally {
-        setLoading(false);
-      }
-    }, 100);
+    // Kick off async analysis — reads data then yields per-chunk
+    analyzeSheetAsync(univerAPI, (result) => {
+      if (cancelRef.current) return;
 
-    return () => clearTimeout(timer);
+      // Cache the result
+      const newFp = getSheetFingerprint(univerAPI);
+      if (newFp) analysisCache.set(newFp, result);
+
+      setColumns(result.columns);
+      setTotalRows(result.rowCount);
+      setLoading(false);
+      setError(null);
+    }, (errMsg) => {
+      if (cancelRef.current) return;
+      setError(errMsg);
+      setLoading(false);
+    });
+
+    return () => { cancelRef.current = true; };
   }, [open, univerAPI]);
 
   // Close on Escape
@@ -202,6 +243,11 @@ function SummaryCard({
 }
 
 function ColumnSection({ col }: { col: ColumnProfile }) {
+  const [chartMode, setChartMode] = useState<"pie" | "bar">("pie");
+
+  const showChartToggle =
+    col.distribution && col.distribution.length > 0 && col.distribution.length <= 6;
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -225,14 +271,40 @@ function ColumnSection({ col }: { col: ColumnProfile }) {
       {/* Distribution chart for dropdown / categorical */}
       {col.distribution && col.distribution.length > 0 && (
         <div className="pt-1">
-          <BarChartChart data={col.distribution} />
-        </div>
-      )}
-
-      {/* Pie chart for dropdown with few options */}
-      {col.distribution && col.distribution.length <= 6 && col.distribution.length > 0 && (
-        <div className="pt-1">
-          <PieChartChart data={col.distribution} />
+          {/* Chart mode toggle for small dropdowns */}
+          {showChartToggle && (
+            <div className="flex items-center justify-end gap-1 mb-1">
+              <button
+                onClick={() => setChartMode("pie")}
+                className={`p-1 rounded text-xs transition-colors ${
+                  chartMode === "pie"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                aria-label="Pie chart"
+                title="Pie chart"
+              >
+                <PieIcon className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setChartMode("bar")}
+                className={`p-1 rounded text-xs transition-colors ${
+                  chartMode === "bar"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                aria-label="Bar chart"
+                title="Bar chart"
+              >
+                <LayoutList className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+          {chartMode === "pie" ? (
+            <PieChartChart data={col.distribution} />
+          ) : (
+            <BarChartChart data={col.distribution} />
+          )}
         </div>
       )}
 
@@ -339,109 +411,151 @@ function PieChartChart({ data }: { data: { name: string; value: number }[] }) {
   );
 }
 
-// ─── Sheet analyzer ──────────────────────────────────────────────────────────
+// ─── Sheet analyzer (async, chunked) ────────────────────────────────────────
 
-function analyzeSheet(univerAPI: any): {
-  columns: ColumnProfile[];
-  rowCount: number;
-} {
-  const workbook = univerAPI.getActiveWorkbook();
-  const sheet = workbook.getActiveSheet();
-
-  const lastRow = sheet.getLastRow();
-  const lastCol = sheet.getLastColumn();
-
-  // Need at least a header row and 1 data row
-  if (lastRow < 1 || lastCol < 0) {
-    return { columns: [], rowCount: 0 };
+function analyzeColumn(
+  c: number,
+  headers: string[],
+  rawData: string[][],
+  rowCount: number,
+): ColumnProfile {
+  const name = headers[c]?.toString().trim() || `Column ${c + 1}`;
+  const values: string[] = [];
+  for (let r = 0; r < rowCount; r++) {
+    const val = rawData[r]?.[c];
+    values.push(val !== null && val !== undefined ? String(val).trim() : "");
   }
 
-  const rowCount = lastRow; // 0-indexed → number of data rows (row 0 = header)
-  const colCount = lastCol + 1;
+  const filled = values.filter((v) => v.length > 0).length;
+  const empty = values.filter((v) => v.length === 0).length;
 
-  // Read the full data range: row 0 is header, rows 1..lastRow are data
-  const headerRange = sheet.getRange(0, 0, 1, colCount);
-  const rawHeaders: string[][] = headerRange.getValues();
-  const headers: string[] = rawHeaders[0] || [];
+  const isDropdown = name in DROPDOWN_COLUMNS;
+  const numValues = values.map(Number).filter((n) => !isNaN(n));
+  const isNumeric =
+    !isDropdown && filled > 0 && numValues.length > 0 && numValues.length >= filled * 0.5;
+  const uniqueValues = [...new Set(values.filter((v) => v.length > 0))];
 
-  const dataRange = sheet.getRange(1, 0, rowCount, colCount);
-  const rawData: string[][] = dataRange.getValues();
+  const col: ColumnProfile = {
+    index: c,
+    name,
+    type: isDropdown ? "dropdown" : isNumeric ? "number" : filled > 0 ? "text" : "empty",
+    total: rowCount,
+    filled,
+    empty,
+  };
 
-  const columns: ColumnProfile[] = [];
-
-  for (let c = 0; c < colCount; c++) {
-    const name = headers[c]?.toString().trim() || `Column ${c + 1}`;
-    const values: string[] = [];
-    for (let r = 0; r < rowCount; r++) {
-      const val = rawData[r]?.[c];
-      values.push(val !== null && val !== undefined ? String(val).trim() : "");
-    }
-
-    const filled = values.filter((v) => v.length > 0).length;
-    const empty = values.filter((v) => v.length === 0).length;
-
-    // Determine column type
-    const isDropdown = name in DROPDOWN_COLUMNS;
-    const numValues = values.map(Number).filter((n) => !isNaN(n));
-    const isNumeric = !isDropdown && filled > 0 && numValues.length > 0 && numValues.length >= filled * 0.5;
-    const uniqueValues = [...new Set(values.filter((v) => v.length > 0))];
-
-    const col: ColumnProfile = {
-      index: c,
-      name,
-      type: isDropdown ? "dropdown" : isNumeric ? "number" : filled > 0 ? "text" : "empty",
-      total: rowCount,
-      filled,
-      empty,
-    };
-
-    if (isDropdown) {
-      // Count occurrences of each known option + "Other"
-      const counts: Record<string, number> = {};
-      const knownOptions = DROPDOWN_COLUMNS[name];
-      for (const opt of knownOptions) counts[opt] = 0;
-      counts["(other)"] = 0;
-      let otherCount = 0;
-      for (const v of values) {
-        if (v.length === 0) continue;
-        if (knownOptions.includes(v)) {
-          counts[v] = (counts[v] || 0) + 1;
-        } else {
-          otherCount++;
-        }
-      }
-      if (otherCount > 0) counts["(other)"] = otherCount;
-
-      col.distribution = Object.entries(counts)
-        .filter(([_, count]) => count > 0)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value);
-    }
-
-    if (isNumeric) {
-      const nums = numValues as number[];
-      col.stats = {
-        min: Math.min(...nums),
-        max: Math.max(...nums),
-        avg: nums.reduce((s, n) => s + n, 0) / nums.length,
-        sum: nums.reduce((s, n) => s + n, 0),
-      };
-    }
-
-    if (!isDropdown && !isNumeric && uniqueValues.length > 0 && uniqueValues.length <= 30) {
-      const counts: Record<string, number> = {};
-      for (const v of values) {
-        if (v.length === 0) continue;
+  if (isDropdown) {
+    const counts: Record<string, number> = {};
+    const knownOptions = DROPDOWN_COLUMNS[name];
+    for (const opt of knownOptions) counts[opt] = 0;
+    counts["(other)"] = 0;
+    let otherCount = 0;
+    for (const v of values) {
+      if (v.length === 0) continue;
+      if (knownOptions.includes(v)) {
         counts[v] = (counts[v] || 0) + 1;
+      } else {
+        otherCount++;
       }
-      col.topValues = Object.entries(counts)
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 15);
     }
+    if (otherCount > 0) counts["(other)"] = otherCount;
 
-    columns.push(col);
+    col.distribution = Object.entries(counts)
+      .filter(([_, count]) => count > 0)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
   }
 
-  return { columns, rowCount };
+  if (isNumeric && numValues.length > 0) {
+    const nums = numValues as number[];
+    col.stats = {
+      min: Math.min(...nums),
+      max: Math.max(...nums),
+      avg: nums.reduce((s, n) => s + n, 0) / nums.length,
+      sum: nums.reduce((s, n) => s + n, 0),
+    };
+  }
+
+  if (!isDropdown && !isNumeric && uniqueValues.length > 0 && uniqueValues.length <= 30) {
+    const counts: Record<string, number> = {};
+    for (const v of values) {
+      if (v.length === 0) continue;
+      counts[v] = (counts[v] || 0) + 1;
+    }
+    col.topValues = Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 15);
+  }
+
+  return col;
+}
+
+/**
+ * Analyze sheet asynchronously.  Reads all data synchronously (Univer API is
+ * sync), then processes columns in chunks using requestIdleCallback so the
+ * main thread stays responsive.
+ *
+ * @param onResult  called once with the final result
+ * @param onError   called if something goes wrong
+ */
+function analyzeSheetAsync(
+  univerAPI: any,
+  onResult: (result: { columns: ColumnProfile[]; rowCount: number }) => void,
+  onError: (msg: string) => void,
+): void {
+  try {
+    const workbook = univerAPI.getActiveWorkbook();
+    const sheet = workbook.getActiveSheet();
+
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+
+    if (lastRow < 1 || lastCol < 0) {
+      onResult({ columns: [], rowCount: 0 });
+      return;
+    }
+
+    const rowCount = lastRow;
+    const colCount = lastCol + 1;
+
+    // Read data synchronously (Univer API is synchronous — unavoidable)
+    const headerRange = sheet.getRange(0, 0, 1, colCount);
+    const rawHeaders: string[][] = headerRange.getValues();
+    const headers: string[] = rawHeaders[0] || [];
+
+    const dataRange = sheet.getRange(1, 0, rowCount, colCount);
+    const rawData: string[][] = dataRange.getValues();
+
+    const columns: ColumnProfile[] = [];
+    let currentCol = 0;
+
+    function processChunk() {
+      const end = Math.min(currentCol + CHUNK_SIZE, colCount);
+      while (currentCol < end) {
+        columns.push(analyzeColumn(currentCol, headers, rawData, rowCount));
+        currentCol++;
+      }
+
+      if (currentCol < colCount) {
+        // Yield to main thread, then process next chunk
+        if (typeof requestIdleCallback !== "undefined") {
+          requestIdleCallback(processChunk, { timeout: 50 });
+        } else {
+          setTimeout(processChunk, 0);
+        }
+      } else {
+        onResult({ columns, rowCount });
+      }
+    }
+
+    // Start chunk processing
+    if (typeof requestIdleCallback !== "undefined") {
+      requestIdleCallback(processChunk, { timeout: 50 });
+    } else {
+      setTimeout(processChunk, 0);
+    }
+  } catch (err: any) {
+    onError(err.message || "Failed to analyze sheet");
+  }
 }

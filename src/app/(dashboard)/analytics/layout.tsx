@@ -6,11 +6,11 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 const subNavItems = [
-  { href: "/leads/spreadsheet", label: "Spreadsheet" },
-  { href: "/leads", label: "Leads" },
+  { href: "/analytics/spreadsheet", label: "Sheet Analytics" },
+  { href: "/analytics", label: "Analytics" },
 ];
 
-export default function LeadsLayout({ children }: { children: ReactNode }) {
+export default function AnalyticsLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   return (
@@ -19,8 +19,8 @@ export default function LeadsLayout({ children }: { children: ReactNode }) {
       <div className="flex items-center gap-1 border-b">
         {subNavItems.map((item) => {
           const isActive =
-            item.href === "/leads"
-              ? pathname === "/leads"
+            item.href === "/analytics"
+              ? pathname === "/analytics"
               : pathname.startsWith(item.href);
           return (
             <Link
