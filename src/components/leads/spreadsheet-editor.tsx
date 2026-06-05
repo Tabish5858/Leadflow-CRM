@@ -11,14 +11,56 @@ import {
   updateSpreadsheetName,
 } from "@/lib/firebase/spreadsheets";
 import { Upload, Loader2, Save } from "lucide-react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { IWorkbookData } from "@univerjs/core";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UniverAPI = any;
 
 const SAVE_DEBOUNCE_MS = 2000;
 const MAX_SAVE_INTERVAL_MS = 10000;
 const MAX_CSV_ROWS = 5000;
 const SNAPSHOT_SIZE_WARN_BYTES = 900_000;
+
+/** Column header → dropdown options for data validation */
+const DROPDOWN_COLUMNS: Record<string, string[]> = {
+  "Preferred Contact": ["WhatsApp", "Email", "See WA (If Any)"],
+  "Qualification Reason": [
+    "User Interface (UI) Is Not Good.",
+    "This Business Do Not Have A Website.",
+    "Site Not Opening.",
+    "SSL Is Expired.",
+    "Using 3rd Party.",
+  ],
+  "Message 01": ["Pending", "Sent"],
+  "Follow Up 01": ["Pending", "Sent"],
+  "Follow Up 02": ["Pending", "Sent"],
+  "Response": ["Responded", "Not Responded", "Not Interested", "Bounced Back"],
+};
+
+/** Typo aliases → normalized column name */
+const DROPDOWN_ALIASES: Record<string, string> = {
+  "preffered contact": "Preferred Contact",
+  "qualfication resoan": "Qualification Reason",
+};
+
+/**
+ * Normalise a CSV header to a known dropdown column name.
+ * Case-insensitive; supports typos via alias map.
+ */
+function normaliseDropdownHeader(raw: string): string | null {
+  const trimmed = raw.trim();
+  // Exact match (case-insensitive)
+  for (const key of Object.keys(DROPDOWN_COLUMNS)) {
+    if (key.toLowerCase() === trimmed.toLowerCase()) return key;
+  }
+  // Alias match
+  const alias = DROPDOWN_ALIASES[trimmed.toLowerCase()];
+  if (alias) return alias;
+  // Fuzzy match: check if alias map value helps
+  for (const [typo, resolved] of Object.entries(DROPDOWN_ALIASES)) {
+    if (resolved.toLowerCase() === trimmed.toLowerCase()) return resolved;
+  }
+  return null;
+}
 
 interface SpreadsheetEditorProps {
   workspaceId: string;
@@ -186,17 +228,19 @@ export function SpreadsheetEditor({
       const container = containerRef.current;
 
       /* eslint-disable @typescript-eslint/no-explicit-any */
+      // Dynamic import() returns module namespace { default: data }
+      // We must extract .default to get the actual locale data
       const allLocales = mergeLocales(
-        UniverPresetSheetsCoreEnUS as any,
-        UniverPresetSheetsDataValidationEnUS as any,
-        UniverPresetSheetsFilterEnUS as any,
-        UniverPresetSheetsConditionalFormattingEnUS as any,
-        UniverPresetSheetsFindReplaceEnUS as any,
-        UniverPresetSheetsSortEnUS as any,
-        UniverPresetSheetsHyperLinkEnUS as any,
-        UniverPresetSheetsNoteEnUS as any,
-        UniverPresetSheetsThreadCommentEnUS as any,
-        UniverPresetSheetsDrawingEnUS as any,
+        (UniverPresetSheetsCoreEnUS as any).default,
+        (UniverPresetSheetsDataValidationEnUS as any).default,
+        (UniverPresetSheetsFilterEnUS as any).default,
+        (UniverPresetSheetsConditionalFormattingEnUS as any).default,
+        (UniverPresetSheetsFindReplaceEnUS as any).default,
+        (UniverPresetSheetsSortEnUS as any).default,
+        (UniverPresetSheetsHyperLinkEnUS as any).default,
+        (UniverPresetSheetsNoteEnUS as any).default,
+        (UniverPresetSheetsThreadCommentEnUS as any).default,
+        (UniverPresetSheetsDrawingEnUS as any).default,
       );
 
       const { univerAPI } = createUniver({
@@ -218,11 +262,19 @@ export function SpreadsheetEditor({
         ],
       });
 
-      // Force-reload all locale namespaces after plugins register (they may overwrite)
-      // Use requestAnimationFrame to ensure locale is loaded before toolbar renders
-      requestAnimationFrame(() => {
-        univerAPI.loadLocales(LocaleType.EN_US, allLocales);
-      });
+      // Import data validation facade and expose for testing
+      (async () => {
+        try {
+          await import("@univerjs/sheets-data-validation/facade");
+        } catch (e) {
+          console.warn("Failed to load data validation facade:", e);
+        }
+      })();
+
+      // Expose for dev testing
+      if (typeof window !== "undefined") {
+        (window as any).__univerAPI = univerAPI;
+      }
       /* eslint-enable @typescript-eslint/no-explicit-any */
 
       if (disposed) {
@@ -278,6 +330,31 @@ export function SpreadsheetEditor({
       univerRef.current.univerAPI.toggleDarkMode(isDark);
     }, 100);
   }, [theme]);
+
+  /**
+   * Apply dropdown data-validation rules to columns whose headers match
+   * known dropdown fields.  Skips the header row so cells A1, B1, … are
+   * free text.
+   */
+  function applyDropdownRules(
+    univerAPI: UniverAPI,
+    headers: string[],
+    rowCount: number,
+  ) {
+    if (rowCount < 2) return; // header only — nothing to validate
+    const sheet = univerAPI.getActiveWorkbook().getActiveSheet();
+    for (let col = 0; col < headers.length; col++) {
+      const field = normaliseDropdownHeader(headers[col]);
+      if (!field) continue;
+      const options = DROPDOWN_COLUMNS[field];
+      // Data rows start at row 1 (0‑based), skipping the header at row 0
+      const dvRange = sheet.getRange(1, col, rowCount - 1, 1);
+      const dv = univerAPI.newDataValidation();
+      dv.requireValueInList(options);
+      dv.setAllowBlank(true);
+      dvRange.setDataValidation(dv.build());
+    }
+  }
 
   // ─── Handlers ───────────────────────────────────────────────────────────
   const handleNameChange = async (newName: string) => {
@@ -349,6 +426,9 @@ export function SpreadsheetEditor({
       const sheet = univerAPI.getActiveWorkbook().getActiveSheet();
       const range = sheet.getRange(0, 0, data.length, data[0].length);
       range.setValues(data);
+
+      // Apply dropdown validation to known columns
+      applyDropdownRules(univerAPI, headers, data.length);
 
       toast.success(`Imported ${data.length - 1} rows`);
     } catch {
