@@ -723,6 +723,158 @@ export interface ProjectTimeEntry {
   isDeleted: boolean;
 }
 
+// ─── Project Deliverables ────────────────────────────────────────────────────
+
+export type DeliverableStatus = "not_submitted" | "submitted" | "under_review" | "needs_revision" | "approved" | "delivered";
+
+export type MarkupType = "annotation" | "highlight" | "arrow" | "voice_memo" | "shape" | "pen";
+
+export interface VideoMoment {
+  id: string;
+  timestamp: number;
+  title?: string;
+  comment: string;
+  createdBy: string;
+  createdAt: Timestamp;
+  isResolved: boolean;
+  conversation: ThreadedComment[];
+}
+
+export interface ImageMarkupCoordinate {
+  x: number;
+  y: number;
+  page?: number;
+  width?: number;
+  height?: number;
+  points?: { x: number; y: number }[];
+}
+
+export interface ImageMarkup {
+  id: string;
+  markupType: MarkupType;
+  coordinates: ImageMarkupCoordinate;
+  content: {
+    text?: string;
+    voiceMemoUrl?: string;
+    color?: string;
+    strokeWidth?: number;
+    fontSize?: number;
+    path?: string;
+  };
+  createdBy: string;
+  createdAt: Timestamp;
+}
+
+export interface DeliverableFileAttachment {
+  id: string;
+  fileName: string;
+  originalName: string;
+  filePath: string;
+  cloudinaryUrl?: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedAt: Timestamp;
+  uploadedBy: string;
+  thumbnail?: string;
+  downloadCount: number;
+  videoMoments: VideoMoment[];
+  imageMarkups: ImageMarkup[];
+}
+
+export interface ThreadedComment {
+  id: string;
+  text: string;
+  voiceMemoUrl?: string;
+  createdBy: string;
+  createdAt: Timestamp;
+  attachments: DeliverableFileAttachment[];
+  versionId?: string;
+  fileId?: string;
+  mentions: string[];
+  replies: ThreadedComment[];
+}
+
+export interface DeliverableVersion {
+  id: string;
+  versionNumber: number;
+  files: DeliverableFileAttachment[];
+  links: { title: string; url: string; description?: string; createdAt: Timestamp }[];
+  notes?: string;
+  uploadedAt: Timestamp;
+  uploadedBy: string;
+  status: "draft" | "submitted" | "approved" | "revision_requested";
+  isLatest: boolean;
+  approvedAt?: Timestamp;
+  approvedBy?: string;
+  approvalComments?: string;
+}
+
+export interface PaymentProof {
+  status: "pending" | "approved" | "rejected";
+  uploadedBy: string;
+  uploadedAt: Timestamp;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  reviewedBy?: string;
+  reviewedAt?: Timestamp;
+  reviewNotes?: string;
+}
+
+export interface Deliverable {
+  id: string;
+  projectId: string;
+  workspaceId: string;
+  title: string;
+  description?: string;
+  status: DeliverableStatus;
+  versions: DeliverableVersion[];
+  comments: ThreadedComment[];
+  deliverableType: "file" | "link" | "both";
+  invoiceSettings: {
+    requirePaymentToView: boolean;
+    requirePaymentToDownload: boolean;
+  };
+  paymentProof?: PaymentProof;
+  revisionSettings: {
+    limitFreeRevisions: boolean;
+    maxFreeRevisions: number;
+    currentRevisionCount: number;
+  };
+  revisions: DeliverableRevision[];
+  deliveryFlowSettings: {
+    enableFeedback: boolean;
+    enableReferrals: boolean;
+    enableReviews: boolean;
+    enableUpsell: boolean;
+  };
+  deliveryProgress: {
+    completedSteps: string[];
+    currentStep: string;
+  };
+  finalPackageDelivered: boolean;
+  finalPackageDeliveredAt?: Timestamp;
+  finalPackageDeliveredBy?: string;
+  isDeleted: boolean;
+  createdBy: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export interface DeliverableRevision {
+  id: string;
+  versionId: string;
+  versionNumber: number;
+  requestedBy: string;
+  requestDate: Timestamp;
+  reason?: string;
+  comments: ThreadedComment[];
+  isExtraRevision: boolean;
+  price?: number;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  completedAt?: Timestamp;
+}
+
 // ─── Invoice ─────────────────────────────────────────────────────────────────
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled" | "partial";

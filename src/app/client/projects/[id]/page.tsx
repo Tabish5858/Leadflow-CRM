@@ -31,6 +31,7 @@ import {
   SkeletonList,
   SkeletonCard,
 } from "@/components/client/module-layout";
+import ClientDeliverablesView from "@/components/client/client-deliverables-view";
 
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
@@ -293,6 +294,11 @@ export default function ClientProjectDetailPage() {
             <p className="text-sm text-muted-foreground">No tasks yet</p>
           </CardContent>
         </Card>
+      )}
+
+      {/* ─── Deliverables ─── */}
+      {project && clientWorkspaceId && (
+        <ClientDeliverablesView projectId={id} workspaceId={clientWorkspaceId} userId={uid} />
       )}
     </div>
   );
