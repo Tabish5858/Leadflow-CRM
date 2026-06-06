@@ -94,7 +94,7 @@ import {
 import Link from "next/link";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useMemo, useRef } from "react";
 
 // ─── Status Config ────────────────────────────────────────────────────────────
 
@@ -154,12 +154,16 @@ export default function ProjectDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  // Tab — persisted via URL search param (read from URL on client only)
+  // Tab — persisted via URL search param
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  useEffect(() => {
-    const p = new URLSearchParams(window.location.search).get("tab");
-    if (p && TABS.some(t => t.id === p)) setActiveTab(p as TabId);
-  }, []);
+  const [initialized, setInitialized] = useState(false);
+  useLayoutEffect(() => {
+    if (!initialized) {
+      const p = new URLSearchParams(window.location.search).get("tab");
+      if (p && TABS.some(t => t.id === p)) setActiveTab(p as TabId);
+      setInitialized(true);
+    }
+  }, [initialized]);
 
   // Task data
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
