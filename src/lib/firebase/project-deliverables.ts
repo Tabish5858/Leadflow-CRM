@@ -145,6 +145,28 @@ export async function deleteDeliverable(id: string): Promise<void> {
   });
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Recursively removes all `undefined` values from an object. Firestore rejects undefined.
+ *  Preserves Date/Timestamp objects (does not JSON.stringify them). */
+function sanitizeForFirestore<T>(obj: T): T {
+  if (obj === null || obj === undefined || typeof obj !== "object") return obj;
+  // Preserve Timestamp and Date objects
+  if (obj instanceof Date || (obj as any).toDate !== undefined || (obj as any).seconds !== undefined) return obj;
+  // Don't modify Timestamp instances from Firestore
+  if (obj.constructor?.name === "Timestamp") return obj;
+
+  if (Array.isArray(obj)) return obj.map((item) => sanitizeForFirestore(item)) as unknown as T;
+
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      result[key] = sanitizeForFirestore(value);
+    }
+  }
+  return result as T;
+}
+
 // ─── Version Management ──────────────────────────────────────────────────────
 
 export async function addDeliverableVersion(
@@ -158,14 +180,14 @@ export async function addDeliverableVersion(
   const versionNumber = del.versions.length + 1;
   const now = Timestamp.now();
 
-  // Mark all previous versions as not latest
-  const updatedVersions = del.versions.map((v) => ({ ...v, isLatest: false }));
+  // Sanitize old versions (Firestore rejects undefined) then mark as not latest
+  const updatedVersions = del.versions.map((v) => sanitizeForFirestore({ ...v, isLatest: false }));
 
   const newVersion: DeliverableVersion = {
     id: `v-${versionNumber}-${Date.now()}`,
     versionNumber,
-    files: version.files || [],
-    links: version.links || [],
+    files: (version.files || []).map((f) => sanitizeForFirestore(f)),
+    links: (version.links || []).map((l) => sanitizeForFirestore(l)),
     notes: version.notes,
     uploadedAt: now,
     uploadedBy: userId,
@@ -175,10 +197,10 @@ export async function addDeliverableVersion(
     commentCount: 0,
   };
 
-  updatedVersions.push(newVersion);
+  updatedVersions.push(sanitizeForFirestore(newVersion));
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     status: "submitted",
     updatedAt: serverTimestamp(),
   });
@@ -195,12 +217,18 @@ export async function approveVersion(
 
   const updatedVersions = del.versions.map((v) =>
     v.id === versionId
-      ? { ...v, status: "approved" as const, approvedAt: Timestamp.now(), approvedBy: userId, approvalComments: comments }
-      : v
+      ? sanitizeForFirestore({
+          ...v,
+          status: "approved" as const,
+          approvedAt: Timestamp.now(),
+          approvedBy: userId,
+          approvalComments: comments || null,
+        })
+      : sanitizeForFirestore(v)
   );
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     status: "approved",
     approvalWorkflow: arrayUnion({
       approverType: "client",
@@ -220,14 +248,14 @@ export async function resetApproval(
   const del = await getDeliverable(deliverableId);
   if (!del) throw new Error("Deliverable not found");
 
-  const updatedVersions = del.versions.map((v) =>
-    v.id === versionId
-      ? { ...v, status: "submitted" as const, approvedAt: undefined, approvedBy: undefined, approvalComments: undefined }
-      : v
-  );
+  const updatedVersions = del.versions.map((v) => {
+    if (v.id !== versionId) return sanitizeForFirestore(v);
+    const { approvedAt, approvedBy, approvalComments, ...rest } = v;
+    return sanitizeForFirestore({ ...rest, status: "submitted" as const });
+  });
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     status: "submitted",
     updatedAt: serverTimestamp(),
   });
@@ -241,11 +269,13 @@ export async function markVersionAsRead(
   if (!del) throw new Error("Deliverable not found");
 
   const updatedVersions = del.versions.map((v) =>
-    v.id === versionId ? { ...v, is_read: true } : v
+    v.id === versionId
+      ? sanitizeForFirestore({ ...v, is_read: true })
+      : sanitizeForFirestore(v)
   );
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     updatedAt: serverTimestamp(),
   });
 }
@@ -262,11 +292,13 @@ export async function submitClientFeedback(
   if (!del) throw new Error("Deliverable not found");
 
   const updatedVersions = del.versions.map((v) =>
-    v.id === versionId ? { ...v, status: "revision_requested" as const } : v
+    v.id === versionId
+      ? sanitizeForFirestore({ ...v, status: "revision_requested" as const })
+      : sanitizeForFirestore(v)
   );
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     status: "needs_revision",
     updatedAt: serverTimestamp(),
   });
@@ -328,7 +360,7 @@ export async function requestRevision(
   );
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     status: "needs_revision",
     revisions: arrayUnion(revision),
     "revisionSettings.currentRevisionCount": increment(1),
@@ -532,7 +564,7 @@ export async function addVideoMoment(
   });
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     updatedAt: serverTimestamp(),
   });
 }
@@ -563,7 +595,7 @@ export async function updateVideoMoment(
   });
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     updatedAt: serverTimestamp(),
   });
 }
@@ -591,7 +623,7 @@ export async function deleteVideoMoment(
   });
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     updatedAt: serverTimestamp(),
   });
 }
@@ -647,7 +679,7 @@ export async function addVideoMomentReply(
   });
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     updatedAt: serverTimestamp(),
   });
 }
@@ -684,7 +716,7 @@ export async function addImageMarkup(
   });
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     updatedAt: serverTimestamp(),
   });
 }
@@ -715,7 +747,7 @@ export async function updateImageMarkup(
   });
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     updatedAt: serverTimestamp(),
   });
 }
@@ -743,7 +775,7 @@ export async function deleteImageMarkup(
   });
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     updatedAt: serverTimestamp(),
   });
 }
@@ -789,7 +821,7 @@ export async function addImageMarkupReply(
   });
 
   await updateDoc(doc(db, COLLECTION, deliverableId), {
-    versions: updatedVersions,
+    versions: sanitizeForFirestore(updatedVersions),
     updatedAt: serverTimestamp(),
   });
 }
