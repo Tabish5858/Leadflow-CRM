@@ -341,9 +341,9 @@ function AddVersionModal({
           {fileList.map((f, i) => {
             const isImage = f.type.startsWith("image/");
             return (
-              <div key={i} className="relative group border rounded-lg overflow-hidden">
+              <div key={i} className="relative group border rounded-lg">
                 {isImage ? (
-                  <img src={URL.createObjectURL(f)} alt={f.name} className="w-full h-14 object-cover" />
+                  <img src={URL.createObjectURL(f)} alt={f.name} className="w-full h-14 object-cover rounded-lg" />
                 ) : (
                   <div className="w-full h-14 flex items-center justify-center bg-muted/30">
                     {f.type.startsWith("video/") ? <Film className="h-5 w-5 text-muted-foreground" /> :
@@ -592,128 +592,246 @@ function MarkupOverlay({ markups: _markups, imageRef: _imageRef }: { markups: Im
   );
 }
 
-function VersionPreviewModal({
-  open, onOpenChange, files, title,
+// ─── PDF Viewer Modal (GigBase-style, separate dedicated modal) ────────────
+
+function PDFViewerModal({
+  open, onOpenChange, file, title,
 }: {
-  open: boolean; onOpenChange: () => void; files: DeliverableFileAttachment[]; title: string;
+  open: boolean; onOpenChange: () => void; file: DeliverableFileAttachment | null; title: string;
+}) {
+  const url = file ? (file.cloudinaryUrl || file.filePath) : null;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-5xl max-h-[95vh] p-0 gap-0">
+        <DialogHeader className="px-4 py-2 border-b">
+          <DialogTitle className="text-sm truncate">{title}</DialogTitle>
+        </DialogHeader>
+        {url && (
+          <iframe
+            src={`${url}#toolbar=1&navpanes=1`}
+            className="w-full h-[85vh] border-0"
+            title={file?.fileName || "PDF"}
+          />
+        )}
+        <div className="flex justify-end p-2 border-t">
+          <Button variant="outline" size="sm" asChild>
+            <a href={url || "#"} download target="_blank" rel="noopener noreferrer">
+              <Download className="h-3.5 w-3.5 mr-1" /> Download PDF
+            </a>
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Version Preview Modal (GigBase-style: categorized grid + links) ────────
+
+function VersionPreviewModal({
+  open, onOpenChange, files, links, title, deliverableId, versionId, userId,
+  onImageMarkup, onVideoAnnotate,
+}: {
+  open: boolean; onOpenChange: () => void;
+  files: DeliverableFileAttachment[]; links?: LinkData[]; title: string;
+  deliverableId?: string; versionId?: string; userId?: string;
+  onImageMarkup?: (file: DeliverableFileAttachment) => void;
+  onVideoAnnotate?: (file: DeliverableFileAttachment) => void;
 }) {
   const [activeFile, setActiveFile] = useState<DeliverableFileAttachment | null>(files[0] || null);
+  const [showPDF, setShowPDF] = useState(false);
+  const [pdfFile, setPdfFile] = useState<DeliverableFileAttachment | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => { if (open && files.length > 0) setActiveFile(files[0]); }, [open, files]);
 
   const getDownloadUrl = (f: DeliverableFileAttachment) => f.cloudinaryUrl || f.filePath;
-
-  const seekTo = (seconds: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = seconds;
-      videoRef.current.play();
-    }
-  };
-
   const formatTS = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60);
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
+  // Categorize files
+  const images = files.filter((f) => getFileCategory(f.mimeType) === "image");
+  const videos = files.filter((f) => getFileCategory(f.mimeType) === "video");
+  const documents = files.filter((f) => getFileCategory(f.mimeType) === "document");
+  const audio = files.filter((f) => getFileCategory(f.mimeType) === "audio");
+  const downloads = files.filter((f) => getFileCategory(f.mimeType) === "download");
+
+  const renderCategoryGrid = (label: string, icon: React.ReactNode, items: DeliverableFileAttachment[]) => {
+    if (items.length === 0) return null;
+    return (
+      <div>
+        <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1 uppercase tracking-wide">
+          {icon} {label} ({items.length})
+        </h4>
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+          {items.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => {
+                if (f.mimeType.startsWith("image/") && onImageMarkup) onImageMarkup(f);
+                else if (f.mimeType.startsWith("video/") && onVideoAnnotate) onVideoAnnotate(f);
+                else if (f.mimeType.includes("pdf")) { setPdfFile(f); setShowPDF(true); }
+                else setActiveFile(f);
+              }}
+              className={`border rounded-lg overflow-hidden group hover:border-primary transition-colors ${
+                activeFile?.id === f.id ? "ring-2 ring-primary border-primary" : ""
+              }`}
+            >
+              {f.mimeType.startsWith("image/") && getDownloadUrl(f) ? (
+                <div className="aspect-square bg-muted/10">
+                  <img src={getDownloadUrl(f)} alt={f.originalName || f.fileName} className="w-full h-full object-cover" />
+                  {onImageMarkup && (
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="text-white text-[10px] font-medium">Click to markup</span>
+                    </div>
+                  )}
+                </div>
+              ) : f.mimeType.startsWith("video/") ? (
+                <div className="aspect-square flex items-center justify-center bg-muted/30 relative">
+                  <Video className="h-8 w-8 text-muted-foreground/40" />
+                  {onVideoAnnotate && (
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="text-white text-[10px] font-medium">Annotate</span>
+                    </div>
+                  )}
+                </div>
+              ) : f.mimeType.includes("pdf") ? (
+                <div className="aspect-square flex items-center justify-center bg-muted/30">
+                  <FileText className="h-8 w-8 text-red-400/60" />
+                </div>
+              ) : (
+                <div className="aspect-square flex items-center justify-center bg-muted/30">
+                  <File className="h-8 w-8 text-muted-foreground/40" />
+                </div>
+              )}
+              <div className="p-1.5">
+                <p className="text-[9px] truncate">{f.originalName || f.fileName}</p>
+                <p className="text-[8px] text-muted-foreground">{formatFileSize(f.fileSize)}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle className="truncate">{title}</DialogTitle></DialogHeader>
-        {files.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">No files to preview</p>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 flex-wrap">
-              {files.map((f) => {
-                const isActive = f.id === activeFile?.id;
-                return (
-                  <button key={f.id} onClick={() => setActiveFile(f)}
-                    className={cn("flex items-center gap-2 px-3 py-2 rounded-lg text-xs whitespace-nowrap border transition-colors",
-                      isActive ? "bg-muted border-border font-medium" : "border-transparent hover:bg-muted/50"
-                    )}
-                  >
-                    {f.mimeType?.startsWith("image/") ? <ImageIcon className="h-3.5 w-3.5" /> :
-                     f.mimeType?.startsWith("video/") ? <Video className="h-3.5 w-3.5" /> :
-                     <FileText className="h-3.5 w-3.5" />}
-                    {f.fileName || f.originalName}
-                  </button>
-                );
-              })}
-            </div>
-            {activeFile && (
-              <div className={cn("bg-muted/30 rounded-lg p-2 flex items-center justify-center min-h-[300px]", (activeFile.imageMarkups?.length || activeFile.videoMoments?.length) ? "relative" : "")}>
-                {(() => {
-                  const url = getDownloadUrl(activeFile);
-                  if (!url) {
-                    return (
-                      <div className="text-center py-12">
-                        <File className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
-                        <p className="text-sm text-muted-foreground mb-2">File URL not available</p>
-                        <p className="text-xs text-muted-foreground/60">The file may still be uploading or processing.</p>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="truncate">{title}</DialogTitle></DialogHeader>
+          {files.length === 0 && (!links || links.length === 0) ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No files or links to preview</p>
+          ) : (
+            <div className="space-y-6">
+              {/* Categorized file grid */}
+              {renderCategoryGrid("Gallery", <ImageIcon className="h-3.5 w-3.5" />, images)}
+              {renderCategoryGrid("Videos", <Film className="h-3.5 w-3.5" />, videos)}
+              {renderCategoryGrid("Documents", <FileText className="h-3.5 w-3.5" />, documents)}
+              {renderCategoryGrid("Audio", <Music className="h-3.5 w-3.5" />, audio)}
+              {renderCategoryGrid("Downloads", <Download className="h-3.5 w-3.5" />, downloads)}
+
+              {/* Links Section */}
+              {links && links.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1 uppercase tracking-wide">
+                    <Link className="h-3.5 w-3.5" /> Links ({links.length})
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {links.map((l) => (
+                      <a
+                        key={l.id || l.url}
+                        href={l.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="border rounded-lg overflow-hidden group hover:border-primary transition-colors bg-card"
+                      >
+                        <div className="aspect-square flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900">
+                          <Globe className="h-10 w-10 text-blue-400/60" />
+                        </div>
+                        <div className="p-2">
+                          <p className="text-[10px] font-medium truncate group-hover:text-primary transition-colors">{l.title}</p>
+                          <p className="text-[8px] text-muted-foreground truncate">{l.url}</p>
+                          {l.description && <p className="text-[8px] text-muted-foreground/70 mt-0.5 line-clamp-2">{l.description}</p>}
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Active file preview */}
+              {activeFile && (
+                <div className="border rounded-lg p-3 bg-muted/5">
+                  <p className="text-xs font-medium mb-2">{activeFile.originalName || activeFile.fileName}</p>
+                  <div className="flex items-center justify-center min-h-[200px] bg-muted/10 rounded relative">
+                    {(() => {
+                      const url = getDownloadUrl(activeFile);
+                      if (!url) return (
+                        <div className="text-center py-8">
+                          <File className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                          <p className="text-xs text-muted-foreground">File URL not available</p>
+                        </div>
+                      );
+                      if (activeFile.mimeType?.startsWith("image/"))
+                        return <img src={url} alt="" className="max-w-full max-h-[50vh] object-contain rounded" />;
+                      if (activeFile.mimeType?.startsWith("video/"))
+                        return <video ref={videoRef} controls className="w-full max-h-[50vh] rounded" src={url} />;
+                      if (activeFile.mimeType?.includes("pdf"))
+                        return <iframe src={`${url}#toolbar=1`} className="w-full h-[50vh] rounded" title={activeFile.fileName} />;
+                      return (
+                        <div className="text-center py-8">
+                          <File className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                          <p className="text-xs text-muted-foreground mb-2">Preview not available</p>
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={url} download target="_blank" rel="noopener noreferrer">
+                              <Download className="h-3.5 w-3.5 mr-1" /> Download
+                            </a>
+                          </Button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  {/* Video moments */}
+                  {activeFile?.mimeType?.startsWith("video/") && activeFile.videoMoments?.length ? (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[10px] font-medium text-muted-foreground">Moments ({activeFile.videoMoments.length})</p>
+                      <div className="flex flex-wrap gap-1">
+                        {activeFile.videoMoments.map((m) => (
+                          <button key={m.id} onClick={() => { if (videoRef.current) { videoRef.current.currentTime = m.timestamp; videoRef.current.play(); } }}
+                            className="text-[9px] px-1.5 py-0.5 rounded border border-border hover:bg-accent/50 flex items-center gap-1">
+                            <span className="font-mono text-primary">{formatTS(m.timestamp)}</span>
+                            <span className="truncate max-w-[80px]">{m.comment}</span>
+                          </button>
+                        ))}
                       </div>
-                    );
-                  }
-                  if (activeFile.mimeType?.startsWith("image/")) {
-                    return (
-                      <>
-                        <img src={url} alt={activeFile.fileName} className="max-w-full max-h-[60vh] object-contain rounded" />
-                        {activeFile.imageMarkups?.length ? (
-                          <MarkupOverlay markups={activeFile.imageMarkups} />
-                        ) : null}
-                      </>
-                    );
-                  }
-                  if (activeFile.mimeType?.startsWith("video/")) {
-                    return <video ref={videoRef} controls className="w-full max-h-[60vh] rounded" src={url} />;
-                  }
-                  if (activeFile.mimeType?.includes("pdf")) {
-                    return <iframe src={url} className="w-full h-[60vh] rounded" title={activeFile.fileName} />;
-                  }
-                  return (
-                    <div className="text-center py-12">
-                      <File className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
-                      <p className="text-sm text-muted-foreground mb-2">Preview not available for this file type</p>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-end mt-2">
+                    {getDownloadUrl(activeFile) && (
                       <Button variant="outline" size="sm" asChild>
-                        <a href={url} download={activeFile.fileName} target="_blank" rel="noopener noreferrer">
-                          <Download className="h-4 w-4 mr-1.5" /> Download
+                        <a href={getDownloadUrl(activeFile)} download target="_blank" rel="noopener noreferrer">
+                          <Download className="h-3.5 w-3.5 mr-1" /> Download
                         </a>
                       </Button>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* Video moments timeline */}
-            {activeFile?.mimeType?.startsWith("video/") && activeFile.videoMoments?.length ? (
-              <div className="space-y-1.5">
-                <p className="text-xs font-medium flex items-center gap-1"><Video className="h-3.5 w-3.5" /> Video Moments</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {activeFile.videoMoments.map((m) => (
-                    <button key={m.id} onClick={() => seekTo(m.timestamp)}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] border border-border hover:bg-accent/50 transition-colors group">
-                      <span className="font-mono text-primary">{formatTS(m.timestamp)}</span>
-                      <span className="text-muted-foreground group-hover:text-foreground truncate max-w-[120px]">{m.comment}</span>
-                    </button>
-                  ))}
+                    )}
+                  </div>
                 </div>
-              </div>
-            ) : null}
-
-            <div className="flex justify-end gap-2">
-              {activeFile && getDownloadUrl(activeFile) && (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={getDownloadUrl(activeFile)} download={activeFile.fileName} target="_blank" rel="noopener noreferrer">
-                    <Download className="h-4 w-4 mr-1.5" /> Download
-                  </a>
-                </Button>
               )}
             </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* PDF Viewer Modal */}
+      <PDFViewerModal
+        open={showPDF}
+        onOpenChange={() => setShowPDF(false)}
+        file={pdfFile}
+        title={pdfFile ? `${title} - ${pdfFile.originalName || pdfFile.fileName}` : title}
+      />
+    </>
   );
 }
 
@@ -1422,6 +1540,14 @@ export default function DeliverablesTab({ projectId, workspaceId, userId, onProj
     return showVersionPreview?.deliverableId || null;
   };
 
+  const getPreviewLinks = (): LinkData[] => {
+    if (!showVersionPreview) return [];
+    const del = deliverables.find((d) => d.id === showVersionPreview.deliverableId);
+    if (!del) return [];
+    const v = del.versions.find((v) => v.id === showVersionPreview.versionId);
+    return v?.links || [];
+  };
+
   const totalFiles = deliverables.reduce((acc, d) => acc + d.versions.reduce((vAcc, v) => vAcc + v.files.length, 0), 0);
   const totalLinks = deliverables.reduce((acc, d) => acc + d.versions.reduce((vAcc, v) => vAcc + (v.links?.length || 0), 0), 0);
   const approvedCount = deliverables.filter((d) => d.status === "approved" || d.status === "delivered").length;
@@ -1576,7 +1702,26 @@ export default function DeliverablesTab({ projectId, workspaceId, userId, onProj
       {/* ─── Modals ─── */}
       <CreateDeliverableModal open={showCreate} onOpenChange={setShowCreate} onSave={handleCreateDeliverable} saving={saving} />
       <AddVersionModal open={!!showAddVersion} onOpenChange={(open) => { if (!open) setShowAddVersion(null); }} onSave={(data) => { if (showAddVersion) handleAddVersion(showAddVersion, data); }} saving={savingVersion} />
-      <VersionPreviewModal open={!!showVersionPreview} onOpenChange={() => setShowVersionPreview(null)} files={getPreviewFiles()} title={getPreviewTitle()} />
+      <VersionPreviewModal
+        open={!!showVersionPreview}
+        onOpenChange={() => setShowVersionPreview(null)}
+        files={getPreviewFiles()}
+        links={getPreviewLinks()}
+        title={getPreviewTitle()}
+        deliverableId={getPreviewDeliverableId() || undefined}
+        versionId={showVersionPreview?.versionId}
+        userId={userId}
+        onImageMarkup={(file) => setMarkupFile({
+          deliverableId: getPreviewDeliverableId() || '',
+          versionId: showVersionPreview?.versionId || '',
+          file,
+        })}
+        onVideoAnnotate={(file) => setVideoFile({
+          deliverableId: getPreviewDeliverableId() || '',
+          versionId: showVersionPreview?.versionId || '',
+          file,
+        })}
+      />
 
       {/* Image/PDF Markup Modal */}
       {markupFile && (

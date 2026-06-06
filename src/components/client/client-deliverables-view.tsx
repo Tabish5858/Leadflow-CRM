@@ -60,7 +60,7 @@ function ClientVersionRow({
   deliverableTitle: string;
   userId: string;
   workspaceId: string;
-  onPreview: (title: string, files: DeliverableFileAttachment[]) => void;
+  onPreview: (title: string, files: DeliverableFileAttachment[], links?: import("@/types").LinkData[]) => void;
   onImageMarkup: (file: DeliverableFileAttachment) => void;
   onVideoAnnotate: (file: DeliverableFileAttachment) => void;
   onRevisionRequest: () => void;
@@ -147,7 +147,7 @@ function ClientVersionRow({
             </Button>
           )}
           <Button variant="ghost" size="icon" className="h-7 w-7"
-            onClick={() => onPreview(`${deliverableTitle} - V${version.versionNumber}`, version.files)}
+            onClick={() => onPreview(`${deliverableTitle} - V${version.versionNumber}`, version.files, version.links)}
             title="Preview">
             <Eye className="h-3.5 w-3.5" />
           </Button>
@@ -398,6 +398,7 @@ export default function ClientDeliverablesView({ projectId, workspaceId, userId 
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [previewFiles, setPreviewFiles] = useState<DeliverableFileAttachment[]>([]);
+  const [previewLinks, setPreviewLinks] = useState<import("@/types").LinkData[]>([]);
   const [previewTitle, setPreviewTitle] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [showDeliveryFlow, setShowDeliveryFlow] = useState(false);
@@ -422,9 +423,10 @@ export default function ClientDeliverablesView({ projectId, workspaceId, userId 
     setExpanded((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
 
-  const handlePreview = (title: string, files: DeliverableFileAttachment[]) => {
+  const handlePreview = (title: string, files: DeliverableFileAttachment[], links?: import("@/types").LinkData[]) => {
     setPreviewTitle(title);
     setPreviewFiles(files);
+    setPreviewLinks(links || []);
     setShowPreview(true);
   };
 
@@ -528,7 +530,7 @@ export default function ClientDeliverablesView({ projectId, workspaceId, userId 
       </div>
 
       {/* Version Preview Dialog */}
-      <FilePreviewDialog open={showPreview} onOpenChange={() => setShowPreview(false)} files={previewFiles} title={previewTitle} />
+      <FilePreviewDialog open={showPreview} onOpenChange={() => setShowPreview(false)} files={previewFiles} links={previewLinks} title={previewTitle} />
 
       {/* Image/PDF Markup Modal */}
       {markupFile && (
@@ -582,10 +584,13 @@ export default function ClientDeliverablesView({ projectId, workspaceId, userId 
 
 // ─── File Preview Dialog (categorized) ───────────────────────────────────────
 
-function FilePreviewDialog({ open, onOpenChange, files, title }: {
-  open: boolean; onOpenChange: () => void; files: DeliverableFileAttachment[]; title: string;
+function FilePreviewDialog({ open, onOpenChange, files, links, title }: {
+  open: boolean; onOpenChange: () => void; files: DeliverableFileAttachment[];
+  links?: import("@/types").LinkData[]; title: string;
 }) {
   const [activeFile, setActiveFile] = useState<DeliverableFileAttachment | null>(files[0] || null);
+  const [showPDF, setShowPDF] = useState(false);
+  const [pdfFile, setPdfFile] = useState<DeliverableFileAttachment | null>(null);
   useEffect(() => { if (open && files.length > 0) setActiveFile(files[0]); }, [open, files]);
 
   const getUrl = (f: DeliverableFileAttachment) => f.cloudinaryUrl || f.filePath;
@@ -601,14 +606,17 @@ function FilePreviewDialog({ open, onOpenChange, files, title }: {
     if (items.length === 0) return null;
     return (
       <div>
-        <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+        <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1 uppercase tracking-wide">
           {icon} {label} ({items.length})
         </h4>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {items.map((f) => (
             <button
               key={f.id}
-              onClick={() => setActiveFile(f)}
+              onClick={() => {
+                if (f.mimeType.includes("pdf")) { setPdfFile(f); setShowPDF(true); }
+                else setActiveFile(f);
+              }}
               className={`border rounded-lg overflow-hidden group hover:border-primary transition-colors ${
                 activeFile?.id === f.id ? "ring-2 ring-primary border-primary" : ""
               }`}
@@ -621,9 +629,13 @@ function FilePreviewDialog({ open, onOpenChange, files, title }: {
                 <div className="aspect-square flex items-center justify-center bg-muted/30">
                   <Film className="h-8 w-8 text-muted-foreground/40" />
                 </div>
+              ) : f.mimeType.includes("pdf") ? (
+                <div className="aspect-square flex items-center justify-center bg-muted/30">
+                  <FileText className="h-8 w-8 text-red-400/60" />
+                </div>
               ) : (
                 <div className="aspect-square flex items-center justify-center bg-muted/30">
-                  <FileText className="h-8 w-8 text-muted-foreground/40" />
+                  <File className="h-8 w-8 text-muted-foreground/40" />
                 </div>
               )}
               <div className="p-1.5">
@@ -638,66 +650,118 @@ function FilePreviewDialog({ open, onOpenChange, files, title }: {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle className="truncate">{title}</DialogTitle></DialogHeader>
-        {files.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">No files to preview</p>
-        ) : (
-          <div className="space-y-6">
-            {/* Categorized grid */}
-            {renderCategorySection("Gallery", <ImageIcon className="h-3.5 w-3.5" />, images)}
-            {renderCategorySection("Videos", <Video className="h-3.5 w-3.5" />, videos)}
-            {renderCategorySection("Documents", <FileText className="h-3.5 w-3.5" />, documents)}
-            {renderCategorySection("Audio", <Music className="h-3.5 w-3.5" />, audio)}
-            {renderCategorySection("Downloads", <Download className="h-3.5 w-3.5" />, downloads)}
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle className="truncate">{title}</DialogTitle></DialogHeader>
+          {files.length === 0 && (!links || links.length === 0) ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No files or links to preview</p>
+          ) : (
+            <div className="space-y-6">
+              {/* Categorized grid */}
+              {renderCategorySection("Gallery", <ImageIcon className="h-3.5 w-3.5" />, images)}
+              {renderCategorySection("Videos", <Video className="h-3.5 w-3.5" />, videos)}
+              {renderCategorySection("Documents", <FileText className="h-3.5 w-3.5" />, documents)}
+              {renderCategorySection("Audio", <Music className="h-3.5 w-3.5" />, audio)}
+              {renderCategorySection("Downloads", <Download className="h-3.5 w-3.5" />, downloads)}
 
-            {/* Active file preview */}
-            {activeFile && (
-              <div className="border rounded-lg p-3 bg-muted/10">
-                <p className="text-xs font-medium mb-2">{activeFile.originalName || activeFile.fileName}</p>
-                <div className="flex items-center justify-center min-h-[200px] bg-muted/20 rounded">
-                  {(() => {
-                    const url = getUrl(activeFile);
-                    if (!url) return (
-                      <div className="text-center py-8">
-                        <File className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
-                        <p className="text-xs text-muted-foreground">File URL not available</p>
-                      </div>
-                    );
-                    if (activeFile.mimeType?.startsWith("image/"))
-                      return <img src={url} alt="" className="max-w-full max-h-[50vh] object-contain rounded" />;
-                    if (activeFile.mimeType?.startsWith("video/"))
-                      return <video controls className="w-full max-h-[50vh] rounded" src={url} />;
-                    if (activeFile.mimeType?.includes("pdf"))
-                      return <iframe src={url} className="w-full h-[50vh] rounded" title={activeFile.fileName} />;
-                    return (
-                      <div className="text-center py-8">
-                        <File className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
-                        <p className="text-xs text-muted-foreground mb-2">Preview not available</p>
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={url} download target="_blank" rel="noopener noreferrer">
-                            <Download className="h-3.5 w-3.5 mr-1" /> Download
-                          </a>
-                        </Button>
-                      </div>
-                    );
-                  })()}
-                </div>
-                <div className="flex justify-end mt-2">
-                  {getUrl(activeFile) && (
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={getUrl(activeFile)} download target="_blank" rel="noopener noreferrer">
-                        <Download className="h-3.5 w-3.5 mr-1" /> Download
+              {/* Links Section */}
+              {links && links.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1 uppercase tracking-wide">
+                    <Link className="h-3.5 w-3.5" /> Links ({links.length})
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                    {links.map((l) => (
+                      <a
+                        key={l.id || l.url}
+                        href={l.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="border rounded-lg overflow-hidden group hover:border-primary transition-colors bg-card"
+                      >
+                        <div className="aspect-square flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900">
+                          <Globe className="h-10 w-10 text-blue-400/60" />
+                        </div>
+                        <div className="p-2">
+                          <p className="text-[10px] font-medium truncate group-hover:text-primary transition-colors">{l.title}</p>
+                          <p className="text-[8px] text-muted-foreground truncate">{l.url}</p>
+                          {l.description && <p className="text-[8px] text-muted-foreground/70 mt-0.5 line-clamp-2">{l.description}</p>}
+                        </div>
                       </a>
-                    </Button>
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Active file preview */}
+              {activeFile && (
+                <div className="border rounded-lg p-3 bg-muted/10">
+                  <p className="text-xs font-medium mb-2">{activeFile.originalName || activeFile.fileName}</p>
+                  <div className="flex items-center justify-center min-h-[200px] bg-muted/20 rounded">
+                    {(() => {
+                      const url = getUrl(activeFile);
+                      if (!url) return (
+                        <div className="text-center py-8">
+                          <File className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                          <p className="text-xs text-muted-foreground">File URL not available</p>
+                        </div>
+                      );
+                      if (activeFile.mimeType?.startsWith("image/"))
+                        return <img src={url} alt="" className="max-w-full max-h-[50vh] object-contain rounded" />;
+                      if (activeFile.mimeType?.startsWith("video/"))
+                        return <video controls className="w-full max-h-[50vh] rounded" src={url} />;
+                      if (activeFile.mimeType?.includes("pdf"))
+                        return <iframe src={`${url}#toolbar=1`} className="w-full h-[50vh] rounded" title={activeFile.fileName} />;
+                      return (
+                        <div className="text-center py-8">
+                          <File className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                          <p className="text-xs text-muted-foreground mb-2">Preview not available</p>
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={url} download target="_blank" rel="noopener noreferrer">
+                              <Download className="h-3.5 w-3.5 mr-1" /> Download
+                            </a>
+                          </Button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <div className="flex justify-end mt-2">
+                    {getUrl(activeFile) && (
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={getUrl(activeFile)} download target="_blank" rel="noopener noreferrer">
+                          <Download className="h-3.5 w-3.5 mr-1" /> Download
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* PDF Viewer Modal */}
+      {showPDF && pdfFile && (
+        <Dialog open={showPDF} onOpenChange={() => setShowPDF(false)}>
+          <DialogContent className="sm:max-w-5xl max-h-[95vh] p-0 gap-0">
+            <DialogHeader className="px-4 py-2 border-b">
+              <DialogTitle className="text-sm truncate">{pdfFile.originalName || pdfFile.fileName}</DialogTitle>
+            </DialogHeader>
+            {getUrl(pdfFile) && (
+              <iframe src={`${getUrl(pdfFile)}#toolbar=1`} className="w-full h-[85vh] border-0" title={pdfFile.fileName} />
             )}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+            <div className="flex justify-end p-2 border-t">
+              <Button variant="outline" size="sm" asChild>
+                <a href={getUrl(pdfFile) || "#"} download target="_blank" rel="noopener noreferrer">
+                  <Download className="h-3.5 w-3.5 mr-1" /> Download PDF
+                </a>
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
