@@ -64,6 +64,7 @@ export async function POST(req: NextRequest) {
       const result = await cloudinary.uploader.upload(base64, {
         folder,
         resource_type: resourceType,
+        type: "upload", // Explicit public delivery — prevents "Blocked for delivery"
         use_filename: true,
         unique_filename: true,
         overwrite: false,

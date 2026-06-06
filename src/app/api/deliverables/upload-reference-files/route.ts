@@ -35,9 +35,11 @@ export async function POST(req: NextRequest) {
         const base64 = `data:${file.type};base64,${buffer.toString("base64")}`;
 
         const folder = `${getWorkspaceFolder(ctx.workspaceId)}/revision-references`;
+        const resourceType = file.type.startsWith("video/") ? "video" : "image";
         const result = await cloudinary.uploader.upload(base64, {
           folder,
-          resource_type: "auto",
+          resource_type: resourceType,
+          type: "upload", // Explicit public delivery
           use_filename: true,
           unique_filename: true,
           overwrite: false,

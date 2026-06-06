@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
       const result = await cloudinary.uploader.upload(base64, {
         folder,
         resource_type: "video", // Cloudinary treats audio as video resource type
+        type: "upload", // Explicit public delivery
         use_filename: true,
         unique_filename: true,
         overwrite: false,
