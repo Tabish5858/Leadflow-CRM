@@ -93,7 +93,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/lib/hooks/use-auth";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 
 // ─── Status Config ────────────────────────────────────────────────────────────
@@ -155,15 +155,15 @@ export default function ProjectDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Tab — persisted via URL search param
-  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  // Sync tab from URL after hydration (useSearchParams can be null during SSR)
+  // Sync tab from URL after hydration (read from window to avoid SSR issues)
   useEffect(() => {
-    const tabParam = searchParams?.get("tab");
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
     if (tabParam && TABS.some(t => t.id === tabParam)) {
       setActiveTab(tabParam as TabId);
     }
-  }, [searchParams]);
+  }, []);
 
   // Task data
   const [tasks, setTasks] = useState<ProjectTask[]>([]);

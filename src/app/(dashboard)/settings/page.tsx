@@ -86,7 +86,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 // Dynamically loaded tab content - only loaded when user clicks the tab
@@ -100,25 +100,23 @@ export default function SettingsPage() {
   const { user, activeWorkspace, workspaces, switchWorkspace, refreshWorkspaces } = useWorkspace();
   const { firebaseUser } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const VALID_SETTINGS_TABS = ["profile","workspace","members","preferences","integrations","client-portal"];
   const [activeTab, setActiveTab] = useState<Tab>("profile");
   // Sync tab from URL after hydration; fallback to localStorage hint
   useEffect(() => {
-    const tabParam = searchParams?.get("tab") as Tab | null;
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab") as Tab | null;
     if (tabParam && VALID_SETTINGS_TABS.includes(tabParam)) {
       setActiveTab(tabParam);
       return;
     }
     // Fallback: navigated from sidebar user profile click (legacy)
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("leadflow_settings_tab");
-      if (saved === "profile") {
-        localStorage.removeItem("leadflow_settings_tab");
-        setActiveTab("profile");
-      }
+    const saved = localStorage.getItem("leadflow_settings_tab");
+    if (saved === "profile") {
+      localStorage.removeItem("leadflow_settings_tab");
+      setActiveTab("profile");
     }
-  }, [searchParams]);
+  }, []);
   const [workspaceName, setWorkspaceName] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
