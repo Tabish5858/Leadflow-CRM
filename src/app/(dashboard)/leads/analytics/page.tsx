@@ -429,9 +429,8 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
           <div className={`text-4xl font-bold ${scoreColor}`}>{resolved.value}</div>
           <div className="mt-2 w-full max-w-[160px] h-2 rounded-full bg-muted overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${
-                pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500"
-              }`}
+              className={`h-full rounded-full transition-all ${pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500"
+                }`}
               style={{ width: `${Math.min(pct, 100)}%` }}
             />
           </div>
@@ -479,9 +478,9 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
         { name: "Empty", value: totalEmpty },
       ];
       return (
-        <Card>
+        <Card className="h-full">
           <CardHeader><CardTitle className="text-base">{card.title}</CardTitle></CardHeader>
-          <CardContent>
+          <CardContent className="flex items-center justify-center h-full">
             <div className="flex items-center justify-center gap-6">
               <div className="relative">
                 <ResponsiveContainer width={180} height={180}>
@@ -493,7 +492,7 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }}
+                      contentStyle={{ backgroundColor: "#fff", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "#000" }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
@@ -541,7 +540,7 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
                   fill="hsl(var(--foreground))" fontSize={11}>
                   {pieData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }} />
+                <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "#000" }} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
@@ -577,7 +576,7 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
                   <XAxis type="number" tick={{ fontSize: 10 }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={90} tickLine={false} axisLine={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }}
+                    contentStyle={{ backgroundColor: "#fff", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "#000" }}
                     formatter={(value: number) => [`${value}%`, "Fill Rate"]}
                   />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={16}>
@@ -590,7 +589,7 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">No data</div>
+              <div className="flex h-62.5 items-center justify-center text-sm text-muted-foreground">No data</div>
             )}
           </CardContent>
         </Card>
@@ -617,14 +616,14 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
                   <XAxis type="number" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={90} tickLine={false} axisLine={false} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }}
+                    contentStyle={{ backgroundColor: "#fff", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "#000" }}
                   />
                   <Bar dataKey="value" name="Filled" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} maxBarSize={16} />
                   <Bar dataKey="value2" name="Empty" stackId="a" fill="#fca5a5" radius={[0, 4, 4, 0]} maxBarSize={16} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">No data</div>
+              <div className="flex h-62.5 items-center justify-center text-sm text-muted-foreground">No data</div>
             )}
           </CardContent>
         </Card>
@@ -649,9 +648,7 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }}
-                  />
+                  <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "#000" }} />
                   <Bar dataKey="value" name="Rows" radius={[6, 6, 0, 0]} maxBarSize={48}>
                     {barData.map((entry, i) => {
                       const labels = ["0–25%", "25–50%", "50–75%", "75–100%"];
@@ -662,7 +659,7 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">No data</div>
+              <div className="flex h-55 items-center justify-center text-sm text-muted-foreground">No data</div>
             )}
           </CardContent>
         </Card>
@@ -693,12 +690,12 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                 <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }} />
+                <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "#000" }} />
                 <Bar dataKey="value" fill="hsl(152 55% 42%)" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">No data</div>
+            <div className="flex h-62.5 items-center justify-center text-sm text-muted-foreground">No data</div>
           )}
         </CardContent>
       </Card>
@@ -1116,7 +1113,7 @@ export default function SpreadsheetAnalyticsPage() {
         </div>
         {spreadsheets.length > 0 ? (
           <Select value={selectedSpreadsheetId} onValueChange={setSelectedSpreadsheetId}>
-            <SelectTrigger className="w-[280px]">
+            <SelectTrigger className="w-70">
               <SelectValue placeholder="Select a spreadsheet..." />
             </SelectTrigger>
             <SelectContent>
@@ -1146,7 +1143,7 @@ export default function SpreadsheetAnalyticsPage() {
                 setSelectedColumnIndex(null);
               }}
             >
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

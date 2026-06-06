@@ -494,7 +494,7 @@ export function SpreadsheetEditor({
 
   const containerHeight = expanded
     ? "calc(100vh - 140px)"
-    : "70vh";
+    : "78vh";
 
   return (
     <div className={expanded ? "fixed inset-0 z-50 bg-background flex flex-col p-4 pt-2" : "space-y-3"}>
