@@ -5,7 +5,7 @@
   "description": "Open-source CRM & Time Tracker built with Next.js 16 and Firebase",
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "build": "NODE_OPTIONS=--max-old-space-size=4096 next build --webpack",
     "start": "next start",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

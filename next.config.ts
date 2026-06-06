@@ -53,7 +53,11 @@ export default withSentryConfig(nextConfig, {
   org: "tabdev",
   project: "leadflow",
   authToken: process.env.SENTRY_AUTH_TOKEN,
-  widenClientFileUpload: true,
+  widenClientFileUpload: false,
   tunnelRoute: "/monitoring",
+  telemetry: false,
   silent: !process.env.CI,
+  sourcemaps: {
+    disable: process.env.VERCEL_ENV !== "production",
+  },
 });
