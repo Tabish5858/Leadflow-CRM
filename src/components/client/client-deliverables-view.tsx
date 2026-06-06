@@ -11,7 +11,7 @@ import { toast } from "@/lib/toast";
 import { formatFileSize } from "@/lib/documents";
 import { getApiAuthHeaders } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
-import { getProjectDeliverables, addComment, addReply, submitPaymentProof } from "@/lib/firebase/project-deliverables";
+import { getProjectDeliverables, addComment, addReply, submitPaymentProof, approveVersion, requestRevision } from "@/lib/firebase/project-deliverables";
 import {
   Download,
   Eye,
@@ -30,6 +30,8 @@ import {
   Video,
   PartyPopper,
   ArrowRight,
+  ThumbsUp,
+  RefreshCw,
 } from "lucide-react";
 import {
   Dialog,
@@ -83,27 +85,42 @@ function FilePreviewDialog({ open, onOpenChange, files, title }: {
             </div>
             {activeFile && (
               <div className="bg-muted/30 rounded-lg p-2 flex items-center justify-center min-h-[300px]">
-                {activeFile.mimeType?.startsWith("image/") ? (
-                  <img src={getUrl(activeFile)} alt={activeFile.fileName} className="max-w-full max-h-[60vh] object-contain rounded" />
-                ) : activeFile.mimeType?.startsWith("video/") ? (
-                  <video controls className="w-full max-h-[60vh] rounded" src={getUrl(activeFile)} />
-                ) : activeFile.mimeType?.includes("pdf") ? (
-                  <iframe src={getUrl(activeFile)} className="w-full h-[60vh] rounded" title={activeFile.fileName} />
-                ) : (
-                  <div className="text-center py-12">
-                    <File className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
-                    <p className="text-sm text-muted-foreground mb-2">Preview not available</p>
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={getUrl(activeFile)} download={activeFile.fileName} target="_blank" rel="noopener noreferrer">
-                        <Download className="h-4 w-4 mr-1.5" /> Download
-                      </a>
-                    </Button>
-                  </div>
-                )}
+                {(() => {
+                  const url = getUrl(activeFile);
+                  if (!url) {
+                    return (
+                      <div className="text-center py-12">
+                        <File className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+                        <p className="text-sm text-muted-foreground mb-2">File URL not available</p>
+                        <p className="text-xs text-muted-foreground/60">The file may still be uploading or processing.</p>
+                      </div>
+                    );
+                  }
+                  if (activeFile.mimeType?.startsWith("image/")) {
+                    return <img src={url} alt={activeFile.fileName} className="max-w-full max-h-[60vh] object-contain rounded" />;
+                  }
+                  if (activeFile.mimeType?.startsWith("video/")) {
+                    return <video controls className="w-full max-h-[60vh] rounded" src={url} />;
+                  }
+                  if (activeFile.mimeType?.includes("pdf")) {
+                    return <iframe src={url} className="w-full h-[60vh] rounded" title={activeFile.fileName} />;
+                  }
+                  return (
+                    <div className="text-center py-12">
+                      <File className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+                      <p className="text-sm text-muted-foreground mb-2">Preview not available</p>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={url} download={activeFile.fileName} target="_blank" rel="noopener noreferrer">
+                          <Download className="h-4 w-4 mr-1.5" /> Download
+                        </a>
+                      </Button>
+                    </div>
+                  );
+                })()}
               </div>
             )}
             <div className="flex justify-end">
-              {activeFile && (
+              {activeFile && getUrl(activeFile) && (
                 <Button variant="outline" size="sm" asChild>
                   <a href={getUrl(activeFile)} download={activeFile.fileName} target="_blank" rel="noopener noreferrer">
                     <Download className="h-4 w-4 mr-1.5" /> Download
@@ -212,7 +229,7 @@ function ClientPaymentProof({ deliverable, userId, workspaceId, onUpdate }: {
       if (!res.ok) throw new Error("Upload failed");
       const data = await res.json();
       await submitPaymentProof(deliverable.id, userId, {
-        fileName: file.name, filePath: data.cloudinaryUrl || data.filePath, fileSize: file.size,
+        fileName: file.name, filePath: data.url || data.cloudinaryUrl || data.filePath, fileSize: file.size,
       });
       toast.success("Payment proof uploaded");
       onUpdate();
@@ -239,6 +256,134 @@ function ClientPaymentProof({ deliverable, userId, workspaceId, onUpdate }: {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Client Version Row ──────────────────────────────────────────────────────
+
+function ClientVersionRow({ version, deliverableId, deliverableTitle, userId, workspaceId, onPreview, onRefresh }: {
+  version: import("@/types").DeliverableVersion;
+  deliverableId: string;
+  deliverableTitle: string;
+  userId: string;
+  workspaceId: string;
+  onPreview: (title: string, files: DeliverableFileAttachment[]) => void;
+  onRefresh: () => void;
+}) {
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [processing, setProcessing] = useState(false);
+
+  const handleApprove = async (comments?: string) => {
+    setProcessing(true);
+    try {
+      await approveVersion(deliverableId, version.id, userId, comments);
+      toast.success("Version approved");
+      setReviewOpen(false);
+      onRefresh();
+    } catch { toast.error("Failed to approve"); }
+    finally { setProcessing(false); }
+  };
+
+  const handleRequestRevision = async (reason: string) => {
+    setProcessing(true);
+    try {
+      await requestRevision(deliverableId, version.id, userId, reason);
+      toast.success("Revision requested");
+      setReviewOpen(false);
+      onRefresh();
+    } catch { toast.error("Failed to request revision"); }
+    finally { setProcessing(false); }
+  };
+
+  return (
+    <div className="flex items-center justify-between p-3 pl-10 hover:bg-accent/30 border-b border-border/50 last:border-b-0">
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium">Version {version.versionNumber}</p>
+          <p className="text-[10px] text-muted-foreground">{version.files.length} file{version.files.length !== 1 ? "s" : ""} · {formatDate(version.uploadedAt)}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5">
+        {/* Status badge for non-submitted versions */}
+        {version.status === "approved" && (
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-success/10 text-success">Approved</span>
+        )}
+        {version.status === "revision_requested" && (
+          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">Revision requested</span>
+        )}
+        {/* Approve / Revision buttons for submitted versions */}
+        {version.status === "submitted" && (
+          <>
+            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setReviewOpen(true)}>
+              <ThumbsUp className="h-3 w-3" /> Review
+            </Button>
+          </>
+        )}
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onPreview(`${deliverableTitle} - V${version.versionNumber}`, version.files)} title="Preview">
+          <Eye className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <ReviewVersionModal open={reviewOpen} onOpenChange={setReviewOpen}
+        onApprove={handleApprove} onRequestRevision={handleRequestRevision} processing={processing} />
+    </div>
+  );
+}
+
+// ─── Review Version Modal (client side) ─────────────────────────────────────
+
+function ReviewVersionModal({
+  open, onOpenChange, onApprove, onRequestRevision, processing,
+}: {
+  open: boolean; onOpenChange: (o: boolean) => void;
+  onApprove: (comments?: string) => void; onRequestRevision: (reason: string) => void;
+  processing: boolean;
+}) {
+  const [mode, setMode] = useState<"approve" | "revision">("approve");
+  const [comments, setComments] = useState("");
+  const [reason, setReason] = useState("");
+  useEffect(() => { if (!open) { setComments(""); setReason(""); setMode("approve"); } }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{mode === "approve" ? "Approve Version" : "Request Revision"}</DialogTitle>
+          <DialogDescription>
+            {mode === "approve" ? "Mark this version as approved." : "Request changes for this version."}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex gap-2 mb-4">
+          <Button variant={mode === "approve" ? "default" : "outline"} size="sm" onClick={() => setMode("approve")}>
+            <ThumbsUp className="h-4 w-4 mr-1.5" /> Approve
+          </Button>
+          <Button variant={mode === "revision" ? "default" : "outline"} size="sm" onClick={() => setMode("revision")}>
+            <RefreshCw className="h-4 w-4 mr-1.5" /> Request Revision
+          </Button>
+        </div>
+        {mode === "approve" ? (
+          <div className="space-y-2">
+            <Label>Comments (optional)</Label>
+            <Textarea value={comments} onChange={(e) => setComments(e.target.value)} placeholder="Any feedback on the approved version..." rows={2} />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label>Reason for revision <span className="text-destructive">*</span></Label>
+            <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Describe what needs to be changed..." rows={3} />
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button
+            onClick={() => mode === "approve" ? onApprove(comments) : onRequestRevision(reason)}
+            disabled={processing || (mode === "revision" && !reason.trim())}
+          >
+            {processing ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Processing...</>) :
+              mode === "approve" ? "Approve Version" : "Request Revision"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -279,7 +424,15 @@ export default function ClientDeliverablesView({ projectId, workspaceId, userId 
   };
 
   if (loading) return <div className="space-y-2">{Array.from({ length: 2 }).map((_, i) => (<Skeleton key={i} className="h-14 w-full rounded-lg" />))}</div>;
-  if (deliverables.length === 0) return null;
+  if (deliverables.length === 0) return (
+    <div className="flex flex-col items-center justify-center py-16 border border-dashed border-border rounded-lg">
+      <Package className="h-12 w-12 text-muted-foreground/30 mb-4" />
+      <p className="text-sm font-medium text-muted-foreground mb-1">No deliverables yet</p>
+      <p className="text-xs text-muted-foreground/60">
+        Your project deliverables will appear here once shared by your team.
+      </p>
+    </div>
+  );
 
   const allDelivered = deliverables.every((d) => d.finalPackageDelivered);
   const totalFiles = deliverables.reduce((a, d) => a + d.versions.reduce((b, v) => b + v.files.length, 0), 0);
@@ -333,18 +486,16 @@ export default function ClientDeliverablesView({ projectId, workspaceId, userId 
 
                   {/* Versions */}
                   {del.versions.map((v) => (
-                    <div key={v.id} className="flex items-center justify-between p-3 pl-10 hover:bg-accent/30 border-b border-border/50 last:border-b-0">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium">Version {v.versionNumber}</p>
-                          <p className="text-[10px] text-muted-foreground">{v.files.length} file{v.files.length !== 1 ? "s" : ""} · {formatDate(v.uploadedAt)}</p>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePreview(`${del.title} - V${v.versionNumber}`, v.files)}>
-                        <Eye className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    <ClientVersionRow
+                      key={v.id}
+                      version={v}
+                      deliverableId={del.id}
+                      deliverableTitle={del.title}
+                      userId={userId}
+                      workspaceId={workspaceId}
+                      onPreview={handlePreview}
+                      onRefresh={() => getProjectDeliverables(projectId).then(setDeliverables)}
+                    />
                   ))}
 
                   {/* Comments */}

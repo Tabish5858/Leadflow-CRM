@@ -15,7 +15,7 @@ interface TeamCardProps {
   projectId: string;
   members: WorkspaceMember[];
   memberIds: string[];
-  onMembersChange: (memberIds: string[]) => void;
+  onMembersChange?: (memberIds: string[]) => void;
 }
 
 export default function TeamCard({ projectId, members, memberIds, onMembersChange }: TeamCardProps) {
@@ -37,7 +37,10 @@ export default function TeamCard({ projectId, members, memberIds, onMembersChang
   const teamMembers = members.filter((m) => memberIds.includes(m.userId));
   const availableMembers = members.filter((m) => !memberIds.includes(m.userId));
 
+  const canEdit = !!onMembersChange;
+
   const handleAddMember = async (userId: string) => {
+    if (!onMembersChange) return;
     const newIds = [...memberIds, userId];
     // Optimistic update
     onMembersChange(newIds);
@@ -55,6 +58,7 @@ export default function TeamCard({ projectId, members, memberIds, onMembersChang
   };
 
   const handleRemoveMember = async (userId: string) => {
+    if (!onMembersChange) return;
     if (!confirm("Remove this member from the project?")) return;
     const newIds = memberIds.filter((id) => id !== userId);
     // Optimistic update
@@ -85,7 +89,7 @@ export default function TeamCard({ projectId, members, memberIds, onMembersChang
           <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
             {teamMembers.length}
           </span>
-          {/* Add member button with dropdown */}
+          {canEdit && (
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setShowAddDropdown(!showAddDropdown)}
@@ -121,6 +125,7 @@ export default function TeamCard({ projectId, members, memberIds, onMembersChang
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
 
@@ -139,6 +144,7 @@ export default function TeamCard({ projectId, members, memberIds, onMembersChang
                 <p className="text-xs font-medium text-foreground truncate">{member.displayName}</p>
                 <p className="text-[10px] text-muted-foreground truncate">{member.email}</p>
               </div>
+              {canEdit && (
               <button
                 onClick={() => handleRemoveMember(member.userId)}
                 className="opacity-0 group-hover:opacity-100 h-6 w-6 flex items-center justify-center rounded hover:bg-destructive/10 transition-opacity shrink-0"
@@ -146,6 +152,7 @@ export default function TeamCard({ projectId, members, memberIds, onMembersChang
               >
                 <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
               </button>
+              )}
             </div>
           ))
         )}

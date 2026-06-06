@@ -61,8 +61,8 @@ interface ProjectNotesProps {
   notes: ProjectNote[];
   /** Map of userId -> displayName */
   memberMap?: Map<string, { displayName: string; photoURL?: string | null }>;
-  onCreateNote: (data: { title: string; content: string }) => Promise<void>;
-  onDeleteNote: (noteId: string) => Promise<void>;
+  onCreateNote?: (data: { title: string; content: string }) => Promise<void>;
+  onDeleteNote?: (noteId: string) => Promise<void>;
   /** Show only notes for a specific task */
   taskId?: string;
   /** Compact mode (for Overview sidebar) */
@@ -98,8 +98,10 @@ export function ProjectNotes({
     ? notes.filter((n) => n.taskId === taskId)
     : notes;
 
+  const canEdit = !!onCreateNote;
+
   const handleCreate = async () => {
-    if (!noteTitle.trim()) return;
+    if (!onCreateNote || !noteTitle.trim()) return;
     setSaving(true);
     try {
       await onCreateNote({ title: noteTitle.trim(), content: noteContent.trim() });
@@ -113,6 +115,7 @@ export function ProjectNotes({
   };
 
   const handleDelete = async (noteId: string) => {
+    if (!onDeleteNote) return;
     setDeletingId(noteId);
     try {
       await onDeleteNote(noteId);
@@ -134,6 +137,7 @@ export function ProjectNotes({
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
           Notes {filteredNotes.length > 0 && `(${filteredNotes.length})`}
         </h3>
+        {canEdit && (
         <Button
           variant="ghost"
           size="sm"
@@ -143,6 +147,7 @@ export function ProjectNotes({
           <Plus className="h-3.5 w-3.5" />
           {compact ? "Add" : "Add Note"}
         </Button>
+        )}
       </div>
 
       {/* Note list */}
@@ -151,7 +156,7 @@ export function ProjectNotes({
           <div className="text-center py-6">
             <FileText className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
             <p className="text-xs text-muted-foreground">No notes yet.</p>
-            {compact && (
+            {compact && canEdit && (
               <Button
                 variant="outline"
                 size="sm"
@@ -184,6 +189,7 @@ export function ProjectNotes({
                       </p>
                     )}
                   </div>
+                  {!!onDeleteNote && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -197,6 +203,7 @@ export function ProjectNotes({
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     )}
                   </Button>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 mt-2 text-[11px] text-muted-foreground">
                   {author && (

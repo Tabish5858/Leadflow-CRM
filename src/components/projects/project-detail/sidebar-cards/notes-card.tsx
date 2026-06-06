@@ -6,8 +6,8 @@ import type { ProjectNote, WorkspaceMember } from "@/types";
 
 interface NotesCardProps {
   notes: ProjectNote[];
-  onCreateNote: (data: { title: string; content: string }) => void;
-  onDeleteNote: (noteId: string) => void;
+  onCreateNote?: (data: { title: string; content: string }) => void;
+  onDeleteNote?: (noteId: string) => void;
 }
 
 export default function NotesCard({ notes, onCreateNote, onDeleteNote }: NotesCardProps) {
@@ -29,7 +29,7 @@ export default function NotesCard({ notes, onCreateNote, onDeleteNote }: NotesCa
   }, [openMenuId]);
 
   const handleSubmit = () => {
-    if (!title.trim()) return;
+    if (!onCreateNote || !title.trim()) return;
     onCreateNote({ title: title.trim(), content: content.trim() });
     setTitle("");
     setContent("");
@@ -46,6 +46,7 @@ export default function NotesCard({ notes, onCreateNote, onDeleteNote }: NotesCa
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold text-foreground">Notes</h3>
         </div>
+        {!!onCreateNote && (
         <button
           onClick={() => setShowForm(!showForm)}
           className="h-6 w-6 rounded-full border border-border bg-card flex items-center justify-center hover:bg-accent"
@@ -53,6 +54,7 @@ export default function NotesCard({ notes, onCreateNote, onDeleteNote }: NotesCa
         >
           <Plus className="h-3.5 w-3.5 text-muted-foreground" />
         </button>
+        )}
       </div>
 
       {/* Inline add form */}
@@ -109,6 +111,7 @@ export default function NotesCard({ notes, onCreateNote, onDeleteNote }: NotesCa
                     {note.createdAt?.toDate().toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </p>
                 </div>
+                {!!onDeleteNote && (
                 <div className="relative" ref={menuRef}>
                   <button
                     onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === note.id ? null : note.id); }}
@@ -128,6 +131,7 @@ export default function NotesCard({ notes, onCreateNote, onDeleteNote }: NotesCa
                     </div>
                   )}
                 </div>
+                )}
               </div>
             </div>
           ))

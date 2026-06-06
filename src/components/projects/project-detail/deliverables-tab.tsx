@@ -389,28 +389,45 @@ function VersionPreviewModal({
             </div>
             {activeFile && (
               <div className={cn("bg-muted/30 rounded-lg p-2 flex items-center justify-center min-h-[300px]", (activeFile.imageMarkups?.length || activeFile.videoMoments?.length) ? "relative" : "")}>
-                {activeFile.mimeType?.startsWith("image/") ? (
-                  <>
-                    <img src={getDownloadUrl(activeFile)} alt={activeFile.fileName} className="max-w-full max-h-[60vh] object-contain rounded" />
-                    {activeFile.imageMarkups?.length ? (
-                      <MarkupOverlay markups={activeFile.imageMarkups} />
-                    ) : null}
-                  </>
-                ) : activeFile.mimeType?.startsWith("video/") ? (
-                  <video ref={videoRef} controls className="w-full max-h-[60vh] rounded" src={getDownloadUrl(activeFile)} />
-                ) : activeFile.mimeType?.includes("pdf") ? (
-                  <iframe src={getDownloadUrl(activeFile)} className="w-full h-[60vh] rounded" title={activeFile.fileName} />
-                ) : (
-                  <div className="text-center py-12">
-                    <File className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
-                    <p className="text-sm text-muted-foreground mb-2">Preview not available for this file type</p>
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={getDownloadUrl(activeFile)} download={activeFile.fileName} target="_blank" rel="noopener noreferrer">
-                        <Download className="h-4 w-4 mr-1.5" /> Download
-                      </a>
-                    </Button>
-                  </div>
-                )}
+                {(() => {
+                  const url = getDownloadUrl(activeFile);
+                  if (!url) {
+                    return (
+                      <div className="text-center py-12">
+                        <File className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+                        <p className="text-sm text-muted-foreground mb-2">File URL not available</p>
+                        <p className="text-xs text-muted-foreground/60">The file may still be uploading or processing.</p>
+                      </div>
+                    );
+                  }
+                  if (activeFile.mimeType?.startsWith("image/")) {
+                    return (
+                      <>
+                        <img src={url} alt={activeFile.fileName} className="max-w-full max-h-[60vh] object-contain rounded" />
+                        {activeFile.imageMarkups?.length ? (
+                          <MarkupOverlay markups={activeFile.imageMarkups} />
+                        ) : null}
+                      </>
+                    );
+                  }
+                  if (activeFile.mimeType?.startsWith("video/")) {
+                    return <video ref={videoRef} controls className="w-full max-h-[60vh] rounded" src={url} />;
+                  }
+                  if (activeFile.mimeType?.includes("pdf")) {
+                    return <iframe src={url} className="w-full h-[60vh] rounded" title={activeFile.fileName} />;
+                  }
+                  return (
+                    <div className="text-center py-12">
+                      <File className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+                      <p className="text-sm text-muted-foreground mb-2">Preview not available for this file type</p>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={url} download={activeFile.fileName} target="_blank" rel="noopener noreferrer">
+                          <Download className="h-4 w-4 mr-1.5" /> Download
+                        </a>
+                      </Button>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -431,7 +448,7 @@ function VersionPreviewModal({
             ) : null}
 
             <div className="flex justify-end gap-2">
-              {activeFile && (
+              {activeFile && getDownloadUrl(activeFile) && (
                 <Button variant="outline" size="sm" asChild>
                   <a href={getDownloadUrl(activeFile)} download={activeFile.fileName} target="_blank" rel="noopener noreferrer">
                     <Download className="h-4 w-4 mr-1.5" /> Download
@@ -845,7 +862,7 @@ function PaymentGateToggle({
 // ─── Deliverable Version Row ─────────────────────────────────────────────────
 
 function VersionRow({
-  version, deliverableId, workspaceId, userId, isOwner, onRefresh, onPreview,
+  version, deliverableId, userId, workspaceId, isOwner, onRefresh, onPreview,
 }: {
   version: import("@/types").DeliverableVersion;
   deliverableId: string;
@@ -855,31 +872,6 @@ function VersionRow({
   onRefresh: () => void;
   onPreview: (versionId: string) => void;
 }) {
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [processing, setProcessing] = useState(false);
-
-  const handleApprove = async (comments?: string) => {
-    setProcessing(true);
-    try {
-      await approveVersion(deliverableId, version.id, userId, comments);
-      toast.success("Version approved");
-      setReviewOpen(false);
-      onRefresh();
-    } catch { toast.error("Failed to approve"); }
-    finally { setProcessing(false); }
-  };
-
-  const handleRequestRevision = async (reason: string) => {
-    setProcessing(true);
-    try {
-      await requestRevision(deliverableId, version.id, userId, reason);
-      toast.success("Revision requested");
-      setReviewOpen(false);
-      onRefresh();
-    } catch { toast.error("Failed to request revision"); }
-    finally { setProcessing(false); }
-  };
-
   return (
     <div className="border-b border-border/50 last:border-b-0">
       <div className="flex items-center justify-between p-3 pl-10 hover:bg-accent/30 transition-colors">
@@ -906,10 +898,8 @@ function VersionRow({
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onPreview(version.id)} title="Preview">
             <Eye className="h-3.5 w-3.5" />
           </Button>
-          {isOwner && version.status === "submitted" && (
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setReviewOpen(true)} title="Review">
-              <ThumbsUp className="h-3.5 w-3.5" />
-            </Button>
+          {isOwner && version.status === "revision_requested" && (
+            <span className="text-[10px] text-warning font-medium px-1.5 py-0.5 rounded-full bg-warning/10">Revision requested</span>
           )}
         </div>
       </div>
@@ -924,8 +914,6 @@ function VersionRow({
           ))}
         </div>
       )}
-      <ReviewVersionModal open={reviewOpen} onOpenChange={setReviewOpen}
-        onApprove={handleApprove} onRequestRevision={handleRequestRevision} processing={processing} />
     </div>
   );
 }
@@ -1002,7 +990,7 @@ export default function DeliverablesTab({ projectId, workspaceId, userId, onProj
           id: `f-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
           fileName: doc.fileName || file.name,
           originalName: file.name,
-          filePath: doc.cloudinaryUrl || doc.filePath || "",
+          filePath: doc.url || doc.cloudinaryUrl || doc.filePath || "",
           fileSize: file.size,
           mimeType: file.type,
           uploadedAt: now,

@@ -8,7 +8,7 @@ import { toast } from "@/lib/toast";
 
 interface DeliveryFlowCardProps {
   project: Project;
-  onProjectUpdated: () => void;
+  onProjectUpdated?: () => void;
 }
 
 export default function DeliveryFlowCard({ project, onProjectUpdated }: DeliveryFlowCardProps) {
@@ -26,7 +26,10 @@ export default function DeliveryFlowCard({ project, onProjectUpdated }: Delivery
     upsellServices: [],
   };
 
+  const canEdit = !!onProjectUpdated;
+
   const updateSetting = async (key: keyof ProjectDeliveryFlow, value: boolean | string | unknown[]) => {
+    if (!onProjectUpdated) return;
     setSaving(true);
     try {
       await updateProject(project.id, {
@@ -76,6 +79,7 @@ export default function DeliveryFlowCard({ project, onProjectUpdated }: Delivery
               <p className="text-xs font-medium text-foreground">{step.label}</p>
               <p className="text-[10px] text-muted-foreground">{step.desc}</p>
             </div>
+            {canEdit ? (
             <button
               onClick={() => updateSetting(step.key, !settings[step.key])}
               disabled={saving}
@@ -89,12 +93,17 @@ export default function DeliveryFlowCard({ project, onProjectUpdated }: Delivery
                 }`}
               />
             </button>
+            ) : (
+              <span className={`text-xs font-medium ${settings[step.key] ? "text-success" : "text-muted-foreground"}`}>
+                {settings[step.key] ? "On" : "Off"}
+              </span>
+            )}
           </div>
         ))}
       </div>
 
       {/* Reviews config */}
-      {settings.enableReviews && (
+      {settings.enableReviews && canEdit && (
         <div className="mt-3 pt-3 border-t border-border">
           <label className="flex items-center gap-2">
             <input

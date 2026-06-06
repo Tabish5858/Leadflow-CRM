@@ -45,42 +45,56 @@ export default function ProjectInfoCard({ project, memberMap, onStatusChange }: 
       <h3 className="text-sm font-semibold text-foreground mb-4">Project Info</h3>
 
       <div className="grid grid-cols-2 gap-4">
-        {/* Status with dropdown */}
-        <div className="relative">
+        {/* Status */}
+        <div>
           <p className="text-xs text-muted-foreground">Status</p>
-          <button
-            onClick={() => setShowStatusMenu(!showStatusMenu)}
-            className="flex items-center gap-1.5 text-sm font-medium text-foreground capitalize hover:text-primary transition-colors mt-0.5"
-          >
-            <span className={`inline-block w-2 h-2 rounded-full ${
-              project.status === "active" ? "bg-green-500" :
-              project.status === "on_hold" ? "bg-amber-500" :
-              project.status === "completed" ? "bg-blue-500" :
-              "bg-red-500"
-            }`} />
-            {project.status.replace("_", " ")}
-            <ChevronDown className="h-3 w-3 text-muted-foreground" />
-          </button>
-          {showStatusMenu && (
-            <div className="absolute left-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg z-50 py-1 min-w-[140px]">
-              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                <button
-                  key={key}
-                  onClick={() => handleStatusChange(key as ProjectStatus)}
-                  className={`w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-accent ${
-                    key === project.status ? "font-medium text-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  <span className={`w-2 h-2 rounded-full ${
-                    key === "active" ? "bg-green-500" :
-                    key === "on_hold" ? "bg-amber-500" :
-                    key === "completed" ? "bg-blue-500" :
-                    "bg-red-500"
-                  }`} />
-                  {cfg.label}
-                </button>
-              ))}
+          {onStatusChange ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowStatusMenu(!showStatusMenu)}
+                className="flex items-center gap-1.5 text-sm font-medium text-foreground capitalize hover:text-primary transition-colors mt-0.5"
+              >
+                <span className={`inline-block w-2 h-2 rounded-full ${
+                  project.status === "active" ? "bg-green-500" :
+                  project.status === "on_hold" ? "bg-amber-500" :
+                  project.status === "completed" ? "bg-blue-500" :
+                  "bg-red-500"
+                }`} />
+                {project.status.replace("_", " ")}
+                <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              </button>
+              {showStatusMenu && (
+                <div className="absolute left-0 top-full mt-1 bg-popover border border-border rounded-md shadow-lg z-50 py-1 min-w-[140px]">
+                  {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                    <button
+                      key={key}
+                      onClick={() => handleStatusChange(key as ProjectStatus)}
+                      className={`w-full px-3 py-1.5 text-left text-xs flex items-center gap-2 hover:bg-accent ${
+                        key === project.status ? "font-medium text-foreground" : "text-muted-foreground"
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${
+                        key === "active" ? "bg-green-500" :
+                        key === "on_hold" ? "bg-amber-500" :
+                        key === "completed" ? "bg-blue-500" :
+                        "bg-red-500"
+                      }`} />
+                      {cfg.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+          ) : (
+            <p className="flex items-center gap-1.5 text-sm font-medium text-foreground capitalize mt-0.5">
+              <span className={`inline-block w-2 h-2 rounded-full ${
+                project.status === "active" ? "bg-green-500" :
+                project.status === "on_hold" ? "bg-amber-500" :
+                project.status === "completed" ? "bg-blue-500" :
+                "bg-red-500"
+              }`} />
+              {project.status.replace("_", " ")}
+            </p>
           )}
         </div>
 

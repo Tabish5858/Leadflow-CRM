@@ -23,7 +23,7 @@ import { toast } from "@/lib/toast";
 import { Check, ChevronLeft, Loader2, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -34,6 +34,11 @@ function getInitials(name: string): string {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+}
+
+function todayString(): string {
+  const d = new Date();
+  return d.toISOString().split("T")[0];
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -50,23 +55,53 @@ export default function NewProjectPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<string>("medium");
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState(todayString());
   const [dueDate, setDueDate] = useState("");
   const [budget, setBudget] = useState("");
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set());
+  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+
+  // Auto-add owner/admin and set start date
+  const ownerAdminIds = useMemo(() => {
+    return members
+      .filter((m) => m.role === "owner" || m.role === "admin")
+      .map((m) => m.userId);
+  }, [members]);
+
+  // Pre-select owner/admin members on load
+  useEffect(() => {
+    if (ownerAdminIds.length > 0) {
+      setSelectedMembers((prev) => {
+        const next = new Set(prev);
+        for (const id of ownerAdminIds) next.add(id);
+        return next;
+      });
+    }
+  }, [ownerAdminIds]);
 
   useEffect(() => {
     if (!activeWorkspace?.id) return;
     getWorkspaceMembers(activeWorkspace.id)
       .then((m) => {
-        setMembers(m.filter((m) => m.role === "client"));
+        setMembers(m);
       })
-      .catch(() => toast.error("Failed to load clients"))
+      .catch(() => toast.error("Failed to load members"))
       .finally(() => setLoading(false));
   }, [activeWorkspace?.id]);
 
   const toggleClient = (userId: string) => {
     setSelectedClients((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  };
+
+  const toggleMember = (userId: string) => {
+    // Cannot remove owner/admin members
+    if (ownerAdminIds.includes(userId)) return;
+    setSelectedMembers((prev) => {
       const next = new Set(prev);
       if (next.has(userId)) next.delete(userId);
       else next.add(userId);
@@ -89,10 +124,11 @@ export default function NewProjectPage() {
         description: description.trim() || null,
         status: "active",
         clients: [...selectedClients],
+        memberIds: [...selectedMembers],
         priority: priority as "low" | "medium" | "high" | "urgent",
         budget: budget ? parseFloat(budget) : null,
         currency: "USD",
-        startDate: startDate ? new Date(startDate) : null,
+        startDate: startDate ? new Date(startDate) : new Date(),
         dueDate: dueDate ? new Date(dueDate) : null,
       });
       toast.success("Project created");
@@ -120,6 +156,7 @@ export default function NewProjectPage() {
   }
 
   const clientMembers = members.filter((m) => m.role === "client");
+  const teamMembers = members.filter((m) => m.role !== "client");
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -136,7 +173,7 @@ export default function NewProjectPage() {
         <Card>
           <CardHeader>
             <CardTitle>New Project</CardTitle>
-            <CardDescription>Create a new project and assign clients.</CardDescription>
+            <CardDescription>Create a new project and assign team members and clients.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Name + Description */}
@@ -213,6 +250,59 @@ export default function NewProjectPage() {
                   onChange={(e) => setDueDate(e.target.value)}
                 />
               </div>
+            </div>
+
+            <Separator />
+
+            {/* Team Member Selection */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <Label>Team Members</Label>
+                <span className="text-xs text-muted-foreground">
+                  ({selectedMembers.size} selected)
+                </span>
+              </div>
+              {teamMembers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No team members available.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {teamMembers.map((member) => {
+                    const isSelected = selectedMembers.has(member.userId);
+                    const isRequired = ownerAdminIds.includes(member.userId);
+                    return (
+                      <button
+                        key={member.userId}
+                        type="button"
+                        onClick={() => toggleMember(member.userId)}
+                        className={`flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                          isSelected
+                            ? "bg-primary/5 border-primary/20"
+                            : "hover:bg-muted/30"
+                        } ${isRequired ? "opacity-80" : ""}`}
+                        title={isRequired ? "Owner/admin members are always included" : undefined}
+                      >
+                        <Avatar className="h-8 w-8 border shrink-0">
+                          <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                            {getInitials(member.displayName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{member.displayName}</p>
+                          <p className="text-xs text-muted-foreground truncate capitalize">{member.role}</p>
+                        </div>
+                        {isSelected ? (
+                          <Check className="h-4 w-4 text-primary shrink-0" />
+                        ) : (
+                          <div className="h-4 w-4 rounded border shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <Separator />

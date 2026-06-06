@@ -278,18 +278,19 @@ interface WorkflowSectionProps {
   tasks: ProjectTask[];
   milestones: ProjectMilestone[];
   memberMap: Map<string, { displayName: string; photoURL?: string | null }>;
-  onToggleTaskComplete: (task: ProjectTask) => void;
-  onTaskStatusChange: (task: ProjectTask, newStatus: ProjectTaskStatus) => void;
-  onDeleteTask: (task: ProjectTask) => void;
+  readOnly?: boolean;
+  onToggleTaskComplete?: (task: ProjectTask) => void;
+  onTaskStatusChange?: (task: ProjectTask, newStatus: ProjectTaskStatus) => void;
+  onDeleteTask?: (task: ProjectTask) => void;
   onTitleChange?: (task: ProjectTask, newTitle: string) => void;
   onAssigneeChange?: (task: ProjectTask, assigneeId: string | null) => void;
   onDueDateChange?: (task: ProjectTask, dueDate: Date | null) => void;
   taskMembers?: Array<{ userId: string; displayName: string; email: string }>;
-  onAddTask: () => void;
-  onAddMilestone: () => void;
-  getSubtasks: (parentId: string) => ProjectTask[];
-  expandedTasks: Set<string>;
-  onToggleSubtaskExpand: (task: ProjectTask) => void;
+  onAddTask?: () => void;
+  onAddMilestone?: () => void;
+  getSubtasks?: (parentId: string) => ProjectTask[];
+  expandedTasks?: Set<string>;
+  onToggleSubtaskExpand?: (task: ProjectTask) => void;
   onTaskDragStart?: (e: React.DragEvent, task: ProjectTask) => void;
   onTaskDrop?: (e: React.DragEvent, targetTask: ProjectTask) => void;
   isCreatingTask?: boolean;
@@ -357,10 +358,9 @@ export default function WorkflowSection({
   onMilestoneNameChange,
   onDeleteMilestone,
   onMilestoneDueDateChange,
+  readOnly = false,
 }: WorkflowSectionProps) {
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
-  const [activeMsDropdown, setActiveMsDropdown] = useState<string | null>(null);
-  const [activeMsDatePicker, setActiveMsDatePicker] = useState<string | null>(null);
   const topLevelTasks = tasks.filter((t) => !t.parentTaskId && !t.isSubtask && !t.milestoneId);
   const completedTasks = tasks.filter((t) => t.status.parent === "Complete").length;
 
@@ -397,12 +397,14 @@ export default function WorkflowSection({
                   </button>
                 </div>
               </div>
+              {!readOnly && (
               <SectionActionButton
                 primaryLabel="Add Task"
                 secondaryLabel="Milestone"
-                onPrimary={onAddTask}
-                onSecondary={onAddMilestone}
+                onPrimary={onAddTask!}
+                onSecondary={onAddMilestone!}
               />
+              )}
             </div>
           </div>
 
@@ -413,10 +415,10 @@ export default function WorkflowSection({
                 tasks={tasks}
                 milestones={milestones}
                 memberMap={memberMap}
-                onToggleTaskComplete={onToggleTaskComplete}
-                onTaskStatusChange={onTaskStatusChange}
-                onDeleteTask={onDeleteTask}
-                onTitleChange={onTitleChange}
+                onToggleTaskComplete={readOnly ? (() => {}) : onToggleTaskComplete!}
+                onTaskStatusChange={readOnly ? (() => {}) : onTaskStatusChange!}
+                onDeleteTask={readOnly ? (() => {}) : onDeleteTask!}
+                onTitleChange={readOnly ? undefined : onTitleChange}
               />
             ) : (
               <div className="space-y-2">
@@ -452,31 +454,45 @@ export default function WorkflowSection({
                             </div>
                           )}
                           {/* Status icon - click to toggle complete */}
-                          <button
-                            onClick={() => onToggleMilestoneComplete?.(ms)}
-                            className="mt-0.5 shrink-0 cursor-pointer hover:opacity-80"
-                            title={ms.status === "Completed" ? "Reopen milestone" : "Complete milestone"}
-                            draggable="false"
-                          >
-                            {ms.status === "Completed" ? (
-                              <div className="w-5 h-5 rounded-sm bg-foreground flex items-center justify-center">
-                                <CheckCircle2 className="h-3.5 w-3.5 text-background" />
-                              </div>
-                            ) : (
-                              <Diamond className="h-5 w-5 text-muted-foreground" />
-                            )}
-                          </button>
+                          {readOnly ? (
+                            <div className="mt-0.5 shrink-0">
+                              {ms.status === "Completed" ? (
+                                <div className="w-5 h-5 rounded-sm bg-foreground flex items-center justify-center">
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-background" />
+                                </div>
+                              ) : (
+                                <Diamond className="h-5 w-5 text-muted-foreground" />
+                              )}
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => onToggleMilestoneComplete?.(ms)}
+                              className="mt-0.5 shrink-0 cursor-pointer hover:opacity-80"
+                              title={ms.status === "Completed" ? "Reopen milestone" : "Complete milestone"}
+                              draggable="false"
+                            >
+                              {ms.status === "Completed" ? (
+                                <div className="w-5 h-5 rounded-sm bg-foreground flex items-center justify-center">
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-background" />
+                                </div>
+                              ) : (
+                                <Diamond className="h-5 w-5 text-muted-foreground" />
+                              )}
+                            </button>
+                          )}
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-semibold text-foreground">{ms.milestoneName}</span>
-                              <button
-                                onClick={() => onAddNestedTask?.(ms.id)}
-                                className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-accent rounded transition-all"
-                                title="Add task to milestone"
-                                draggable="false"
-                              >
-                                <Plus className="h-3.5 w-3.5 text-muted-foreground" />
-                              </button>
+                              {!readOnly && (
+                                <button
+                                  onClick={() => onAddNestedTask?.(ms.id)}
+                                  className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-accent rounded transition-all"
+                                  title="Add task to milestone"
+                                  draggable="false"
+                                >
+                                  <Plus className="h-3.5 w-3.5 text-muted-foreground" />
+                                </button>
+                              )}
                               {nestedTasks.length > 0 && (
                                 <button
                                   onClick={() => onToggleMilestoneExpand?.(ms.id)}
@@ -491,104 +507,44 @@ export default function WorkflowSection({
                           </div>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
-                          {/* Milestone due date picker */}
-                          <div className="relative">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setActiveMsDatePicker(activeMsDatePicker === ms.id ? null : ms.id); setActiveMsDropdown(null); }}
-                              className="flex items-center gap-1 text-xs text-muted-foreground hover:bg-accent rounded px-1.5 py-0.5 -ml-1.5 transition-colors"
-                              draggable="false"
-                            >
-                              <Calendar className="h-3 w-3" />
-                              {ms.dueDate ? (
-                                <span>{(() => { const d = parseMsDate(ms.dueDate); return d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Invalid"; })()}</span>
-                              ) : (
-                                <span className="hover:text-foreground">Set date</span>
-                              )}
-                            </button>
-                            {activeMsDatePicker === ms.id && (
-                              <>
-                                <div className="fixed inset-0 z-40" onClick={() => setActiveMsDatePicker(null)} />
-                                <div className="absolute left-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg p-3">
-                                  <input
-                                    type="date"
-                                    className="w-full px-2 py-1.5 text-xs border border-border rounded bg-background text-foreground"
-                                    value={ms.dueDate ? (() => { const d = parseMsDate(ms.dueDate); return d ? d.toISOString().split("T")[0] : ""; })() : ""}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      if (val) onMilestoneDueDateChange?.(ms, new Date(val + "T00:00:00"));
-                                      else onMilestoneDueDateChange?.(ms, null);
-                                      setActiveMsDatePicker(null);
-                                    }}
-                                    autoFocus
-                                  />
-                                  {ms.dueDate && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); onMilestoneDueDateChange?.(ms, null); setActiveMsDatePicker(null); }}
-                                      className="w-full text-left mt-1.5 px-2 py-1 text-[10px] text-destructive hover:bg-accent rounded transition-colors"
-                                    >
-                                      Clear due date
-                                    </button>
-                                  )}
-                                </div>
-                              </>
-                            )}
+                          {/* Milestone due date */}
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Calendar className="h-3 w-3" />
+                            {ms.dueDate ? (
+                              <span>{(() => { const d = parseMsDate(ms.dueDate); return d ? d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Invalid"; })()}</span>
+                            ) : null}
                           </div>
-                          {/* Status badge with dropdown */}
-                          <span className="relative">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setActiveMsDropdown(activeMsDropdown === ms.id ? null : ms.id); }}
-                              className={cn("text-xs font-medium px-2.5 py-0.5 rounded-full hover:opacity-80 transition-opacity",
-                                ms.status === "Completed" ? "bg-success/20 text-success" :
-                                ms.status === "Failed" ? "bg-destructive/20 text-destructive" :
-                                "bg-muted text-muted-foreground"
-                              )}
-                              draggable="false"
-                            >
-                              {ms.status}
-                            </button>
-                            {activeMsDropdown === ms.id && (
-                              <>
-                                <div className="fixed inset-0 z-40" onClick={() => setActiveMsDropdown(null)} />
-                                <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1.5 min-w-[140px]">
-                                  <div className="px-3 pb-1.5 text-xs font-medium text-muted-foreground">Change Status</div>
-                                  {["Pending", "Completed", "Failed"].map((s) => (
-                                    <button key={s}
-                                      onClick={(e) => { e.stopPropagation(); setActiveMsDropdown(null); onMilestoneStatusChange?.(ms, s as "Pending" | "Completed" | "Failed"); }}
-                                      className={cn("w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-accent transition-colors text-foreground",
-                                        s === ms.status && "font-semibold"
-                                      )}
-                                    >
-                                      <span className={cn("w-2 h-2 rounded-full shrink-0",
-                                        s === "Completed" ? "bg-success" : s === "Failed" ? "bg-destructive" : "bg-muted-foreground"
-                                      )} />
-                                      {s}
-                                    </button>
-                                  ))}
-                                </div>
-                              </>
-                            )}
+                          {/* Status badge */}
+                          <span className={cn("text-xs font-medium px-2.5 py-0.5 rounded-full",
+                            ms.status === "Completed" ? "bg-success/20 text-success" :
+                            ms.status === "Failed" ? "bg-destructive/20 text-destructive" :
+                            "bg-muted text-muted-foreground"
+                          )}>
+                            {ms.status}
                           </span>
-                          {/* 3-dot menu */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded transition-all shrink-0">
-                                <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40">
-                              <DropdownMenuItem onClick={() => {
-                                const name = prompt("Rename milestone:", ms.milestoneName);
-                                if (name?.trim()) onMilestoneNameChange?.(ms, name.trim());
-                              }} className="text-foreground">
-                                <svg className="h-3.5 w-3.5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg>
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive" onClick={() => onDeleteMilestone?.(ms.id)}>
-                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          {/* 3-dot menu — owner only */}
+                          {!readOnly && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-accent rounded transition-all shrink-0">
+                                  <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-40">
+                                <DropdownMenuItem onClick={() => {
+                                  const name = prompt("Rename milestone:", ms.milestoneName);
+                                  if (name?.trim()) onMilestoneNameChange?.(ms, name.trim());
+                                }} className="text-foreground">
+                                  <svg className="h-3.5 w-3.5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg>
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive" onClick={() => onDeleteMilestone?.(ms.id)}>
+                                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
                       </div>
 
@@ -616,37 +572,37 @@ export default function WorkflowSection({
                 {/* Tasks */}
                 {topLevelTasks.length > 0 ? (
                   topLevelTasks.map((task) => {
-                    const subtasks = getSubtasks(task.id);
-                    const isExpanded = expandedTasks.has(task.id);
+                    const subtasks = getSubtasks ? getSubtasks(task.id) : [];
+                    const isExpanded = expandedTasks ? expandedTasks.has(task.id) : false;
                     return (
                       <div key={task.id}>
                         <TaskCard
                           task={task}
                           memberMap={memberMap}
-                          onToggleComplete={onToggleTaskComplete}
-                          onStatusChange={onTaskStatusChange}
-                          onDelete={onDeleteTask}
-                onTitleChange={onTitleChange}
-                onAssigneeChange={onAssigneeChange}
-                onDueDateChange={onDueDateChange}
+                          onToggleComplete={readOnly ? undefined : onToggleTaskComplete}
+                          onStatusChange={readOnly ? undefined : onTaskStatusChange}
+                          onDelete={readOnly ? undefined : onDeleteTask}
+                onTitleChange={readOnly ? undefined : onTitleChange}
+                onAssigneeChange={readOnly ? undefined : onAssigneeChange}
+                onDueDateChange={readOnly ? undefined : onDueDateChange}
                 members={taskMembers}
                 showSubtasks={isExpanded}
-                          onToggleSubtasks={onToggleSubtaskExpand}
-              onDragStart={onTaskDragStart}
-              onDrop={onTaskDrop}
+                          onToggleSubtasks={readOnly ? undefined : onToggleSubtaskExpand}
+              onDragStart={readOnly ? undefined : onTaskDragStart}
+              onDrop={readOnly ? undefined : onTaskDrop}
               onDragOver={(e) => { e.preventDefault(); }}
                         />
                         {isExpanded && subtasks.length > 0 && (
                           <div className="mt-1.5 space-y-1.5 pl-5 ml-8 border-l-2 border-border">
                             {subtasks.map((sub) => (
-                              <TaskCard key={sub.id} task={sub} memberMap={memberMap} onToggleComplete={onToggleTaskComplete} onStatusChange={onTaskStatusChange} onDelete={onDeleteTask} onTitleChange={onTitleChange} isSubtask />
+                              <TaskCard key={sub.id} task={sub} memberMap={memberMap} onToggleComplete={readOnly ? undefined : onToggleTaskComplete} onStatusChange={readOnly ? undefined : onTaskStatusChange} onDelete={readOnly ? undefined : onDeleteTask} onTitleChange={readOnly ? undefined : onTitleChange} isSubtask />
                             ))}
                           </div>
                         )}
                       </div>
                     );
                   })
-                ) : milestones.length === 0 && !isCreatingTask ? (
+                ) : !readOnly && milestones.length === 0 && !isCreatingTask ? (
                   <div className="flex items-center justify-center py-6">
                     <button onClick={onAddTask}
                       className="flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-border hover:border-foreground/40 text-sm text-muted-foreground hover:text-foreground transition-colors w-full justify-center"
@@ -658,7 +614,7 @@ export default function WorkflowSection({
                 ) : null}
 
                 {/* Bottom Add Task button */}
-                {topLevelTasks.length > 0 && !isCreatingTask && (
+                {topLevelTasks.length > 0 && !isCreatingTask && !readOnly && (
                   <button onClick={onAddTask}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-dashed border-border hover:border-foreground/40 text-sm text-muted-foreground hover:text-foreground transition-colors w-full justify-center"
                   >

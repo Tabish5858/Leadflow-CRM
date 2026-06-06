@@ -352,8 +352,17 @@ service cloud.firestore {
         isWorkspaceMember(
           get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.workspaceId
         );
+      // Workspace members (owner/admin/member) can create
       allow create: if isAuthenticated() && canWrite(request.resource.data.workspaceId);
-      allow update: if isAuthenticated() && canWrite(resource.data.workspaceId);
+      // Workspace members can update; clients assigned to the project can also update (approve/revision)
+      allow update: if isAuthenticated() && (
+        canWrite(resource.data.workspaceId) ||
+        (isClient(
+          get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.workspaceId
+        ) &&
+        get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.clients != null &&
+        get(/databases/$(database)/documents/projects/$(resource.data.projectId)).data.clients.hasAny([request.auth.uid]))
+      );
       allow delete: if isAuthenticated() && canWrite(resource.data.workspaceId);
     }
 

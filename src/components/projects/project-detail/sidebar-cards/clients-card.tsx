@@ -15,7 +15,7 @@ interface ClientsCardProps {
   projectId: string;
   members: WorkspaceMember[];
   clientIds: string[];
-  onClientsChange: (clientIds: string[]) => void;
+  onClientsChange?: (clientIds: string[]) => void;
 }
 
 export default function ClientsCard({ projectId, members, clientIds, onClientsChange }: ClientsCardProps) {
@@ -35,6 +35,8 @@ export default function ClientsCard({ projectId, members, clientIds, onClientsCh
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showAddDropdown]);
 
+  const canEdit = !!onClientsChange;
+
   // Filter members who have "client" role or are in clients list
   const clientMembers = members.filter((m) => clientIds.includes(m.userId));
   const availableClients = members.filter((m) => !clientIds.includes(m.userId) && m.role === "client");
@@ -42,6 +44,7 @@ export default function ClientsCard({ projectId, members, clientIds, onClientsCh
   const availableMembers = members.filter((m) => !clientIds.includes(m.userId) && m.role !== "client");
 
   const handleAddClient = async (userId: string) => {
+    if (!onClientsChange) return;
     const newIds = [...clientIds, userId];
     // Optimistic update
     onClientsChange(newIds);
@@ -59,6 +62,7 @@ export default function ClientsCard({ projectId, members, clientIds, onClientsCh
   };
 
   const handleRemoveClient = async (userId: string) => {
+    if (!onClientsChange) return;
     const newIds = clientIds.filter((id) => id !== userId);
     // Optimistic update
     onClientsChange(newIds);
@@ -88,6 +92,7 @@ export default function ClientsCard({ projectId, members, clientIds, onClientsCh
           <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
             {clientMembers.length}
           </span>
+          {canEdit && (
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setShowAddDropdown(!showAddDropdown)}
@@ -143,6 +148,7 @@ export default function ClientsCard({ projectId, members, clientIds, onClientsCh
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
 
@@ -174,12 +180,14 @@ export default function ClientsCard({ projectId, members, clientIds, onClientsCh
                     >
                       {isExpanded ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
                     </button>
+                    {canEdit && (
                     <button onClick={() => handleRemoveClient(client.userId)}
                       className="opacity-0 group-hover:opacity-100 h-6 w-6 flex items-center justify-center rounded hover:bg-destructive/10 transition-opacity shrink-0"
                       title="Remove client"
                     >
                       <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
                     </button>
+                    )}
                   </div>
                 </div>
                   {isExpanded && (
