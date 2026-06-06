@@ -434,11 +434,11 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
                   fill="hsl(var(--foreground))" fontSize={11}>
                   {pieData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }} />
+                <Tooltip contentStyle={{ backgroundColor: "#fff", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }} />
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">No data</div>
+            <div className="flex h-62.5 items-center justify-center text-sm text-muted-foreground">No data</div>
           )}
         </CardContent>
       </Card>
@@ -815,9 +815,8 @@ export default function SpreadsheetAnalyticsPage() {
         type: option.cardType,
         title:
           option.needsColumn && columnIndex
-            ? `${option.label} — ${
-                analysis[activeSheetIndex]?.columns[parseInt(columnIndex)]?.name || "Column"
-              }`
+            ? `${option.label} — ${analysis[activeSheetIndex]?.columns[parseInt(columnIndex)]?.name || "Column"
+            }`
             : option.label,
         metric,
         customFieldId: columnIndex || undefined,
@@ -1003,10 +1002,10 @@ export default function SpreadsheetAnalyticsPage() {
               value={
                 activeSheet.totalFilled + activeSheet.totalEmpty > 0
                   ? `${Math.round(
-                      (activeSheet.totalFilled /
-                        (activeSheet.totalFilled + activeSheet.totalEmpty)) *
-                        100
-                    )}%`
+                    (activeSheet.totalFilled /
+                      (activeSheet.totalFilled + activeSheet.totalEmpty)) *
+                    100
+                  )}%`
                   : "0%"
               }
               icon={<Target className="h-4 w-4" />}
