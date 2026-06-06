@@ -96,21 +96,16 @@ const CalendarConnection = dynamic(() => import("@/components/settings/calendar-
 
 type Tab = "profile" | "workspace" | "members" | "preferences" | "integrations" | "client-portal";
 
-export default function SettingsPage({
-  searchParams,
-}: {
-  searchParams?: { tab?: string };
-}) {
+export default function SettingsPage() {
   const { user, activeWorkspace, workspaces, switchWorkspace, refreshWorkspaces } = useWorkspace();
   const { firebaseUser } = useAuth();
   const router = useRouter();
   const VALID_SETTINGS_TABS: Tab[] = ["profile","workspace","members","preferences","integrations","client-portal"];
-  // Read initial tab from searchParams prop (reliable)
-  const urlTab = searchParams?.tab as Tab | undefined;
-  const initialTab: Tab = urlTab && VALID_SETTINGS_TABS.includes(urlTab) ? urlTab : "profile";
-  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
-  // Legacy: navigated from sidebar user profile click
+  const [activeTab, setActiveTab] = useState<Tab>("profile");
+  // Read tab from URL on mount; fallback to localStorage hint
   useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get("tab") as Tab | null;
+    if (p && VALID_SETTINGS_TABS.includes(p)) { setActiveTab(p); return; }
     const saved = localStorage.getItem("leadflow_settings_tab");
     if (saved === "profile") {
       localStorage.removeItem("leadflow_settings_tab");
