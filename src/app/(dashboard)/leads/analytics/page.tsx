@@ -86,6 +86,8 @@ interface SheetAnalysis {
   columns: SheetColumnAnalysis[];
   totalFilled: number;
   totalEmpty: number;
+  /** How many rows fall into each completion bucket: 0-25%, 25-50%, 50-75%, 75-100% */
+  rowCompletionBuckets: { bucket: string; count: number }[];
 }
 
 type WorkbookAnalysis = SheetAnalysis[];
@@ -126,8 +128,9 @@ function analyzeSnapshot(snapshot: IWorkbookData): WorkbookAnalysis {
       for (let c = 0; c < colCount; c++) headers.push(`Column ${c + 1}`);
     }
 
-    // Track rows that have any data (for dataRowCount)
+    // Track rows that have any data (for dataRowCount) & per-row fill counts
     const rowsWithData = new Set<number>();
+    const rowFillCount = new Map<number, number>();
 
     // Analyze each column (skip header row 0)
     for (let c = 0; c < colCount; c++) {
@@ -141,6 +144,7 @@ function analyzeSnapshot(snapshot: IWorkbookData): WorkbookAnalysis {
         if (v !== undefined && v !== null && v !== "") {
           filled++;
           rowsWithData.add(r);
+          rowFillCount.set(r, (rowFillCount.get(r) || 0) + 1);
           const str = String(v).trim();
           const num =
             typeof v === "number" ? v : isNaN(Number(v)) ? null : Number(v);
@@ -223,6 +227,20 @@ function analyzeSnapshot(snapshot: IWorkbookData): WorkbookAnalysis {
     // Recalculate totals using only data rows
     totalEmpty = columns.reduce((s, c) => s + c.empty, 0);
 
+    // Row completion distribution
+    const buckets = [0, 0, 0, 0]; // 0-25%, 25-50%, 50-75%, 75-100%
+    if (colCount > 0 && dataRowCount > 0) {
+      for (let r = 1; r < rowCount; r++) {
+        if (!rowsWithData.has(r)) continue; // skip fully empty rows
+        const filled = rowFillCount.get(r) || 0;
+        const pct = filled / colCount;
+        if (pct <= 0.25) buckets[0]++;
+        else if (pct <= 0.5) buckets[1]++;
+        else if (pct <= 0.75) buckets[2]++;
+        else buckets[3]++;
+      }
+    }
+
     result.push({
       sheetName,
       rowCount,
@@ -231,19 +249,17 @@ function analyzeSnapshot(snapshot: IWorkbookData): WorkbookAnalysis {
       columns,
       totalFilled,
       totalEmpty,
+      rowCompletionBuckets: [
+        { bucket: "0–25%", count: buckets[0] },
+        { bucket: "25–50%", count: buckets[1] },
+        { bucket: "50–75%", count: buckets[2] },
+        { bucket: "75–100%", count: buckets[3] },
+      ],
     });
   }
 
   return result;
 }
-
-// ─── Chart colors ────────────────────────────────────────────────────────
-
-const COLORS = [
-  "#3b82f6", "#ef4444", "#22c55e", "#f59e0b", "#8b5cf6",
-  "#ec4899", "#14b8a6", "#f97316", "#6366f1", "#84cc16",
-  "#06b6d4", "#d946ef", "#10b981", "#eab308", "#a855f7",
-];
 
 // ─── StatBox for column stats grid ────────────────────────────────────────
 
@@ -287,19 +303,23 @@ const SP_METRICS: SpMetricOption[] = [
   { value: "column_stats", label: "Column Stats", cardType: "kpi", description: "Min/Max/Avg/Sum for numeric column", needsColumn: true, isBuiltIn: true },
   { value: "sheet_summary", label: "Sheet Summary", cardType: "summary", description: "Overview of all columns", needsColumn: false, isBuiltIn: true },
   { value: "auto_column_type_chart", label: "Column Types", cardType: "pie_chart", description: "Distribution of column types (text, number, boolean)", needsColumn: false, isBuiltIn: true },
-  { value: "auto_data_density_chart", label: "Data Density", cardType: "pie_chart", description: "Filled vs empty cells", needsColumn: false, isBuiltIn: true },
+  { value: "auto_data_density_chart", label: "Data Health", cardType: "pie_chart", description: "Filled vs empty cells", needsColumn: false, isBuiltIn: true },
   { value: "auto_column_fill_chart", label: "Top Columns by Fill", cardType: "bar_chart", description: "Columns with most filled data", needsColumn: false, isBuiltIn: true },
+  { value: "auto_column_completeness", label: "Column Completeness", cardType: "bar_chart", description: "All columns sorted by fill percentage (horizontal bar)", needsColumn: false, isBuiltIn: true },
+  { value: "auto_column_health", label: "Column Health Breakdown", cardType: "bar_chart", description: "Filled vs empty per column (stacked bar)", needsColumn: false, isBuiltIn: true },
+  { value: "auto_row_distribution", label: "Row Completion Distribution", cardType: "bar_chart", description: "Histogram of row-level completeness", needsColumn: false, isBuiltIn: true },
 ];
 
 const DEFAULT_SP_CARDS: AnalyticsCardConfig[] = [
-  { id: "sp-kpi-sheets", type: "kpi", title: "Total Sheets", metric: "total_sheets", order: 0 },
-  { id: "sp-kpi-rows", type: "kpi", title: "Data Rows", metric: "total_rows_data", order: 1 },
-  { id: "sp-kpi-cols", type: "kpi", title: "Total Columns", metric: "total_columns", order: 2 },
-  { id: "sp-kpi-fill-rate", type: "kpi", title: "Fill Rate", metric: "fill_rate", order: 3 },
-  { id: "sp-col-type", type: "pie_chart", title: "Column Types", metric: "auto_column_type_chart", order: 4 },
-  { id: "sp-data-density", type: "pie_chart", title: "Data Density", metric: "auto_data_density_chart", order: 5 },
-  { id: "sp-col-fill", type: "bar_chart", title: "Top Columns by Fill", metric: "auto_column_fill_chart", order: 6 },
-  { id: "sp-summary", type: "summary", title: "Sheet Summary", metric: "sheet_summary", order: 7 },
+  { id: "dqs-score", type: "kpi", title: "Data Quality Score", metric: "fill_rate", order: 0 },
+  { id: "dqs-records", type: "kpi", title: "Total Records", metric: "total_rows_data", order: 1 },
+  { id: "dqs-filled", type: "kpi", title: "Fields Completed", metric: "filled_cells", order: 2 },
+  { id: "dqs-empty", type: "kpi", title: "Fields Missing", metric: "empty_cells", order: 3 },
+  { id: "sp-col-completeness", type: "bar_chart", title: "Column Completeness", metric: "auto_column_completeness", order: 4 },
+  { id: "sp-data-health", type: "pie_chart", title: "Data Health", metric: "auto_data_density_chart", order: 5 },
+  { id: "sp-col-health", type: "bar_chart", title: "Column Health Breakdown", metric: "auto_column_health", order: 6 },
+  { id: "sp-row-distribution", type: "bar_chart", title: "Row Completion Distribution", metric: "auto_row_distribution", order: 7 },
+  { id: "sp-summary", type: "summary", title: "Sheet Summary", metric: "sheet_summary", order: 8 },
 ];
 
 function getSpCards(workspaceCards: AnalyticsCardConfig[] | undefined): AnalyticsCardConfig[] {
@@ -381,6 +401,32 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
       );
     }
     const resolved = resolveMetricValue(card.metric, ctx);
+    // Data Quality Score — large color-coded percentage
+    if (card.metric === "fill_rate") {
+      const pct = typeof resolved.value === "string" ? parseInt(resolved.value) : resolved.value;
+      const scoreColor =
+        pct >= 80 ? "text-green-500" : pct >= 50 ? "text-amber-500" : "text-red-500";
+      return (
+        <div className="p-4 flex flex-col items-center justify-center h-full">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+            {resolved.icon}
+            {card.title}
+          </div>
+          <div className={`text-4xl font-bold ${scoreColor}`}>{resolved.value}</div>
+          <div className="mt-2 w-full max-w-[160px] h-2 rounded-full bg-muted overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${
+                pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500"
+              }`}
+              style={{ width: `${Math.min(pct, 100)}%` }}
+            />
+          </div>
+          <span className="mt-1 text-[10px] text-muted-foreground">
+            {pct >= 80 ? "Excellent" : pct >= 50 ? "Needs Improvement" : "Critical"}
+          </span>
+        </div>
+      );
+    }
     return (
       <div className="p-4">
         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
@@ -411,10 +457,57 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
     } else if (card.metric === "auto_data_density_chart") {
       const totalFilled = sumAcrossSheets(ctx.analysis, (s) => s.totalFilled);
       const totalEmpty = sumAcrossSheets(ctx.analysis, (s) => s.totalEmpty);
+      const pct = totalFilled + totalEmpty > 0
+        ? Math.round((totalFilled / (totalFilled + totalEmpty)) * 100)
+        : 0;
       pieData = [
         { name: "Filled", value: totalFilled },
         { name: "Empty", value: totalEmpty },
       ];
+      return (
+        <Card>
+          <CardHeader><CardTitle className="text-base">{card.title}</CardTitle></CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center gap-6">
+              <div className="relative">
+                <ResponsiveContainer width={180} height={180}>
+                  <PieChart>
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={85}
+                      paddingAngle={3} dataKey="value" startAngle={90} endAngle={-270}>
+                      {pieData.map((entry, i) => (
+                        <Cell key={i} fill={i === 0 ? "#22c55e" : "#ef4444"} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="text-center">
+                    <div className={`text-2xl font-bold ${pct >= 80 ? "text-green-500" : pct >= 50 ? "text-amber-500" : "text-red-500"}`}>
+                      {pct}%
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">filled</div>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-sm bg-green-500" />
+                  <span className="text-muted-foreground">Filled</span>
+                  <span className="font-medium ml-auto">{totalFilled.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-sm bg-red-500" />
+                  <span className="text-muted-foreground">Empty</span>
+                  <span className="font-medium ml-auto">{totalEmpty.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
     } else if (card.customFieldId && activeSheet) {
       const colIdx = parseInt(card.customFieldId, 10);
       const col = activeSheet.columns[colIdx];
@@ -447,10 +540,123 @@ function renderCustomCard(card: AnalyticsCardConfig, ctx: MetricContext): React.
 
   if (card.type === "bar_chart") {
     const activeSheet = ctx.analysis[ctx.activeSheetIndex];
-    let barData: { name: string; value: number }[] = [];
+    let barData: { name: string; value: number; value2?: number }[] = [];
 
+    // ── Column Completeness (horizontal bar, all cols sorted by fill %) ──
+    if (card.metric === "auto_column_completeness") {
+      if (activeSheet) {
+        barData = [...activeSheet.columns]
+          .map((col) => ({
+            name: col.name,
+            value: col.total > 0 ? Math.round((col.filled / col.total) * 100) : 0,
+          }))
+          .sort((a, b) => b.value - a.value);
+      }
+      return (
+        <Card>
+          <CardHeader><CardTitle className="text-base">{card.title}</CardTitle></CardHeader>
+          <CardContent>
+            {barData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={Math.max(200, barData.length * 28)}>
+                <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} domain={[0, 100]} tickFormatter={(v) => `${v}%`} tickLine={false} axisLine={false} />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={90} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }}
+                    formatter={(value: number) => [`${value}%`, "Fill Rate"]}
+                  />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={16}>
+                    {barData.map((entry, i) => {
+                      const pct = entry.value;
+                      const fill = pct >= 80 ? "#22c55e" : pct >= 50 ? "#eab308" : "#ef4444";
+                      return <Cell key={i} fill={fill} />;
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">No data</div>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // ── Column Health Breakdown (stacked bar: filled vs empty per col) ──
+    if (card.metric === "auto_column_health") {
+      if (activeSheet) {
+        barData = activeSheet.columns.map((col) => ({
+          name: col.name,
+          value: col.filled,
+          value2: col.empty,
+        }));
+      }
+      return (
+        <Card>
+          <CardHeader><CardTitle className="text-base">{card.title}</CardTitle></CardHeader>
+          <CardContent>
+            {barData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={Math.max(200, barData.length * 28)}>
+                <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={90} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }}
+                  />
+                  <Bar dataKey="value" name="Filled" stackId="a" fill="#22c55e" radius={[0, 0, 0, 0]} maxBarSize={16} />
+                  <Bar dataKey="value2" name="Empty" stackId="a" fill="#fca5a5" radius={[0, 4, 4, 0]} maxBarSize={16} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">No data</div>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // ── Row Completion Distribution (histogram) ──
+    if (card.metric === "auto_row_distribution") {
+      if (activeSheet?.rowCompletionBuckets) {
+        barData = activeSheet.rowCompletionBuckets.map((b) => ({
+          name: b.bucket,
+          value: b.count,
+        }));
+      }
+      return (
+        <Card>
+          <CardHeader><CardTitle className="text-base">{card.title}</CardTitle></CardHeader>
+          <CardContent>
+            {barData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={barData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))" }}
+                  />
+                  <Bar dataKey="value" name="Rows" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                    {barData.map((entry, i) => {
+                      const labels = ["0–25%", "25–50%", "50–75%", "75–100%"];
+                      const fills = ["#ef4444", "#eab308", "#3b82f6", "#22c55e"];
+                      return <Cell key={i} fill={fills[i]} />;
+                    })}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">No data</div>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+
+    // ── Original bar charts (Top Columns by Fill / column distribution) ──
     if (card.metric === "auto_column_fill_chart") {
-      // Top 12 columns by fill count across the active sheet
       if (activeSheet) {
         barData = [...activeSheet.columns]
           .sort((a, b) => b.filled - a.filled)
@@ -980,38 +1186,6 @@ export default function SpreadsheetAnalyticsPage() {
       {/* ══════════════════════════════════════════════════════════════ */}
       {!loadingSnapshot && analysis.length > 0 && activeSheet && (
         <>
-          {/* ─── Summary bar (like editor panel) ──────────────────── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <SummaryCard
-              label="Data Rows"
-              value={activeSheet.dataRowCount.toLocaleString()}
-              icon={<ListOrdered className="h-4 w-4" />}
-            />
-            <SummaryCard
-              label="Columns"
-              value={activeSheet.colCount.toString()}
-              icon={<Hash className="h-4 w-4" />}
-            />
-            <SummaryCard
-              label="Filled Cells"
-              value={activeSheet.totalFilled.toLocaleString()}
-              icon={<Users className="h-4 w-4" />}
-            />
-            <SummaryCard
-              label="Fill Rate"
-              value={
-                activeSheet.totalFilled + activeSheet.totalEmpty > 0
-                  ? `${Math.round(
-                    (activeSheet.totalFilled /
-                      (activeSheet.totalFilled + activeSheet.totalEmpty)) *
-                    100
-                  )}%`
-                  : "0%"
-              }
-              icon={<Target className="h-4 w-4" />}
-            />
-          </div>
-
           {/* ─── Analytics Cards ────────────────────────────────────── */}
           {activeCards.length > 0 && (
             <div>
@@ -1121,22 +1295,3 @@ export default function SpreadsheetAnalyticsPage() {
   );
 }
 
-function SummaryCard({
-  label,
-  value,
-  icon,
-}: {
-  label: string;
-  value: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border bg-card p-3">
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-        {icon}
-        {label}
-      </div>
-      <div className="text-2xl font-bold">{value}</div>
-    </div>
-  );
-}
