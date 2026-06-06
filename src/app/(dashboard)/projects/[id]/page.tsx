@@ -156,13 +156,15 @@ export default function ProjectDetailPage() {
 
   // Tab — persisted via URL search param
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  // Sync tab from URL after hydration (read from window to avoid SSR issues)
+  // Default tab (from URL) — set after hydration, triggers Tabs remount via key
+  const [defaultTab, setDefaultTab] = useState<TabId | null>(null);
+  const [tabKey, setTabKey] = useState(0);
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get("tab");
-    if (tabParam && TABS.some(t => t.id === tabParam)) {
-      setActiveTab(tabParam as TabId);
-    }
+    const p = new URLSearchParams(window.location.search).get("tab");
+    const t = p && TABS.some(x => x.id === p) ? (p as TabId) : "overview";
+    setDefaultTab(t);
+    setActiveTab(t);
+    setTabKey(k => k + 1);
   }, []);
 
   // Task data
@@ -725,7 +727,7 @@ export default function ProjectDetailPage() {
         <ProjectHeader project={project} onEdit={startEditing} onDelete={() => setShowDeleteDialog(true)} />
 
         {/* ─── Tabs ─── */}
-        <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as TabId); router.replace(`/projects/${projectId}?tab=${v}`, { scroll: false }); }}
+        <Tabs key={tabKey} defaultValue={defaultTab || activeTab} onValueChange={(v) => { setActiveTab(v as TabId); router.replace(`/projects/${projectId}?tab=${v}`, { scroll: false }); }}
           className="rounded-lg border border-border bg-card p-1"
         >
           <TabsList className="w-full justify-start bg-transparent gap-0 h-auto">
