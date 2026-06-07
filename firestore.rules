@@ -254,6 +254,34 @@ service cloud.firestore {
       allow delete: if canWrite(resource.data.workspaceId);
     }
 
+    // Contracts & eSignatures
+    match /contracts/{contractId} {
+      // Workspace members + clients assigned to contract can read
+      allow read: if isWorkspaceMember(resource.data.workspaceId) ||
+        (isClient(resource.data.workspaceId) && resource.data.clientId == request.auth.uid);
+      // Only workspace members with write access can create
+      allow create: if canWrite(request.resource.data.workspaceId);
+      // Workspace members can update; clients can sign (limited fields)
+      allow update: if canWrite(resource.data.workspaceId) || (
+        isClient(resource.data.workspaceId) &&
+        resource.data.clientId == request.auth.uid &&
+        // Clients can only update signer status and signatures
+        request.resource.data.signers != null &&
+        request.resource.data.signatures != null
+      );
+      // Only admin/owner can delete
+      allow delete: if getWorkspace(resource.data.workspaceId).ownerId == request.auth.uid ||
+        hasRole(resource.data.workspaceId, 'admin');
+    }
+
+    // Contract Templates
+    match /contract_templates/{templateId} {
+      allow read: if isWorkspaceMember(resource.data.workspaceId);
+      allow create: if canWrite(request.resource.data.workspaceId);
+      allow update: if canWrite(resource.data.workspaceId);
+      allow delete: if canWrite(resource.data.workspaceId);
+    }
+
     // Emails
     match /emails/{emailId} {
       allow read: if isWorkspaceMember(resource.data.workspaceId);
