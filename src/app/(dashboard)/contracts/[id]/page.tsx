@@ -8,6 +8,7 @@ import {
   updateContract,
   sendContract,
   deleteContract,
+  convertContractToTemplate,
 } from "@/lib/firebase/contracts";
 import type { Contract, ContractSigner } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -38,10 +39,12 @@ import {
   Signature,
   FileSignature,
   FileCheck,
+  FilePlus,
 } from "lucide-react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
+import { TextStyle, FontFamily, FontSize } from "@tiptap/extension-text-style";
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
@@ -125,6 +128,41 @@ function EditorToolbar({ editor }: { editor: any }) {
         label="H3"
       />
       <div className="w-px bg-border mx-1" />
+      <select
+        onChange={(e) => {
+          const val = e.target.value;
+          if (val === "") return;
+          editor.chain().focus().setFontFamily(val).run();
+          e.target.value = "";
+        }}
+        className="h-7 px-1 text-xs rounded border bg-background"
+        defaultValue=""
+      >
+        <option value="" disabled>Font</option>
+        <option value="serif">Serif</option>
+        <option value="sans-serif">Sans</option>
+        <option value="monospace">Mono</option>
+        <option value="cursive">Cursive</option>
+      </select>
+      <select
+        onChange={(e) => {
+          const val = e.target.value;
+          if (val === "") return;
+          editor.chain().focus().setFontSize(val).run();
+          e.target.value = "";
+        }}
+        className="h-7 px-1 text-xs rounded border bg-background"
+        defaultValue=""
+      >
+        <option value="" disabled>Size</option>
+        <option value="12px">12</option>
+        <option value="14px">14</option>
+        <option value="16px">16</option>
+        <option value="18px">18</option>
+        <option value="24px">24</option>
+        <option value="36px">36</option>
+      </select>
+      <div className="w-px bg-border mx-1" />
       <ToolBtn
         action={() => editor.chain().focus().toggleBulletList().run()}
         active={editor.isActive("bulletList")}
@@ -165,9 +203,11 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
   const [newSignerEmail, setNewSignerEmail] = useState("");
   const [newSignerName, setNewSignerName] = useState("");
   const [newSignerTitle, setNewSignerTitle] = useState("");
+  const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [converting, setConverting] = useState(false);
 
   const editor = useEditor({
-    extensions: [StarterKit, Underline],
+    extensions: [StarterKit, Underline, TextStyle, FontFamily, FontSize],
     content: "",
     editable: true,
     editorProps: {
@@ -232,6 +272,23 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
       load();
     } catch {
       toast.error("Failed to send");
+    }
+  };
+
+  // Convert to Template
+  const handleConvertToTemplate = async () => {
+    if (!contract || !activeWorkspace?.id) return;
+    setConverting(true);
+    try {
+      await handleSave();
+      const templateId = await convertContractToTemplate(contract.id, activeWorkspace.id);
+      toast.success("Contract converted to template");
+      setShowConvertDialog(false);
+      router.push(`/contracts/templates/${templateId}`);
+    } catch {
+      toast.error("Failed to convert to template");
+    } finally {
+      setConverting(false);
     }
   };
 
@@ -342,6 +399,12 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
               </Button>
             </>
           )}
+          {contract.status === "draft" && (
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowConvertDialog(true)}>
+              <FilePlus className="h-4 w-4" />
+              Save as Template
+            </Button>
+          )}
           {contract.status !== "signed" && contract.status !== "cancelled" && (
             <Button variant="ghost" size="sm" className="gap-2 text-destructive" onClick={() => setShowDeleteDialog(true)}>
               <Trash2 className="h-4 w-4" />
@@ -433,6 +496,25 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
           )}
         </div>
       </div>
+
+      {/* Convert to Template dialog */}
+      <Dialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Save as Template</DialogTitle>
+            <DialogDescription>
+              Convert this contract into a reusable template. The current content will be preserved.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowConvertDialog(false)}>Cancel</Button>
+            <Button onClick={handleConvertToTemplate} disabled={converting}>
+              {converting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FilePlus className="h-4 w-4 mr-2" />}
+              Save as Template
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Signer dialog */}
       <Dialog open={showSignerDialog} onOpenChange={setShowSignerDialog}>

@@ -32,6 +32,7 @@ import {
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
+import { TextStyle, FontFamily, FontSize } from "@tiptap/extension-text-style";
 
 // ─── Toolbar ─────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,31 @@ function EditorToolbar({ editor }: { editor: any }) {
       <ToolBtn action={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive("heading", { level: 1 })} label="H1" />
       <ToolBtn action={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive("heading", { level: 2 })} label="H2" />
       <ToolBtn action={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} active={editor.isActive("heading", { level: 3 })} label="H3" />
+      <div className="w-px bg-border mx-1" />
+      <select
+        onChange={(e) => { const v = e.target.value; if (v) { editor.chain().focus().setFontFamily(v).run(); } e.target.value = ""; }}
+        className="h-7 px-1 text-xs rounded border bg-background"
+        defaultValue=""
+      >
+        <option value="" disabled>Font</option>
+        <option value="serif">Serif</option>
+        <option value="sans-serif">Sans</option>
+        <option value="monospace">Mono</option>
+        <option value="cursive">Cursive</option>
+      </select>
+      <select
+        onChange={(e) => { const v = e.target.value; if (v) { editor.chain().focus().setFontSize(v).run(); } e.target.value = ""; }}
+        className="h-7 px-1 text-xs rounded border bg-background"
+        defaultValue=""
+      >
+        <option value="" disabled>Size</option>
+        <option value="12px">12</option>
+        <option value="14px">14</option>
+        <option value="16px">16</option>
+        <option value="18px">18</option>
+        <option value="24px">24</option>
+        <option value="36px">36</option>
+      </select>
       <div className="w-px bg-border mx-1" />
       <ToolBtn action={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive("bulletList")} label="• List" />
       <ToolBtn action={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive("orderedList")} label="1. List" />
@@ -86,7 +112,7 @@ export default function TemplateDetailPage({ params }: { params: Promise<{ id: s
   const [newContractTitle, setNewContractTitle] = useState("");
 
   const editor = useEditor({
-    extensions: [StarterKit, Underline],
+    extensions: [StarterKit, Underline, TextStyle, FontFamily, FontSize],
     content: "",
     editable: true,
     editorProps: {
