@@ -60,6 +60,7 @@ import { RequireModuleAccess } from "@/components/shared/require-module-access";
 
 import { toast } from "@/lib/toast";
 import type { TaskFormData } from "@/components/projects/shared/task-create-dialog";
+import { TaskDetailModal } from "@/components/projects/shared/task-detail-modal";
 import { ProjectNotes } from "@/components/projects/shared/project-notes";
 import ProjectHeader from "@/components/projects/project-detail/project-header";
 import ProgressTimeline from "@/components/projects/project-detail/progress-timeline";
@@ -171,6 +172,10 @@ export default function ProjectDetailPage() {
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [taskSaving, setTaskSaving] = useState(false);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+
+  // Task detail modal
+  const [detailTask, setDetailTask] = useState<ProjectTask | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   // ── Inline task creation state ──────────────────────────────────────────────
   const [isCreatingTask, setIsCreatingTask] = useState(false);
@@ -330,6 +335,11 @@ export default function ProjectDetailPage() {
   // ─── Task Handlers ───────────────────────────────────────────────────────────
 
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+
+  const handleOpenTaskDetail = useCallback((task: ProjectTask) => {
+    setDetailTask(task);
+    setShowDetailModal(true);
+  }, []);
 
   const handleCreateTask = async (data: TaskFormData) => {
     if (!projectId || !project) return;
@@ -802,6 +812,8 @@ export default function ProjectDetailPage() {
                   onMilestoneNameChange={handleMilestoneNameChange}
                   onDeleteMilestone={handleDeleteMilestone}
                   onMilestoneDueDateChange={handleMilestoneDueDateChange}
+                  // Task detail modal
+                  onOpenTaskDetail={handleOpenTaskDetail}
                 />
               </div>
 
@@ -814,7 +826,7 @@ export default function ProjectDetailPage() {
                 <ClientsCard projectId={projectId} members={members} clientIds={project.clients || []} onClientsChange={(newIds) => {
                   setProject((prev) => prev ? { ...prev, clients: newIds } : prev);
                 }} />
-                <LinksCard project={project} onProjectUpdated={loadProject} />
+                <LinksCard project={project} onLinksChange={(newLinks) => setProject((prev) => prev ? { ...prev, linksAndEmbeds: newLinks } : prev)} />
                 <DeliveryFlowCard project={project} onProjectUpdated={loadProject} />
                 <NotesCard notes={notes} onCreateNote={handleCreateNote} onDeleteNote={handleDeleteNote} />
                 <ContractsCard projectId={projectId} />
@@ -876,6 +888,8 @@ export default function ProjectDetailPage() {
               onMilestoneNameChange={handleMilestoneNameChange}
               onDeleteMilestone={handleDeleteMilestone}
               onMilestoneDueDateChange={handleMilestoneDueDateChange}
+              // Task detail modal
+              onOpenTaskDetail={handleOpenTaskDetail}
             />
           </div>
         )}
@@ -905,7 +919,25 @@ export default function ProjectDetailPage() {
 
         {/* ─── TIME ─── */}
         {activeTab === "time" && (
-          <ProjectTimeTracking projectId={projectId} workspaceId={project.workspaceId} userId={firebaseUser?.uid || "demo"} />
+          <ProjectTimeTracking projectId={projectId} workspaceId={project.workspaceId} userId={firebaseUser?.uid || "demo"} members={members} />
+        )}
+
+        {/* ── Task Detail Modal ── */}
+        {detailTask && (
+          <TaskDetailModal
+            task={detailTask}
+            projectId={projectId}
+            workspaceId={project.workspaceId}
+            userId={firebaseUser?.uid || "demo"}
+            members={members}
+            memberMap={memberMap}
+            open={showDetailModal}
+            onOpenChange={(open) => { setShowDetailModal(open); if (!open) setDetailTask(null); }}
+            onTaskUpdated={() => {
+              getProjectTasks(projectId).then(setTasks).catch(() => {});
+              getProjectMilestones(projectId).then(setMilestones).catch(() => {});
+            }}
+          />
         )}
 
         {/* ── Edit Dialog ── */}

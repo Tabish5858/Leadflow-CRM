@@ -9,6 +9,7 @@ import { useClientUser } from "@/contexts/client-user-context";
 import { db } from "@/lib/firebase/client";
 import {
   getProject,
+  updateProject as updateProjectFB,
 } from "@/lib/firebase/projects";
 import {
   getProjectTasks,
@@ -20,7 +21,7 @@ import {
   getProjectNotes,
 } from "@/lib/firebase/project-notes";
 import { getWorkspaceMembers } from "@/lib/firebase/workspaces";
-import type { Project, ProjectTask, ProjectMilestone, ProjectNote, WorkspaceMember } from "@/types";
+import type { Project, ProjectTask, ProjectMilestone, ProjectNote, WorkspaceMember, ProjectClient } from "@/types";
 import { Timestamp } from "firebase/firestore";
 import {
   Calendar,
@@ -28,6 +29,7 @@ import {
   DollarSign,
   FolderKanban,
   ListTodo,
+  MessageSquare,
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -42,7 +44,10 @@ import ClientDeliverablesView from "@/components/client/client-deliverables-view
 import ProgressTimeline from "@/components/projects/project-detail/progress-timeline";
 import WorkflowSection from "@/components/projects/project-detail/workflow-section";
 import ProjectInfoCard from "@/components/projects/project-detail/sidebar-cards/project-info-card";
+import LinksEmbedsCard from "@/components/projects/project-detail/sidebar-cards/links-embeds-card";
 import { ProjectNotes } from "@/components/projects/shared/project-notes";
+import { TaskDetailModal } from "@/components/projects/shared/task-detail-modal";
+import { FinalPackageBanner } from "@/components/projects/shared/final-package-banner";
 import ProjectFiles from "@/components/projects/project-detail/project-files";
 import ProjectTimeTracking from "@/components/projects/project-detail/project-time-tracking";
 import { toast } from "@/lib/toast";
@@ -98,6 +103,14 @@ export default function ClientProjectDetailPage() {
   // Note data
   const [notes, setNotes] = useState<ProjectNote[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
+
+  // Task detail modal
+  const [detailTask, setDetailTask] = useState<ProjectTask | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+
+  // Client notes state
+  const [clientNotes, setClientNotes] = useState<Record<string, string>>({});
+  const [savingClientNote, setSavingClientNote] = useState(false);
 
   // Build member map
   const memberMap = useMemo(() => {
@@ -165,20 +178,67 @@ export default function ClientProjectDetailPage() {
     }
   }, [id, activeTab]);
 
+  // ─── Filter private tasks (clients only see Public) ──────────────────────────
+
+  const visibleTasks = useMemo(() => tasks.filter((t) => t.visibility !== "Private"), [tasks]);
+
   // ─── Computed Values ─────────────────────────────────────────────────────────
 
   const computedProgress = useMemo(() => {
-    if (!tasks.length) return project?.progress ?? 0;
-    const completed = tasks.filter((t) => t.status.parent === "Complete").length;
-    return Math.round((completed / tasks.length) * 100);
-  }, [tasks, project?.progress]);
+    if (!visibleTasks.length) return project?.progress ?? 0;
+    const completed = visibleTasks.filter((t) => t.status.parent === "Complete").length;
+    return Math.round((completed / visibleTasks.length) * 100);
+  }, [visibleTasks, project?.progress]);
 
-  const tasksCompleted = tasks.filter((t) => t.status.parent === "Complete").length;
+  const tasksCompleted = visibleTasks.filter((t) => t.status.parent === "Complete").length;
 
-  // Build milestone->tasks map for WorkflowSection
+  // ─── Task Detail Modal Handler ─────────────────────────────────────────────
+
+  const handleOpenTaskDetail = useCallback((task: ProjectTask) => {
+    setDetailTask(task);
+    setShowDetailModal(true);
+  }, []);
+
+  // ─── Client Notes Handlers ─────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!project || !uid) return;
+    // Load existing client notes from projectClients
+    const pc = project.projectClients?.find((c) => c.clientId === uid);
+    if (pc?.clientNotes) setClientNotes({ [uid]: pc.clientNotes });
+  }, [project, uid]);
+
+  const handleSaveClientNote = async (note: string) => {
+    if (!project || !uid) return;
+    setSavingClientNote(true);
+    try {
+      const existing: ProjectClient[] = project.projectClients || [];
+      const idx = existing.findIndex((c) => c.clientId === uid);
+      let updated: ProjectClient[];
+      if (idx >= 0) {
+        updated = [...existing];
+        updated[idx] = { ...updated[idx], clientNotes: note };
+      } else {
+        updated = [...existing, {
+          clientId: uid,
+          clientNotes: note,
+          isMainContact: false,
+          addedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as Timestamp,
+          addedBy: uid,
+        }];
+      }
+      await updateProjectFB(project.id, { projectClients: updated });
+      setProject((prev) => prev ? { ...prev, projectClients: updated } : prev);
+      setClientNotes({ [uid]: note });
+      toast.success("Note saved");
+    } catch { toast.error("Failed to save note"); }
+    finally { setSavingClientNote(false); }
+  };
+
+  // Build milestone->tasks map for WorkflowSection (use visibleTasks for client)
   const milestoneTaskMap = useMemo(() => {
     const map = new Map<string, ProjectTask[]>();
-    for (const task of tasks) {
+    for (const task of visibleTasks) {
       if (task.milestoneId) {
         const existing = map.get(task.milestoneId) || [];
         existing.push(task);
@@ -186,7 +246,7 @@ export default function ClientProjectDetailPage() {
       }
     }
     return map;
-  }, [tasks]);
+  }, [visibleTasks]);
 
   // ─── Loading / Error ─────────────────────────────────────────────────────────
 
@@ -257,10 +317,15 @@ export default function ClientProjectDetailPage() {
       {/* ─── OVERVIEW ─── */}
       {activeTab === "overview" && (
         <div className="space-y-6">
+          {/* Final Package Banner */}
+          {project.hasFinalPackage && (
+            <FinalPackageBanner project={project} />
+          )}
+
           {/* Progress timeline */}
           <Card className="border-border">
             <CardContent className="p-5">
-              <ProgressTimeline progress={computedProgress} tasksCompleted={tasksCompleted} tasksTotal={tasks.length} />
+              <ProgressTimeline progress={computedProgress} tasksCompleted={tasksCompleted} tasksTotal={visibleTasks.length} />
             </CardContent>
           </Card>
 
@@ -272,19 +337,45 @@ export default function ClientProjectDetailPage() {
                 <SkeletonList count={3} height="h-16" />
               ) : (
                 <WorkflowSection
-                  tasks={tasks}
+                  tasks={visibleTasks}
                   milestones={milestones}
                   memberMap={memberMap}
                   taskMembers={members}
                   milestoneTaskMap={milestoneTaskMap}
                   readOnly
+                  onOpenTaskDetail={handleOpenTaskDetail}
                 />
               )}
             </div>
 
-            {/* Right: Sidebar cards (client-appropriate subset — only info card) */}
+            {/* Right: Sidebar cards (client-appropriate subset) */}
             <div className="w-full lg:w-[35%] space-y-4 lg:sticky lg:top-4 lg:self-start max-h-[calc(100vh-180px)] overflow-y-auto custom-scrollbar">
               <ProjectInfoCard project={project} memberMap={memberMap} />
+              <LinksEmbedsCard project={project} canEdit={false} />
+
+              {/* Client Notes */}
+              <div className="flex flex-col p-5 w-full bg-card border border-border hover:border-foreground/20 transition-colors" style={{ borderRadius: "8px" }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold text-foreground">My Notes</h3>
+                </div>
+                <textarea
+                  value={clientNotes[uid] || ""}
+                  onChange={(e) => setClientNotes({ [uid]: e.target.value })}
+                  placeholder="Add your private notes about this project..."
+                  rows={4}
+                  className="w-full text-xs bg-transparent border border-border rounded-lg p-2.5 resize-none focus:outline-none focus:border-foreground/30 placeholder:text-muted-foreground/50"
+                />
+                <div className="flex justify-end mt-2">
+                  <button
+                    onClick={() => handleSaveClientNote(clientNotes[uid] || "")}
+                    disabled={savingClientNote}
+                    className="text-xs px-3 py-1.5 bg-foreground text-background rounded hover:opacity-90 disabled:opacity-50"
+                  >
+                    {savingClientNote ? "Saving..." : "Save Note"}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -297,12 +388,13 @@ export default function ClientProjectDetailPage() {
             <SkeletonList count={3} height="h-16" />
           ) : (
             <WorkflowSection
-              tasks={tasks}
+              tasks={visibleTasks}
               milestones={milestones}
               memberMap={memberMap}
               taskMembers={members}
               milestoneTaskMap={milestoneTaskMap}
               readOnly
+              onOpenTaskDetail={handleOpenTaskDetail}
             />
           )}
         </div>
@@ -333,7 +425,22 @@ export default function ClientProjectDetailPage() {
 
       {/* ─── TIME (client can add own entries) ─── */}
       {activeTab === "time" && (
-        <ProjectTimeTracking projectId={id} workspaceId={clientWorkspaceId} userId={uid} />
+        <ProjectTimeTracking projectId={id} workspaceId={clientWorkspaceId} userId={uid} members={members} />
+      )}
+
+      {/* ── Task Detail Modal (read-only) ── */}
+      {detailTask && (
+        <TaskDetailModal
+          task={detailTask}
+          projectId={id}
+          workspaceId={clientWorkspaceId}
+          userId={uid}
+          members={members}
+          memberMap={memberMap}
+          open={showDetailModal}
+          onOpenChange={(open) => { setShowDetailModal(open); if (!open) setDetailTask(null); }}
+          readOnly
+        />
       )}
     </div>
   );

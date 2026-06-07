@@ -118,6 +118,7 @@ interface TaskCardProps {
   isDragging?: boolean;
   saving?: boolean;
   className?: string;
+  onOpenDetail?: (task: ProjectTask) => void;
 }
 
 export function TaskCard({
@@ -125,7 +126,7 @@ export function TaskCard({
   onAssigneeChange, onDueDateChange, members = [],
   showSubtasks, onToggleSubtasks, isSubtask,
   onDragStart, onDragEnd, onDragOver, onDrop,
-  isDragging, saving, className,
+  isDragging, saving, className, onOpenDetail,
 }: TaskCardProps) {
   const isComplete = task.status.parent === "Complete";
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
@@ -145,9 +146,23 @@ export function TaskCard({
 
   const isReadOnly = !onStatusChange && !onToggleComplete && !onTitleChange && !onDelete;
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't open modal if clicking on interactive elements or drag handle
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("input") || target.closest("[data-no-detail]") || target.closest(".workflow-drag-handle")) return;
+    if (onOpenDetail) {
+      e.preventDefault();
+      e.stopPropagation();
+      onOpenDetail(task);
+    }
+  };
+
   return (
     <div className={cn("workflow-item relative group", isSubtask && "ml-8", isDragging && "opacity-30", className)}>
-      <div className={cn("transition-colors", !isSubtask && "border border-border rounded-md p-2 bg-card hover:bg-accent/30")}>
+      <div
+        className={cn("transition-colors cursor-pointer", !isSubtask && "border border-border rounded-md p-2 bg-card hover:bg-accent/30")}
+        onClick={handleCardClick}
+      >
         <div
           draggable={!!onDragStart && !isSubtask}
           onDragStart={handleDragStart}
@@ -163,7 +178,7 @@ export function TaskCard({
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {/* Drag handle */}
                   {!isSubtask && onDragStart && (
-                    <div className="text-muted-foreground/30 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <div className="workflow-drag-handle text-muted-foreground/30 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                       <GripVertical className="h-4 w-4" />
                     </div>
                   )}

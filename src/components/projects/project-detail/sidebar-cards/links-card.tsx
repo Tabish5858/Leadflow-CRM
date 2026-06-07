@@ -9,55 +9,57 @@ import { toast } from "@/lib/toast";
 
 interface LinksCardProps {
   project: Project;
-  onProjectUpdated: () => void;
+  onLinksChange?: (linksAndEmbeds: LinkEmbed[]) => void;
 }
 
-export default function LinksCard({ project, onProjectUpdated }: LinksCardProps) {
+export default function LinksCard({ project, onLinksChange }: LinksCardProps) {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const links = project.linksAndEmbeds || [];
+
   const handleAddLink = async () => {
     if (!title.trim() || !url.trim()) return;
     setSaving(true);
+    const newLink: LinkEmbed = {
+      id: `link-${Date.now()}`,
+      type: "link",
+      title: title.trim(),
+      url: url.trim().startsWith("http") ? url.trim() : `https://${url.trim()}`,
+      addedBy: "",
+      addedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as Timestamp,
+    };
+    const updatedLinks = [...links, newLink];
+    // Optimistic update
+    onLinksChange?.(updatedLinks);
+    setTitle("");
+    setUrl("");
+    setShowForm(false);
     try {
-      const newLink: LinkEmbed = {
-        id: `link-${Date.now()}`,
-        type: "link",
-        title: title.trim(),
-        url: url.trim().startsWith("http") ? url.trim() : `https://${url.trim()}`,
-        addedBy: "",
-        addedAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as Timestamp,
-      };
-      await updateProject(project.id, {
-        linksAndEmbeds: [...(project.linksAndEmbeds || []), newLink],
-      });
+      await updateProject(project.id, { linksAndEmbeds: updatedLinks });
       toast.success("Link added");
-      setTitle("");
-      setUrl("");
-      setShowForm(false);
-      onProjectUpdated();
     } catch {
       toast.error("Failed to add link");
+      onLinksChange?.(links); // Rollback
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeleteLink = async (linkId: string) => {
+    const updatedLinks = links.filter((l) => l.id !== linkId);
+    // Optimistic update
+    onLinksChange?.(updatedLinks);
     try {
-      await updateProject(project.id, {
-        linksAndEmbeds: (project.linksAndEmbeds || []).filter((l) => l.id !== linkId),
-      });
+      await updateProject(project.id, { linksAndEmbeds: updatedLinks });
       toast.success("Link removed");
-      onProjectUpdated();
     } catch {
       toast.error("Failed to remove link");
+      onLinksChange?.(links); // Rollback
     }
   };
-
-  const links = project.linksAndEmbeds || [];
 
   return (
     <div

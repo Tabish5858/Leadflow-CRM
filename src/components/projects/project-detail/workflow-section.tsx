@@ -316,6 +316,7 @@ interface WorkflowSectionProps {
   onMilestoneNameChange?: (milestone: ProjectMilestone, newName: string) => void;
   onDeleteMilestone?: (milestoneId: string) => void;
   onMilestoneDueDateChange?: (milestone: ProjectMilestone, dueDate: Date | null) => void;
+  onOpenTaskDetail?: (task: ProjectTask) => void;
 }
 
 export default function WorkflowSection({
@@ -358,6 +359,7 @@ export default function WorkflowSection({
   onMilestoneNameChange,
   onDeleteMilestone,
   onMilestoneDueDateChange,
+  onOpenTaskDetail,
   readOnly = false,
 }: WorkflowSectionProps) {
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
@@ -552,7 +554,7 @@ export default function WorkflowSection({
                       {isExpanded && (nestedTasks.length > 0 || (isCreatingNestedTask && nestedMilestoneId === ms.id)) && (
                         <div className="ml-12 mt-1.5 space-y-1.5 border-l-2 border-border pl-4">
                           {nestedTasks.map((task) => (
-                            <TaskCard key={task.id} task={task} memberMap={memberMap} onToggleComplete={onToggleTaskComplete} onStatusChange={onTaskStatusChange} onDelete={onDeleteTask} onTitleChange={onTitleChange} onAssigneeChange={onAssigneeChange} onDueDateChange={onDueDateChange} members={taskMembers} isSubtask />
+                            <TaskCard key={task.id} task={task} memberMap={memberMap} onToggleComplete={onToggleTaskComplete} onStatusChange={onTaskStatusChange} onDelete={onDeleteTask} onTitleChange={onTitleChange} onAssigneeChange={onAssigneeChange} onDueDateChange={onDueDateChange} members={taskMembers} isSubtask onOpenDetail={onOpenTaskDetail} />
                           ))}
                           {isCreatingNestedTask && nestedMilestoneId === ms.id && (
                             <InlineTaskCreator
@@ -591,11 +593,12 @@ export default function WorkflowSection({
               onDragStart={readOnly ? undefined : onTaskDragStart}
               onDrop={readOnly ? undefined : onTaskDrop}
               onDragOver={(e) => { e.preventDefault(); }}
+                          onOpenDetail={onOpenTaskDetail}
                         />
                         {isExpanded && subtasks.length > 0 && (
                           <div className="mt-1.5 space-y-1.5 pl-5 ml-8 border-l-2 border-border">
                             {subtasks.map((sub) => (
-                              <TaskCard key={sub.id} task={sub} memberMap={memberMap} onToggleComplete={readOnly ? undefined : onToggleTaskComplete} onStatusChange={readOnly ? undefined : onTaskStatusChange} onDelete={readOnly ? undefined : onDeleteTask} onTitleChange={readOnly ? undefined : onTitleChange} isSubtask />
+                              <TaskCard key={sub.id} task={sub} memberMap={memberMap} onToggleComplete={readOnly ? undefined : onToggleTaskComplete} onStatusChange={readOnly ? undefined : onTaskStatusChange} onDelete={readOnly ? undefined : onDeleteTask} onTitleChange={readOnly ? undefined : onTitleChange} isSubtask onOpenDetail={onOpenTaskDetail} />
                             ))}
                           </div>
                         )}

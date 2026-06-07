@@ -79,6 +79,7 @@ export async function createTask(
     isMilestone: data.isMilestone || false,
     completedAt: null,
     customFields: {},
+    files: [],
     createdBy: userId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -142,7 +143,7 @@ export async function getSubtasks(parentTaskId: string): Promise<ProjectTask[]> 
 // ── Update ───────────────────────────────────────────────────────────────────
 
 export type UpdateTaskData = Partial<
-  Pick<ProjectTask, "taskName" | "description" | "assigneeId" | "status" | "priority" | "visibility" | "order" | "isMilestone">
+  Pick<ProjectTask, "taskName" | "description" | "assigneeId" | "status" | "priority" | "visibility" | "order" | "isMilestone" | "files" | "hasSubtasks">
 > & {
   startDate?: Date | null;
   dueDate?: Date | null;

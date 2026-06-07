@@ -635,6 +635,17 @@ export interface ProjectRecurringDetails {
   isOnDay: boolean;
 }
 
+export interface TaskFile {
+  id: string;
+  fileName: string;
+  originalName: string;
+  fileType: string;
+  fileSize: number;
+  cloudinaryUrl: string;
+  uploadedAt: Timestamp;
+  uploadedBy: string;
+}
+
 export interface ProjectTask {
   id: string;
   projectId: string;
@@ -662,6 +673,7 @@ export interface ProjectTask {
   isMilestone: boolean;
   completedAt: Timestamp | null;
   customFields: Record<string, unknown>;
+  files: TaskFile[];
   createdBy: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;

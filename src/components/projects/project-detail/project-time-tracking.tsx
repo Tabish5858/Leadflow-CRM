@@ -15,12 +15,19 @@ import {
   Play,
   StopCircle,
   Timer,
+  User,
 } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+function getInitials(name: string): string {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
 
 interface ProjectTimeTrackingProps {
   projectId: string;
   workspaceId: string;
   userId: string;
+  members?: Array<{ userId: string; displayName: string; email: string; photoURL?: string | null }>;
 }
 
 function formatDuration(seconds: number): string {
@@ -34,7 +41,7 @@ function formatDate(date: Date): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function ProjectTimeTracking({ projectId, workspaceId, userId }: ProjectTimeTrackingProps) {
+export default function ProjectTimeTracking({ projectId, workspaceId, userId, members = [] }: ProjectTimeTrackingProps) {
   const [entries, setEntries] = useState<ProjectTimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -222,7 +229,16 @@ export default function ProjectTimeTracking({ projectId, workspaceId, userId }: 
           {entries.map((entry) => (
             <div key={entry.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/30 transition-colors group">
               <div className="h-9 w-9 rounded bg-muted flex items-center justify-center shrink-0">
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                {(() => {
+                  const entryMember = members.find((m) => m.userId === (entry.memberId || ""));
+                  return entryMember ? (
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary/10 text-primary text-[9px]">{getInitials(entryMember.displayName)}</AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  );
+                })()}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">
@@ -230,6 +246,10 @@ export default function ProjectTimeTracking({ projectId, workspaceId, userId }: 
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {entry.date ? formatDate(entry.date.toDate()) : "Unknown date"}
+                  {(() => {
+                    const entryMember = members.find((m) => m.userId === (entry.memberId || ""));
+                    return entryMember ? <> \u00b7 {entryMember.displayName}</> : null;
+                  })()}
                   {entry.billable && " \u00b7 Billable"}
                 </p>
               </div>
