@@ -60,7 +60,7 @@ function getStatusBadge(status: string) {
   const style = STATUS_STYLES[status] || "bg-gray-100 text-gray-700";
   const label = STATUS_LABELS[status] || status;
   return (
-    <Badge variant="outline" className={`${style} border text-xs font-medium`}>
+    <Badge variant="outline" className={`${style} border text-xs font-medium min-w-15`}>
       {label}
     </Badge>
   );
@@ -329,11 +329,7 @@ export default function ContractsPage() {
           <div className="rounded-lg border">
             <div className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] gap-4 px-4 py-3 bg-muted/50 text-xs font-medium text-muted-foreground uppercase tracking-wider">
               <div>Title</div>
-              <div>Type</div>
-              <div>Status</div>
-              <div>Client</div>
-              <div>Sent</div>
-              <div></div>
+  
             </div>
             {filteredContracts.map((contract) => (
               <div
@@ -344,11 +340,7 @@ export default function ContractsPage() {
                 <div className="text-sm font-medium truncate">
                   {contract.contractTitle}
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  {getTypeIcon(contract.type)}
-                  <span className="capitalize">{contract.type}</span>
-                </div>
-                <div>{getStatusBadge(contract.status)}</div>
+
                 <div className="flex items-center gap-2">
                   {contract.clientId && clientMap.has(contract.clientId) ? (
                     <>
@@ -369,6 +361,12 @@ export default function ContractsPage() {
                   ) : (
                     <span className="text-xs text-muted-foreground">-</span>
                   )}
+                </div>
+                <div className="min-w-15">{getStatusBadge(contract.status)}</div>
+
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  {getTypeIcon(contract.type)}
+                  <span className="capitalize">{contract.type}</span>
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {formatDate(contract.dateSent)}
