@@ -223,6 +223,9 @@ export default function InvoiceDetailPage() {
   const statusStyle = STATUS_STYLES[invoice.status] || STATUS_STYLES.draft;
   const availableTransitions = TRANSITIONS[invoice.status] || [];
 
+  // ── Detect if invoice uses hourly billing ──
+  const isHourlyInvoice = invoice.lineItems.some((item) => item.serviceType === "hourly");
+
   // ── Display labels ──
   const statusLabels: Record<string, string> = {
     draft: "Draft",
@@ -336,8 +339,8 @@ export default function InvoiceDetailPage() {
           <div>
             <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 text-xs text-muted-foreground font-medium mb-2 px-1">
               <span>Description</span>
-              <span className="text-right">Qty</span>
-              <span className="text-right">Unit Price</span>
+              <span className="text-right">{isHourlyInvoice ? "Hours" : "Qty"}</span>
+              <span className="text-right">{isHourlyInvoice ? "Rate" : "Unit Price"}</span>
               <span className="text-right">Total</span>
             </div>
             <div className="space-y-1">
