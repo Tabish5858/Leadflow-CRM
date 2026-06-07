@@ -17,6 +17,9 @@ import type {
   InvoiceLineItem,
   InvoiceDiscount,
   Document,
+  Contract,
+  ContractTemplate,
+  ContractSigner,
   PipelineStage,
 } from "@/types";
 
@@ -703,53 +706,6 @@ const DEMO_INVOICES: Invoice[] = [
   },
 ];
 
-// ─── Demo Documents ────────────────────────────────────────────────────────────
-
-const DEMO_DOCUMENTS: Document[] = [
-  {
-    id: "demo-doc-001",
-    workspaceId: DEMO_WORKSPACE_ID,
-    leadId: "demo-lead-001",
-    fileName: "Project Proposal Q1.pdf",
-    fileType: "pdf",
-    mimeType: "application/pdf",
-    fileSize: 2_456_000,
-    cloudinaryPublicId: "leadflow/demo/proposal-q1",
-    cloudinaryUrl: "https://res.cloudinary.com/demo/image/upload/leadflow/demo/proposal-q1.pdf",
-    cloudinaryResourceType: "image",
-    uploadedBy: DEMO_USER_ID,
-    createdAt: daysAgo(10),
-  },
-  {
-    id: "demo-doc-002",
-    workspaceId: DEMO_WORKSPACE_ID,
-    leadId: "demo-lead-002",
-    fileName: "Brand Guidelines.png",
-    fileType: "image",
-    mimeType: "image/png",
-    fileSize: 1_200_000,
-    cloudinaryPublicId: "leadflow/demo/brand-guidelines",
-    cloudinaryUrl: "https://res.cloudinary.com/demo/image/upload/leadflow/demo/brand-guidelines.png",
-    cloudinaryResourceType: "image",
-    uploadedBy: DEMO_USER_ID,
-    createdAt: daysAgo(5),
-  },
-  {
-    id: "demo-doc-003",
-    workspaceId: DEMO_WORKSPACE_ID,
-    leadId: "",
-    fileName: "Contract Template.docx",
-    fileType: "document",
-    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    fileSize: 850_000,
-    cloudinaryPublicId: "leadflow/demo/contract-template",
-    cloudinaryUrl: "https://res.cloudinary.com/demo/image/upload/leadflow/demo/contract-template.docx",
-    cloudinaryResourceType: "raw",
-    uploadedBy: DEMO_USER_ID,
-    createdAt: daysAgo(3),
-  },
-];
-
 // ─── Mutable Store (for writes in demo mode) ──────────────────────────────────
 
 /**
@@ -763,8 +719,9 @@ export class DemoStore {
   timeEntries: TimeEntry[] = [...DEMO_TIME_ENTRIES];
   notifications: Notification[] = [...DEMO_NOTIFICATIONS];
   meetings: Meeting[] = [...DEMO_MEETINGS];
-  private _documents: Document[] = [...DEMO_DOCUMENTS];
   private _invoices: Invoice[] = [...DEMO_INVOICES];
+  private _contracts: Contract[] = [];
+  private _templates: ContractTemplate[] = [];
 
   private _convMessageIndex: Map<string, Message[]> = new Map();
   private _notifListeners: Set<(notifications: Notification[]) => void> = new Set();
@@ -1581,40 +1538,6 @@ export class DemoStore {
     this._invoices = this._invoices.filter((inv) => inv.id !== id);
   }
 
-  // ── Document Operations ──
-
-  getDocuments(): Document[] {
-    return [...this._documents];
-  }
-
-  getDocument(id: string): Document | null {
-    return this._documents.find((d) => d.id === id) ?? null;
-  }
-
-  uploadDocument(workspaceId: string, fileName: string, leadId?: string): { documentId: string; url: string } {
-    const id = `demo-doc-${Date.now()}`;
-    const doc: Document = {
-      id,
-      workspaceId,
-      leadId: leadId || "",
-      fileName,
-      fileType: "other",
-      mimeType: "application/octet-stream",
-      fileSize: 0,
-      cloudinaryPublicId: `demo/${fileName}`,
-      cloudinaryUrl: "#",
-      cloudinaryResourceType: "raw",
-      uploadedBy: DEMO_USER_ID,
-      createdAt: Timestamp.now(),
-    };
-    this._documents.unshift(doc);
-    return { documentId: id, url: "#" };
-  }
-
-  deleteDocument(id: string): void {
-    this._documents = this._documents.filter((d) => d.id !== id);
-  }
-
   // ── Time Entry Operations ──
 
   getTimeEntries(): TimeEntry[] {
@@ -1658,6 +1581,138 @@ export class DemoStore {
     for (const cb of this._notifListeners) {
       cb([...this.notifications]);
     }
+  }
+
+  // ── Contract Operations ──
+
+  getContracts(): Contract[] {
+    return [...this._contracts];
+  }
+
+  getContract(id: string): Contract | null {
+    return this._contracts.find((c) => c.id === id) ?? null;
+  }
+
+  createContract(
+    workspaceId: string,
+    data: {
+      contractTitle: string;
+      type: "contract" | "proposal";
+      content?: string;
+      clientId?: string | null;
+      projectId?: string | null;
+      signers?: ContractSigner[];
+    }
+  ): string {
+    const id = `demo-contract-${Date.now()}`;
+    const contract: Contract = {
+      id,
+      workspaceId,
+      contractTitle: data.contractTitle,
+      type: data.type || "contract",
+      status: "draft",
+      content: data.content || "",
+      clientId: data.clientId || null,
+      projectId: data.projectId || null,
+      signers: data.signers || [],
+      activities: [
+        {
+          type: "created",
+          userId: DEMO_USER_ID,
+          userName: "Demo User",
+          timestamp: Timestamp.now(),
+        },
+      ],
+      attachments: [],
+      signatures: [],
+      dateSent: null,
+      dateSigned: null,
+      createdBy: DEMO_USER_ID,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+    this._contracts.unshift(contract);
+    return id;
+  }
+
+  updateContract(id: string, data: Partial<Contract>): void {
+    const idx = this._contracts.findIndex((c) => c.id === id);
+    if (idx !== -1) {
+      this._contracts[idx] = { ...this._contracts[idx], ...data, updatedAt: Timestamp.now() };
+    }
+  }
+
+  deleteContract(id: string): void {
+    this._contracts = this._contracts.filter((c) => c.id !== id);
+  }
+
+  signContract(contractId: string, signerId: string, signature: string): void {
+    const contract = this._contracts.find((c) => c.id === contractId);
+    if (!contract) return;
+
+    const updatedSigners = contract.signers.map((s) =>
+      s.id === signerId ? { ...s, status: "signed" as const, signedAt: Timestamp.now() } : s
+    );
+
+    const allSigned = updatedSigners.every((s) => s.status === "signed");
+
+    contract.signers = updatedSigners;
+    contract.signatures = [
+      ...(contract.signatures || []),
+      { signer: signerId, signature, signedAt: Timestamp.now() },
+    ];
+    contract.updatedAt = Timestamp.now();
+
+    if (allSigned) {
+      contract.status = "signed";
+      contract.dateSigned = Timestamp.now();
+    }
+  }
+
+  // ── Template Operations ──
+
+  getTemplates(): ContractTemplate[] {
+    return [...this._templates];
+  }
+
+  getTemplate(id: string): ContractTemplate | null {
+    return this._templates.find((t) => t.id === id) ?? null;
+  }
+
+  createTemplate(
+    workspaceId: string,
+    data: {
+      templateTitle: string;
+      templateDescription?: string;
+      type: "contract" | "proposal";
+      content?: string;
+    }
+  ): string {
+    const id = `demo-template-${Date.now()}`;
+    const template: ContractTemplate = {
+      id,
+      workspaceId,
+      templateTitle: data.templateTitle,
+      templateDescription: data.templateDescription || "",
+      type: data.type || "contract",
+      content: data.content || "",
+      status: "draft",
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+    this._templates.unshift(template);
+    return id;
+  }
+
+  updateTemplate(id: string, data: Partial<ContractTemplate>): void {
+    const idx = this._templates.findIndex((t) => t.id === id);
+    if (idx !== -1) {
+      this._templates[idx] = { ...this._templates[idx], ...data, updatedAt: Timestamp.now() };
+    }
+  }
+
+  deleteTemplate(id: string): void {
+    this._templates = this._templates.filter((t) => t.id !== id);
   }
 }
 

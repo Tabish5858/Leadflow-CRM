@@ -41,7 +41,7 @@ export async function getClientPortalSettings(
       messages: true,
       meetings: true,
       invoices: true,
-      documents: true,
+      contracts: true,
       time_tracking: true,
       project_requests: true,
     },
@@ -52,7 +52,7 @@ export async function getClientPortalSettings(
       bulletPoints: [
         "View real-time project progress and updates",
         "Send and receive messages with your project team",
-        "Access shared documents and resources",
+        "Access contracts and project resources",
       ],
       mediaUrl: null,
       mediaType: null,
