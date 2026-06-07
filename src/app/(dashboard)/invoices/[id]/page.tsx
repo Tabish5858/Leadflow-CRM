@@ -1,5 +1,6 @@
 "use client";
 
+import { Timestamp } from "firebase/firestore";
 import { useWorkspace } from "@/contexts/workspace-context";
 import {
   getInvoice,
@@ -132,9 +133,13 @@ export default function InvoiceDetailPage() {
   // Fetch project name when invoice loads
   useEffect(() => {
     if (!invoice?.projectId) { setProjectName(null); return; }
-    getProject(invoice.projectId)
-      .then((p) => setProjectName(p?.name ?? null))
-      .catch(() => setProjectName(null));
+    let cancelled = false;
+    getProject(invoice.projectId).then((p) => {
+      if (!cancelled) setProjectName(p?.name ?? null);
+    }).catch(() => {
+      if (!cancelled) setProjectName(null);
+    });
+    return () => { cancelled = true; };
   }, [invoice?.projectId]);
 
   const client = useMemo(
@@ -530,13 +535,13 @@ export default function InvoiceDetailPage() {
                   if (showReviewDialog === "approve") {
                     await approvePaymentProof(invoice.id, user?.id || "", reviewNotes || undefined);
                     setInvoice((prev) =>
-                      prev ? { ...prev, status: "paid", paidDate: { toDate: () => new Date() } as Invoice["paidDate"], paymentProof: { ...prev.paymentProof!, status: "approved", reviewedBy: user?.id, reviewedAt: { toDate: () => new Date() } as any } } : prev
+                      prev ? { ...prev, status: "paid", paidDate: Timestamp.now(), paymentProof: { ...prev.paymentProof!, status: "approved" as const, reviewedBy: user?.id, reviewedAt: Timestamp.now() } } : prev
                     );
                     toast.success("Payment approved — invoice marked as paid");
                   } else {
                     await rejectPaymentProof(invoice.id, user?.id || "", reviewNotes);
                     setInvoice((prev) =>
-                      prev ? { ...prev, status: "sent" as InvoiceStatus, paymentProof: { ...prev.paymentProof!, status: "rejected", reviewedBy: user?.id, reviewedAt: { toDate: () => new Date() } as any } } : prev
+                      prev ? { ...prev, status: "sent" as InvoiceStatus, paymentProof: { ...prev.paymentProof!, status: "rejected" as const, reviewedBy: user?.id, reviewedAt: Timestamp.now() } } : prev
                     );
                     toast.success("Payment proof rejected — invoice reverted to Unpaid");
                   }
