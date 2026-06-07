@@ -118,7 +118,7 @@ export default function PublicContractPage({ params }: { params: Promise<{ id: s
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-3xl">
           <CardContent className="p-8 space-y-4">
             <Skeleton className="h-8 w-48" />
@@ -131,7 +131,7 @@ export default function PublicContractPage({ params }: { params: Promise<{ id: s
 
   if (error || !contract) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="p-8 text-center">
             <X className="h-12 w-12 text-destructive mx-auto mb-4" />
@@ -147,16 +147,16 @@ export default function PublicContractPage({ params }: { params: Promise<{ id: s
   const allSigned = contract.status === "signed";
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Top bar */}
-      <div className="bg-white border-b">
+      <div className="bg-card border-b">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Shield className="h-4 w-4" />
             Secure document
           </div>
           <Badge variant="outline" className={`text-xs ${
-            allSigned ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+            allSigned ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
           }`}>
             {allSigned ? (contract.type === "proposal" ? "Approved" : "Signed") : "Pending Signature"}
           </Badge>
@@ -215,7 +215,7 @@ export default function PublicContractPage({ params }: { params: Promise<{ id: s
                         )}
                       </div>
                       {alreadySigned ? (
-                        <Badge className="bg-green-100 text-green-700 border-green-200">
+                        <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-900">
                           <Check className="h-3 w-3 mr-1" />
                           Signed
                         </Badge>

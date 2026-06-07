@@ -33,6 +33,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import { TextStyle, FontFamily, FontSize } from "@tiptap/extension-text-style";
+import Placeholder from "@tiptap/extension-placeholder";
 import { ContractSections } from "@/components/contracts/contract-sections";
 
 // ─── Toolbar ─────────────────────────────────────────────────────────────────
@@ -118,7 +119,14 @@ export default function TemplateDetailPage({ params }: { params: Promise<{ id: s
   const [newContractTitle, setNewContractTitle] = useState("");
 
   const editor = useEditor({
-    extensions: [StarterKit, Underline, TextStyle, FontFamily, FontSize],
+    extensions: [
+      StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }),
+      Underline,
+      TextStyle,
+      FontFamily,
+      FontSize,
+      Placeholder.configure({ placeholder: "Write your template content here..." }),
+    ],
     content: "",
     editable: true,
     editorProps: {

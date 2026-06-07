@@ -45,6 +45,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import { TextStyle, FontFamily, FontSize } from "@tiptap/extension-text-style";
+import Placeholder from "@tiptap/extension-placeholder";
 import { ContractSections } from "@/components/contracts/contract-sections";
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
@@ -213,12 +214,23 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
   const [converting, setConverting] = useState(false);
 
   const editor = useEditor({
-    extensions: [StarterKit, Underline, TextStyle, FontFamily, FontSize],
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3, 4] },
+      }),
+      Underline,
+      TextStyle,
+      FontFamily,
+      FontSize,
+      Placeholder.configure({
+        placeholder: "Write your contract content here...",
+      }),
+    ],
     content: "",
     editable: true,
     editorProps: {
       attributes: {
-        class: "prose prose-sm max-w-none focus:outline-none min-h-[300px] px-4 py-3",
+        class: "prose prose-sm max-w-none focus:outline-none min-h-[400px] px-4 py-3",
       },
     },
   });
@@ -270,6 +282,10 @@ export default function ContractDetailPage({ params }: { params: Promise<{ id: s
   // Send contract
   const handleSend = async () => {
     if (!contract) return;
+    if (!contract.signers || contract.signers.length === 0) {
+      toast.error("Add at least one signer before sending");
+      return;
+    }
     try {
       await handleSave();
       await sendContract(contract.id);

@@ -46,6 +46,7 @@ export async function GET(
           type: s.type,
           status: s.status,
           required: s.required,
+          signedAt: s.signedAt?.toMillis?.() || s.signedAt || null,
         })),
         signatures: contract.signatures || [],
         dateSent: contract.dateSent?.toMillis?.() || null,
