@@ -1033,6 +1033,14 @@ export interface InvoiceLineItem {
   quantity: number;
   unitPrice: number;
   total: number;
+  /** Service pricing type: fixed, custom, hourly, subscription, free */
+  serviceType?: "fixed" | "custom" | "hourly" | "subscription" | "free";
+}
+
+export interface InvoiceDiscount {
+  type: "percentage" | "fixed";
+  amount: number;
+  description?: string;
 }
 
 export interface Invoice {
@@ -1051,6 +1059,8 @@ export interface Invoice {
   subtotal: number;
   taxRate: number;
   taxAmount: number;
+  /** Overall discount applied */
+  discount: InvoiceDiscount | null;
   total: number;
   currency: string;
   /** Notes visible to client */

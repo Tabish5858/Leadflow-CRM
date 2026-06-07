@@ -15,6 +15,7 @@ import type {
   ProjectNote,
   Invoice,
   InvoiceLineItem,
+  InvoiceDiscount,
   Document,
   PipelineStage,
 } from "@/types";
@@ -634,6 +635,7 @@ const DEMO_INVOICES: Invoice[] = [
     subtotal: 15000,
     taxRate: 10,
     taxAmount: 1500,
+    discount: null,
     total: 16500,
     currency: "USD",
     issueDate: daysAgo(45),
@@ -664,6 +666,7 @@ const DEMO_INVOICES: Invoice[] = [
     issueDate: daysAgo(5),
     dueDate: daysAgo(25),
     paidDate: null,
+    discount: null,
     notes: "Due within 30 days",
     pdfUrl: null,
     createdBy: DEMO_USER_ID,
@@ -688,6 +691,7 @@ const DEMO_INVOICES: Invoice[] = [
     issueDate: daysAgo(1),
     dueDate: daysAgo(-29),
     paidDate: null,
+    discount: null,
     notes: "Draft - not yet sent",
     pdfUrl: null,
     createdBy: DEMO_USER_ID,
@@ -1497,7 +1501,17 @@ export class DemoStore {
     const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
     const taxRate = (data.taxRate as number) ?? 0;
     const taxAmount = subtotal * (taxRate / 100);
-    const total = subtotal + taxAmount;
+    const discount = (data.discount as InvoiceDiscount) || null;
+
+    let discountAmount = 0;
+    if (discount && discount.amount > 0) {
+      if (discount.type === "percentage") {
+        discountAmount = subtotal * (discount.amount / 100);
+      } else {
+        discountAmount = Math.min(discount.amount, subtotal + taxAmount);
+      }
+    }
+    const total = subtotal + taxAmount - discountAmount;
 
     const invoice: Invoice = {
       id,
@@ -1510,10 +1524,11 @@ export class DemoStore {
       subtotal,
       taxRate,
       taxAmount,
+      discount,
       total,
       currency: (data.currency as string) || "USD",
-      issueDate: Timestamp.now(),
-      dueDate: Timestamp.fromMillis(Timestamp.now().toMillis() + 30 * 86400000),
+      issueDate: (data.issueDate as Timestamp) || Timestamp.now(),
+      dueDate: (data.dueDate as Timestamp) || Timestamp.fromMillis(Timestamp.now().toMillis() + 30 * 86400000),
       paidDate: null,
       notes: (data.notes as string) || null,
       pdfUrl: null,
@@ -1538,7 +1553,17 @@ export class DemoStore {
       const taxRate = (updated.taxRate ?? 0);
       updated.subtotal = subtotal;
       updated.taxAmount = subtotal * (taxRate / 100);
-      updated.total = subtotal + updated.taxAmount;
+
+      const discount = updated.discount;
+      let discountAmount = 0;
+      if (discount && discount.amount > 0) {
+        if (discount.type === "percentage") {
+          discountAmount = subtotal * (discount.amount / 100);
+        } else {
+          discountAmount = Math.min(discount.amount, subtotal + updated.taxAmount);
+        }
+      }
+      updated.total = subtotal + updated.taxAmount - discountAmount;
     }
 
     if (data.status === "paid" && !updated.paidDate) {

@@ -2,6 +2,7 @@
 
 import { useWorkspace } from "@/contexts/workspace-context";
 import { getInvoice, updateInvoice, deleteInvoice } from "@/lib/firebase/invoices";
+import { getProject } from "@/lib/firebase/projects";
 import { getWorkspaceMembers } from "@/lib/firebase/workspaces";
 import type { Invoice, InvoiceStatus, WorkspaceMember } from "@/types";
 import { Badge } from "@/components/ui/badge";
@@ -20,14 +21,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
-  ArrowLeft,
-  Calendar,
   CheckCircle2,
   ChevronLeft,
   FileText,
   Loader2,
-  MoreHorizontal,
-  Printer,
   Send,
   Trash2,
   XCircle,
@@ -84,6 +81,7 @@ export default function InvoiceDetailPage() {
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
+  const [projectName, setProjectName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
@@ -115,6 +113,14 @@ export default function InvoiceDetailPage() {
   useEffect(() => {
     loadInvoice();
   }, [loadInvoice]);
+
+  // Fetch project name when invoice loads
+  useEffect(() => {
+    if (!invoice?.projectId) { setProjectName(null); return; }
+    getProject(invoice.projectId)
+      .then((p) => setProjectName(p?.name ?? null))
+      .catch(() => setProjectName(null));
+  }, [invoice?.projectId]);
 
   const client = useMemo(
     () => members.find((m) => m.userId === invoice?.clientId),
@@ -271,6 +277,11 @@ export default function InvoiceDetailPage() {
               <p className="text-xs text-muted-foreground uppercase font-semibold mb-1">Bill To</p>
               <p className="text-sm font-medium">{client.displayName}</p>
               <p className="text-sm text-muted-foreground">{client.email}</p>
+              {projectName && (
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Project: {projectName}
+                </p>
+              )}
             </div>
           )}
 
@@ -311,6 +322,24 @@ export default function InvoiceDetailPage() {
               <span className="text-muted-foreground">Tax ({invoice.taxRate}%)</span>
               <span>{formatCurrency(invoice.taxAmount, invoice.currency)}</span>
             </div>
+            {invoice.discount && invoice.discount.amount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Discount
+                  {invoice.discount.type === "percentage"
+                    ? ` (${invoice.discount.amount}%)`
+                    : ""}
+                </span>
+                <span className="text-green-600">
+                  -{formatCurrency(
+                    invoice.discount.type === "percentage"
+                      ? invoice.subtotal * (invoice.discount.amount / 100)
+                      : Math.min(invoice.discount.amount, invoice.subtotal + invoice.taxAmount),
+                    invoice.currency
+                  )}
+                </span>
+              </div>
+            )}
             <Separator />
             <div className="flex justify-between text-base font-bold">
               <span>Total</span>

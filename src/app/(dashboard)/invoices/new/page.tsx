@@ -1,10 +1,10 @@
 "use client";
 
 import { useWorkspace } from "@/contexts/workspace-context";
-import { createInvoice } from "@/lib/firebase/invoices";
+import { createInvoice, generateInvoiceNumber } from "@/lib/firebase/invoices";
+import { getProjects } from "@/lib/firebase/projects";
 import { getWorkspaceMembers } from "@/lib/firebase/workspaces";
-import type { InvoiceLineItem, WorkspaceMember } from "@/types";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import type { InvoiceDiscount, InvoiceLineItem, Project, WorkspaceMember } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,11 +19,21 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/lib/toast";
-import { ChevronLeft, Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  Calendar,
+  ChevronLeft,
+  Hash,
+  Loader2,
+  Percent,
+  Plus,
+  Tag,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,46 +53,127 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
+function toDateInputValue(date: Date): string {
+  return date.toISOString().split("T")[0];
+}
+
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+// ─── Form Helpers ─────────────────────────────────────────────────────────────
+
+function computeFinancials(
+  lineItems: InvoiceLineItem[],
+  taxRate: number,
+  discount: InvoiceDiscount | null
+) {
+  const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
+  const taxAmount = subtotal * (taxRate / 100);
+
+  let discountAmount = 0;
+  if (discount && discount.amount > 0) {
+    if (discount.type === "percentage") {
+      discountAmount = subtotal * (discount.amount / 100);
+    } else {
+      discountAmount = Math.min(discount.amount, subtotal + taxAmount);
+    }
+  }
+
+  const total = subtotal + taxAmount - discountAmount;
+
+  return { subtotal, taxAmount, discountAmount, total };
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
+
+const DEFAULT_TERMS = 30; // days
 
 export default function NewInvoicePage() {
   const router = useRouter();
   const { activeWorkspace, user } = useWorkspace();
 
+  // ── Data ────────────────────────────────────────────────────────────────────
   const [clients, setClients] = useState<WorkspaceMember[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Form state
+  // ── Invoice number ──────────────────────────────────────────────────────────
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+
+  // ── Form state ──────────────────────────────────────────────────────────────
   const [clientId, setClientId] = useState("");
+  const [projectId, setProjectId] = useState("");
+  const [issueDate, setIssueDate] = useState(toDateInputValue(new Date()));
+  const [dueDate, setDueDate] = useState(toDateInputValue(addDays(new Date(), DEFAULT_TERMS)));
   const [notes, setNotes] = useState("");
   const [taxRate, setTaxRate] = useState("0");
   const [lineItems, setLineItems] = useState<InvoiceLineItem[]>([
     { description: "", quantity: 1, unitPrice: 0, total: 0 },
   ]);
 
+  // ── Discount ────────────────────────────────────────────────────────────────
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [discountAmount, setDiscountAmount] = useState("0");
+
+  const discount: InvoiceDiscount | null = useMemo(() => {
+    if (!showDiscount || parseFloat(discountAmount) <= 0) return null;
+    return { type: discountType, amount: parseFloat(discountAmount) || 0 };
+  }, [showDiscount, discountType, discountAmount]);
+
+  // ── Load initial data ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!activeWorkspace?.id) return;
-    getWorkspaceMembers(activeWorkspace.id)
-      .then((m) => setClients(m.filter((m) => m.role === "client")))
-      .catch(() => toast.error("Failed to load clients"))
-      .finally(() => setLoading(false));
+    const load = async () => {
+      try {
+        const [memberData, projectData, invNum] = await Promise.all([
+          getWorkspaceMembers(activeWorkspace.id),
+          getProjects(activeWorkspace.id),
+          generateInvoiceNumber(activeWorkspace.id),
+        ]);
+        setClients(memberData.filter((m) => m.role === "client"));
+        setProjects(projectData);
+        setInvoiceNumber(invNum);
+      } catch {
+        toast.error("Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, [activeWorkspace?.id]);
 
+  // ── Projects filtered by selected client ────────────────────────────────────
+  const clientProjects = useMemo(
+    () => projects.filter((p) => p.clients.includes(clientId)),
+    [projects, clientId]
+  );
+
+  // ── When client changes, reset project selection ────────────────────────────
+  useEffect(() => {
+    setProjectId("");
+  }, [clientId]);
+
+  // ── When issue date changes, auto-update due date ───────────────────────────
+  useEffect(() => {
+    const parsed = new Date(issueDate + "T12:00:00");
+    if (!isNaN(parsed.getTime())) {
+      setDueDate(toDateInputValue(addDays(parsed, DEFAULT_TERMS)));
+    }
+  }, [issueDate]);
+
+  // ── Line item helpers ──────────────────────────────────────────────────────
   const updateLineItem = (index: number, field: keyof InvoiceLineItem, value: string | number) => {
     setLineItems((prev) => {
       const next = [...prev];
       next[index] = { ...next[index], [field]: value };
-
-      // Recompute total
-      const qty = typeof next[index].quantity === "string"
-        ? parseFloat(next[index].quantity as string) || 0
-        : next[index].quantity;
-      const price = typeof next[index].unitPrice === "string"
-        ? parseFloat(next[index].unitPrice as string) || 0
-        : next[index].unitPrice;
+      const qty = Number(next[index].quantity) || 0;
+      const price = Number(next[index].unitPrice) || 0;
       next[index].total = qty * price;
-
       return next;
     });
   };
@@ -96,10 +187,13 @@ export default function NewInvoicePage() {
     setLineItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const subtotal = lineItems.reduce((sum, item) => sum + item.total, 0);
-  const tax = subtotal * (parseFloat(taxRate) / 100);
-  const total = subtotal + tax;
+  // ── Financials ─────────────────────────────────────────────────────────────
+  const { subtotal, taxAmount, discountAmount: discAmount, total } = useMemo(
+    () => computeFinancials(lineItems, parseFloat(taxRate) || 0, discount),
+    [lineItems, taxRate, discount]
+  );
 
+  // ── Submit ──────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeWorkspace?.id || !user?.id) return;
@@ -116,10 +210,15 @@ export default function NewInvoicePage() {
     try {
       const id = await createInvoice(activeWorkspace.id, user.id, {
         clientId,
+        projectId: projectId || null,
+        invoiceNumber,
         lineItems: lineItems.filter((item) => item.description.trim()),
         taxRate: parseFloat(taxRate) || 0,
-        notes: notes.trim() || null,
+        discount: discount ?? undefined,
         currency: "USD",
+        notes: notes.trim() || null,
+        issueDate: new Date(issueDate + "T12:00:00"),
+        dueDate: new Date(dueDate + "T12:00:00"),
       });
       toast.success("Invoice created");
       router.push(`/invoices/${id}`);
@@ -130,13 +229,15 @@ export default function NewInvoicePage() {
     }
   };
 
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   if (loading) {
     return (
       <div className="max-w-3xl mx-auto space-y-6">
         <Skeleton className="h-8 w-48" />
         <Card>
           <CardContent className="p-6 space-y-4">
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-10 w-full" />
             ))}
           </CardContent>
@@ -158,11 +259,22 @@ export default function NewInvoicePage() {
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
-            <CardTitle>New Invoice</CardTitle>
-            <CardDescription>Create an invoice for a client.</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>New Invoice</CardTitle>
+                <CardDescription>Create an invoice for a client.</CardDescription>
+              </div>
+              {/* Invoice number badge */}
+              {invoiceNumber && (
+                <div className="flex items-center gap-1.5 rounded-md border bg-muted/50 px-3 py-1.5 text-sm font-medium">
+                  <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                  {invoiceNumber}
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Client Selection */}
+            {/* ── Client Selection ──────────────────────────────────────────── */}
             <div className="space-y-2">
               <Label htmlFor="client">
                 Client <span className="text-destructive">*</span>
@@ -187,9 +299,65 @@ export default function NewInvoicePage() {
               )}
             </div>
 
+            {/* ── Project Selection ─────────────────────────────────────────── */}
+            <div className="space-y-2">
+              <Label htmlFor="project">Project (optional)</Label>
+              <Select value={projectId} onValueChange={setProjectId} disabled={!clientId}>
+                <SelectTrigger id="project">
+                  <SelectValue
+                    placeholder={clientId ? "Select a project..." : "Select a client first"}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientProjects.length === 0 ? (
+                    <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                      No projects for this client
+                    </div>
+                  ) : (
+                    clientProjects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
             <Separator />
 
-            {/* Line Items */}
+            {/* ── Dates ─────────────────────────────────────────────────────── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="issue-date" className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  Issue Date
+                </Label>
+                <Input
+                  id="issue-date"
+                  type="date"
+                  value={issueDate}
+                  onChange={(e) => setIssueDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="due-date" className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  Due Date
+                </Label>
+                <Input
+                  id="due-date"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  min={issueDate}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* ── Line Items ────────────────────────────────────────────────── */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label>Line Items</Label>
@@ -253,12 +421,15 @@ export default function NewInvoicePage() {
 
             <Separator />
 
-            {/* Totals */}
+            {/* ── Totals & Tax & Discount ───────────────────────────────────── */}
             <div className="space-y-2 max-w-xs ml-auto">
+              {/* Subtotal */}
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
+
+              {/* Tax */}
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Tax</span>
@@ -273,10 +444,69 @@ export default function NewInvoicePage() {
                   />
                   <span className="text-xs text-muted-foreground">%</span>
                 </div>
-                <span className="text-sm">{formatCurrency(tax)}</span>
+                <span className="text-sm">{formatCurrency(taxAmount)}</span>
               </div>
+
+              {/* Discount */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Discount</span>
+                    <Switch
+                      checked={showDiscount}
+                      onCheckedChange={setShowDiscount}
+                      className="scale-75"
+                    />
+                  </div>
+                  {showDiscount && (
+                    <span className="text-sm text-green-600">-{formatCurrency(discAmount)}</span>
+                  )}
+                </div>
+                {showDiscount && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <Select value={discountType} onValueChange={(v) => setDiscountType(v as "percentage" | "fixed")}>
+                      <SelectTrigger className="h-8 w-24 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">
+                          <span className="flex items-center gap-1">
+                            <Percent className="h-3 w-3" />
+                            Percentage
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="fixed">
+                          <span className="flex items-center gap-1">
+                            <Tag className="h-3 w-3" />
+                            Fixed
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      min="0"
+                      max={discountType === "percentage" ? 100 : undefined}
+                      step={discountType === "percentage" ? "1" : "0.01"}
+                      placeholder="Amount"
+                      value={discountAmount}
+                      onChange={(e) => setDiscountAmount(e.target.value)}
+                      className="h-8 flex-1 text-xs text-right"
+                    />
+                    {discountType === "fixed" && (
+                      <span className="text-xs text-muted-foreground">USD</span>
+                    )}
+                    {discountType === "percentage" && (
+                      <span className="text-xs text-muted-foreground">%</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <Separator />
-              <div className="flex items-center justify-between text-sm font-bold">
+
+              {/* Total */}
+              <div className="flex items-center justify-between text-base font-bold">
                 <span>Total</span>
                 <span>{formatCurrency(total)}</span>
               </div>
@@ -284,7 +514,7 @@ export default function NewInvoicePage() {
 
             <Separator />
 
-            {/* Notes */}
+            {/* ── Notes ─────────────────────────────────────────────────────── */}
             <div className="space-y-2">
               <Label htmlFor="notes">Notes (optional)</Label>
               <Textarea
@@ -298,7 +528,7 @@ export default function NewInvoicePage() {
           </CardContent>
         </Card>
 
-        {/* Actions */}
+        {/* ── Actions ────────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-end gap-3 mt-6">
           <Button variant="outline" type="button" asChild>
             <Link href="/invoices">Cancel</Link>

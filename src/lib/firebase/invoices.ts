@@ -14,7 +14,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
-import type { Invoice, InvoiceStatus, InvoiceLineItem } from "@/types";
+import type { Invoice, InvoiceStatus, InvoiceLineItem, InvoiceDiscount } from "@/types";
 
 const COLLECTION = "invoices";
 
@@ -62,6 +62,7 @@ export interface CreateInvoiceData {
   invoiceNumber?: string;
   lineItems: InvoiceLineItem[];
   taxRate?: number;
+  discount?: InvoiceDiscount;
   currency?: string;
   notes?: string | null;
   issueDate?: Date;
@@ -82,7 +83,17 @@ export async function createInvoice(
   const subtotal = data.lineItems.reduce((sum, item) => sum + item.total, 0);
   const taxRate = data.taxRate ?? 0;
   const taxAmount = subtotal * (taxRate / 100);
-  const total = subtotal + taxAmount;
+
+  // Compute discount
+  let discountAmount = 0;
+  if (data.discount && data.discount.amount > 0) {
+    if (data.discount.type === "percentage") {
+      discountAmount = subtotal * (data.discount.amount / 100);
+    } else {
+      discountAmount = Math.min(data.discount.amount, subtotal + taxAmount);
+    }
+  }
+  const total = subtotal + taxAmount - discountAmount;
 
   const invoiceNumber =
     data.invoiceNumber || (await generateInvoiceNumber(workspaceId));
@@ -101,6 +112,7 @@ export async function createInvoice(
     subtotal,
     taxRate,
     taxAmount,
+    discount: data.discount || null,
     total,
     currency: data.currency || "USD",
     issueDate: Timestamp.fromDate(issueDate),
@@ -164,6 +176,7 @@ export interface UpdateInvoiceData {
   status?: InvoiceStatus;
   lineItems?: InvoiceLineItem[];
   taxRate?: number;
+  discount?: InvoiceDiscount | null;
   notes?: string | null;
   dueDate?: Date;
 }
@@ -180,12 +193,23 @@ export async function updateInvoice(id: string, data: UpdateInvoiceData): Promis
     updatedAt: serverTimestamp(),
   };
 
-  // Recompute financials if line items changed
+  // Recompute financials if line items or discount changed
   if (data.lineItems) {
     const subtotal = data.lineItems.reduce((sum, item) => sum + item.total, 0);
     const taxRate = (data.taxRate ?? 0);
     const taxAmount = subtotal * (taxRate / 100);
-    const total = subtotal + taxAmount;
+
+    const discount = data.discount !== undefined ? data.discount : (updatePayload.discount as InvoiceDiscount | null);
+    let discountAmount = 0;
+    if (discount && discount.amount > 0) {
+      if (discount.type === "percentage") {
+        discountAmount = subtotal * (discount.amount / 100);
+      } else {
+        discountAmount = Math.min(discount.amount, subtotal + taxAmount);
+      }
+    }
+
+    const total = subtotal + taxAmount - discountAmount;
     updatePayload.subtotal = subtotal;
     updatePayload.taxAmount = taxAmount;
     updatePayload.total = total;
