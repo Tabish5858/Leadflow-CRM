@@ -706,6 +706,137 @@ const DEMO_INVOICES: Invoice[] = [
   },
 ];
 
+// ─── Demo Contracts ────────────────────────────────────────────────────────────
+
+const DEMO_CONTRACT_SIGNERS: ContractSigner[] = [
+  {
+    id: "demo-signer-owner",
+    name: "Tabish Bin Ishfaq",
+    email: "tabishbinishfaq1122@gmail.com",
+    title: "Owner",
+    type: "owner",
+    status: "signed",
+    required: true,
+    signedAt: hoursAgo(2),
+  },
+  {
+    id: "demo-signer-client",
+    name: "Demo Client",
+    email: "myunidomain@gmail.com",
+    title: "Client",
+    type: "signer",
+    status: "signed",
+    required: true,
+    signedAt: hoursAgo(1),
+  },
+];
+
+const DEMO_CONTRACTS: Contract[] = [
+  {
+    id: "demo-contract-001",
+    workspaceId: DEMO_WORKSPACE_ID,
+    contractTitle: "Website Redesign Proposal",
+    type: "proposal",
+    status: "signed",
+    content: "<h2>Website Redesign</h2><p>A complete overhaul of the company website with modern design principles.</p><h3>Services</h3><ul><li>UX/UI Design</li><li>Frontend Development</li><li>CMS Integration</li></ul>",
+    clientId: "demo-user-002",
+    projectId: null,
+    signers: DEMO_CONTRACT_SIGNERS,
+    activities: [
+      { type: "created", userId: DEMO_USER_ID, userName: "Tabish Bin Ishfaq", timestamp: daysAgo(7), details: "Created" },
+      { type: "sent", userId: DEMO_USER_ID, userName: "Tabish Bin Ishfaq", timestamp: daysAgo(6), details: "Sent to client" },
+      { type: "signed", userId: "demo-signer-owner", userName: "Tabish Bin Ishfaq", timestamp: daysAgo(5), details: "Signed by owner" },
+      { type: "signed", userId: "demo-signer-client", userName: "Demo Client", timestamp: daysAgo(4), details: "Signed by client" },
+    ],
+    attachments: [],
+    signatures: [
+      { signer: "demo-signer-owner", signature: "Tabish Bin Ishfaq", signedAt: daysAgo(5) },
+      { signer: "demo-signer-client", signature: "Demo Client", signedAt: daysAgo(4) },
+    ],
+    dateSent: daysAgo(6),
+    dateSigned: daysAgo(4),
+    createdBy: DEMO_USER_ID,
+    createdAt: daysAgo(7),
+    updatedAt: daysAgo(4),
+  },
+  {
+    id: "demo-contract-002",
+    workspaceId: DEMO_WORKSPACE_ID,
+    contractTitle: "Social Media Management",
+    type: "contract",
+    status: "sent",
+    content: "<h2>Social Media Management Agreement</h2><p>Monthly social media management services including content creation and scheduling.</p>",
+    clientId: "demo-user-002",
+    projectId: null,
+    signers: [
+      { ...DEMO_CONTRACT_SIGNERS[0] },
+      { ...DEMO_CONTRACT_SIGNERS[1], status: "pending", signedAt: undefined },
+    ],
+    activities: [
+      { type: "created", userId: DEMO_USER_ID, userName: "Tabish Bin Ishfaq", timestamp: daysAgo(2), details: "Created" },
+      { type: "sent", userId: DEMO_USER_ID, userName: "Tabish Bin Ishfaq", timestamp: daysAgo(1), details: "Sent to client" },
+    ],
+    attachments: [],
+    signatures: [
+      { signer: "demo-signer-owner", signature: "Tabish Bin Ishfaq", signedAt: daysAgo(1) },
+    ],
+    dateSent: daysAgo(1),
+    dateSigned: null,
+    createdBy: DEMO_USER_ID,
+    createdAt: daysAgo(2),
+    updatedAt: daysAgo(1),
+  },
+  {
+    id: "demo-contract-003",
+    workspaceId: DEMO_WORKSPACE_ID,
+    contractTitle: "Draft Service Agreement",
+    type: "contract",
+    status: "draft",
+    content: "<p>Draft content — pending review.</p>",
+    clientId: "demo-user-002",
+    projectId: null,
+    signers: [
+      { ...DEMO_CONTRACT_SIGNERS[0], status: "pending", signedAt: undefined },
+      { ...DEMO_CONTRACT_SIGNERS[1], status: "pending", signedAt: undefined },
+    ],
+    activities: [
+      { type: "created", userId: DEMO_USER_ID, userName: "Tabish Bin Ishfaq", timestamp: daysAgo(1), details: "Created" },
+    ],
+    attachments: [],
+    signatures: [],
+    dateSent: null,
+    dateSigned: null,
+    createdBy: DEMO_USER_ID,
+    createdAt: daysAgo(1),
+    updatedAt: daysAgo(1),
+  },
+];
+
+const DEMO_TEMPLATES: ContractTemplate[] = [
+  {
+    id: "demo-template-001",
+    workspaceId: DEMO_WORKSPACE_ID,
+    templateTitle: "Standard Service Agreement",
+    templateDescription: "A general-purpose service agreement template for recurring work.",
+    type: "contract",
+    content: "<h2>Service Agreement</h2><p>Standard terms and conditions for ongoing services.</p>",
+    status: "draft",
+    createdAt: daysAgo(30),
+    updatedAt: daysAgo(15),
+  },
+  {
+    id: "demo-template-002",
+    workspaceId: DEMO_WORKSPACE_ID,
+    templateTitle: "Web Development Proposal",
+    templateDescription: "Project proposal for web development services.",
+    type: "proposal",
+    content: "<h2>Web Development Proposal</h2><p>Outline of web development project scope and pricing.</p>",
+    status: "draft",
+    createdAt: daysAgo(20),
+    updatedAt: daysAgo(10),
+  },
+];
+
 // ─── Mutable Store (for writes in demo mode) ──────────────────────────────────
 
 /**
@@ -720,8 +851,8 @@ export class DemoStore {
   notifications: Notification[] = [...DEMO_NOTIFICATIONS];
   meetings: Meeting[] = [...DEMO_MEETINGS];
   private _invoices: Invoice[] = [...DEMO_INVOICES];
-  private _contracts: Contract[] = [];
-  private _templates: ContractTemplate[] = [];
+  private _contracts: Contract[] = [...DEMO_CONTRACTS];
+  private _templates: ContractTemplate[] = [...DEMO_TEMPLATES];
 
   private _convMessageIndex: Map<string, Message[]> = new Map();
   private _notifListeners: Set<(notifications: Notification[]) => void> = new Set();

@@ -85,6 +85,21 @@ export default function NewContractPage() {
     const loadData = async () => {
       setLoading(true);
       try {
+        // Demo mode: use demo data
+        const isDemo = typeof window !== "undefined" && localStorage.getItem("leadflow_demo_mode") === "true";
+
+        if (isDemo) {
+          const { demoStore } = await import("@/lib/demo/demo-data");
+          // Demo mode uses predefined client/workspace data
+          setClients([
+            { id: "demo-user-002", name: "Demo Client", email: "myunidomain@gmail.com" },
+          ]);
+          const demosProjs = demoStore.getProjects().filter((p) => p.workspaceId === activeWorkspace.id);
+          setProjects(demosProjs.map((p) => ({ id: p.id, name: p.name, status: p.status })));
+          setLoading(false);
+          return;
+        }
+
         // Fetch workspace members with role "client" from users collection
         const workspaceRef = await getDocs(
           query(
