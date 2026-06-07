@@ -364,7 +364,7 @@ function ClientPaymentProof({ deliverable, userId, workspaceId, onUpdate }: {
       <p className="text-xs font-medium flex items-center gap-1"><DollarSign className="h-3 w-3" /> Payment Required</p>
       <p className="text-[10px] text-muted-foreground">Upload proof of payment to view/download this deliverable.</p>
       {deliverable.paymentProof?.status === "pending" ? (
-        <p className="text-xs text-warning">Payment proof submitted — awaiting review.</p>
+        <p className="text-xs text-warning">Payment proof submitted - awaiting review.</p>
       ) : deliverable.paymentProof?.status === "rejected" ? (
         <div>
           <p className="text-xs text-destructive">Payment rejected: {deliverable.paymentProof.reviewNotes}</p>

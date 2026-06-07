@@ -72,7 +72,12 @@ function ClientInvoicesPage() {
     // Never show drafts to clients
     let visible = invoices.filter((inv) => inv.status !== "draft");
     if (statusFilter !== "all") visible = visible.filter((inv) => inv.status === statusFilter);
-    return visible;
+    // Paid invoices at the bottom
+    return [...visible].sort((a, b) => {
+      if (a.status === "paid" && b.status !== "paid") return 1;
+      if (a.status !== "paid" && b.status === "paid") return -1;
+      return 0;
+    });
   }, [invoices, statusFilter]);
 
   // Exclude drafts from summary

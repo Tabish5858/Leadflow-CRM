@@ -491,18 +491,27 @@ export default function InvoiceDetailPage() {
             <DialogDescription>
               {showReviewDialog === "approve"
                 ? "This will mark the invoice as paid and confirm the payment proof."
-                : "Reject the payment proof so the client can upload a corrected version."}
+                : "The client will see your reason. They can then upload a corrected proof."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <Label htmlFor="review-notes">Notes (optional)</Label>
+            <Label htmlFor="review-notes">
+              {showReviewDialog === "approve" ? "Notes (optional)" : "Reason for rejection *"}
+            </Label>
             <Textarea
               id="review-notes"
-              placeholder={showReviewDialog === "approve" ? "Approval notes..." : "Reason for rejection..."}
+              placeholder={
+                showReviewDialog === "approve"
+                  ? "Approval notes..."
+                  : "Explain why the proof was rejected so the client can fix it..."
+              }
               value={reviewNotes}
               onChange={(e) => setReviewNotes(e.target.value)}
               rows={3}
             />
+            {showReviewDialog === "reject" && !reviewNotes.trim() && (
+              <p className="text-xs text-destructive">Please provide a reason for rejection.</p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setShowReviewDialog(null); setReviewNotes(""); }}>
@@ -512,6 +521,10 @@ export default function InvoiceDetailPage() {
               variant={showReviewDialog === "approve" ? "default" : "destructive"}
               onClick={async () => {
                 if (!invoice) return;
+                if (showReviewDialog === "reject" && !reviewNotes.trim()) {
+                  toast.error("Please provide a reason for rejection");
+                  return;
+                }
                 setReviewing(true);
                 try {
                   if (showReviewDialog === "approve") {
@@ -521,7 +534,7 @@ export default function InvoiceDetailPage() {
                     );
                     toast.success("Payment approved — invoice marked as paid");
                   } else {
-                    await rejectPaymentProof(invoice.id, user?.id || "", reviewNotes || undefined);
+                    await rejectPaymentProof(invoice.id, user?.id || "", reviewNotes);
                     setInvoice((prev) =>
                       prev ? { ...prev, status: "sent" as InvoiceStatus, paymentProof: { ...prev.paymentProof!, status: "rejected", reviewedBy: user?.id, reviewedAt: { toDate: () => new Date() } as any } } : prev
                     );
@@ -535,7 +548,10 @@ export default function InvoiceDetailPage() {
                   setReviewNotes("");
                 }
               }}
-              disabled={reviewing}
+              disabled={
+                reviewing ||
+                (showReviewDialog === "reject" && !reviewNotes.trim())
+              }
             >
               {reviewing ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{showReviewDialog === "approve" ? "Approving..." : "Rejecting..."}</>

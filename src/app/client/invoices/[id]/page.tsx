@@ -304,7 +304,7 @@ export default function ClientInvoiceDetailPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm text-amber-600">
                 <Clock className="h-5 w-5" />
-                <span>Payment proof submitted — awaiting review</span>
+                <span>Payment proof submitted - awaiting review</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <FileText className="h-4 w-4" />

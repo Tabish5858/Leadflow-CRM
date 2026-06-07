@@ -109,7 +109,12 @@ export default function InvoicesPage() {
           inv.notes?.toLowerCase().includes(q)
       );
     }
-    return items;
+    // Paid invoices at the bottom, rest sorted by createdAt desc (already ordered)
+    return [...items].sort((a, b) => {
+      if (a.status === "paid" && b.status !== "paid") return 1;
+      if (a.status !== "paid" && b.status === "paid") return -1;
+      return 0;
+    });
   }, [invoices, statusFilter, searchQuery]);
 
   const handleMarkPaid = async (invoice: Invoice) => {
