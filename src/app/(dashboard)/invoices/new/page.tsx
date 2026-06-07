@@ -3,17 +3,17 @@
 import { useWorkspace } from "@/contexts/workspace-context";
 import { createInvoice, generateInvoiceNumber } from "@/lib/firebase/invoices";
 import { getProjects } from "@/lib/firebase/projects";
+import { getProjectTimeEntries, markTimeEntriesAsBilled } from "@/lib/firebase/project-time-entries";
 import { getWorkspaceMembers } from "@/lib/firebase/workspaces";
-import type { InvoiceDiscount, InvoiceLineItem, WorkspaceMember } from "@/types";
-
-// ─── Local type for project data (Project type not exported from @/types) ────
-interface SelectableProject {
-  id: string;
-  name: string;
-  clients: string[];
-}
+import type {
+  InvoiceDiscount,
+  InvoiceLineItem,
+  WorkspaceMember,
+  ProjectTimeEntry,
+} from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,31 +27,38 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { toast } from "@/lib/toast";
 import {
   Calendar,
   ChevronLeft,
+  Clock,
   Hash,
   Loader2,
   Percent,
   Plus,
   Tag,
   Trash2,
+  User,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Local type for project data ─────────────────────────────────────────────
 
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+interface SelectableProject {
+  id: string;
+  name: string;
+  clients: string[];
 }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
@@ -70,7 +77,13 @@ function addDays(date: Date, days: number): Date {
   return result;
 }
 
-// ─── Form Helpers ─────────────────────────────────────────────────────────────
+function formatMinutes(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}h ${m > 0 ? `${m}m` : ""}` : `${m}m`;
+}
+
+// ─── Financials ──────────────────────────────────────────────────────────────
 
 function computeFinancials(
   lineItems: InvoiceLineItem[],
@@ -90,33 +103,35 @@ function computeFinancials(
   }
 
   const total = subtotal + taxAmount - discountAmount;
-
   return { subtotal, taxAmount, discountAmount, total };
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-const DEFAULT_TERMS = 30; // days
+const DEFAULT_TERMS = 30;
 
 export default function NewInvoicePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { activeWorkspace, user } = useWorkspace();
 
-  // ── Pre-fill from URL params (when coming from project page) ────────────────
+  // ── Pre-fill from URL params ──────────────────────────────────────────────
   const prefillClientId = searchParams.get("clientId") || "";
   const prefillProjectId = searchParams.get("projectId") || "";
 
-  // ── Data ────────────────────────────────────────────────────────────────────
+  // ── Data ──────────────────────────────────────────────────────────────────
   const [clients, setClients] = useState<WorkspaceMember[]>([]);
   const [projects, setProjects] = useState<SelectableProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // ── Invoice number ──────────────────────────────────────────────────────────
+  // ── Invoice number ────────────────────────────────────────────────────────
   const [invoiceNumber, setInvoiceNumber] = useState("");
 
-  // ── Form state ──────────────────────────────────────────────────────────────
+  // ── Invoice type ──────────────────────────────────────────────────────────
+  const [invoiceType, setInvoiceType] = useState<"fixed" | "hourly">("fixed");
+
+  // ── Form state ────────────────────────────────────────────────────────────
   const [clientId, setClientId] = useState(prefillClientId);
   const [projectId, setProjectId] = useState(prefillProjectId);
   const [issueDate, setIssueDate] = useState(toDateInputValue(new Date()));
@@ -127,7 +142,7 @@ export default function NewInvoicePage() {
     { description: "", quantity: 1, unitPrice: 0, total: 0 },
   ]);
 
-  // ── Discount ────────────────────────────────────────────────────────────────
+  // ── Discount ──────────────────────────────────────────────────────────────
   const [showDiscount, setShowDiscount] = useState(false);
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
   const [discountAmount, setDiscountAmount] = useState("0");
@@ -137,7 +152,75 @@ export default function NewInvoicePage() {
     return { type: discountType, amount: parseFloat(discountAmount) || 0 };
   }, [showDiscount, discountType, discountAmount]);
 
-  // ── Load initial data ───────────────────────────────────────────────────────
+  // ── Hourly billing ───────────────────────────────────────────────────────
+  const [hourlyRate, setHourlyRate] = useState("75");
+  const [timeEntries, setTimeEntries] = useState<ProjectTimeEntry[]>([]);
+  const [loadingEntries, setLoadingEntries] = useState(false);
+  const [selectedEntryIds, setSelectedEntryIds] = useState<Set<string>>(new Set());
+
+  // Fetch unbilled billable time entries when project is selected in hourly mode
+  useEffect(() => {
+    if (invoiceType !== "hourly" || !projectId) {
+      setTimeEntries([]);
+      setSelectedEntryIds(new Set());
+      return;
+    }
+    setLoadingEntries(true);
+    getProjectTimeEntries(projectId)
+      .then((entries) => {
+        setTimeEntries(entries.filter((e) => e.billable && !e.billed));
+        setSelectedEntryIds(new Set());
+      })
+      .catch(() => toast.error("Failed to load time entries"))
+      .finally(() => setLoadingEntries(false));
+  }, [invoiceType, projectId]);
+
+  // Reset selections when project changes
+  useEffect(() => { setSelectedEntryIds(new Set()); }, [projectId]);
+
+  // Toggle a time entry selection
+  const toggleEntry = (id: string) => {
+    setSelectedEntryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Add selected time entries as line items
+  const addSelectedEntries = () => {
+    const rate = parseFloat(hourlyRate) || 0;
+    const entries = timeEntries.filter((e) => selectedEntryIds.has(e.id));
+    const newItems: InvoiceLineItem[] = entries.map((e) => {
+      const hours = Math.round((e.totalTime / 60) * 100) / 100;
+      return {
+        description: e.description || `Time entry (${e.date.toDate().toLocaleDateString()})`,
+        quantity: hours || 1,
+        unitPrice: rate,
+        total: (hours || 1) * rate,
+        serviceType: "hourly",
+      };
+    });
+    setLineItems((prev) => {
+      // If the first item is blank (default), replace it
+      if (prev.length === 1 && !prev[0].description && prev[0].total === 0) {
+        return newItems;
+      }
+      return [...prev, ...newItems];
+    });
+    setSelectedEntryIds(new Set());
+    toast.success(`${entries.length} time entr${entries.length === 1 ? "y" : "ies"} added`);
+  };
+
+  // Get selected entries total hours
+  const selectedHours = useMemo(() => {
+    return timeEntries
+      .filter((e) => selectedEntryIds.has(e.id))
+      .reduce((sum, e) => sum + e.totalTime, 0);
+  }, [timeEntries, selectedEntryIds]);
+
+  // ── Load initial data ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!activeWorkspace?.id) return;
     let cancelled = false;
@@ -158,27 +241,22 @@ export default function NewInvoicePage() {
       }
     };
 
-    // Fetch invoice number separately to avoid blocking the form
     generateInvoiceNumber(activeWorkspace.id)
       .then((num) => { if (!cancelled) setInvoiceNumber(num); })
-      .catch(() => { /* invoice number is non-critical; user can see it after save */ });
+      .catch(() => {});
 
     load();
     return () => { cancelled = true; };
   }, [activeWorkspace?.id]);
 
-  // ── Projects filtered by selected client ────────────────────────────────────
+  // ── Projects filtered by selected client ─────────────────────────────────
   const clientProjects = useMemo(
     () => projects.filter((p) => p.clients.includes(clientId)),
     [projects, clientId]
   );
 
-  // ── When client changes, reset project selection ────────────────────────────
-  useEffect(() => {
-    setProjectId("");
-  }, [clientId]);
+  useEffect(() => { setProjectId(""); }, [clientId]);
 
-  // ── When issue date changes, auto-update due date ───────────────────────────
   useEffect(() => {
     const parsed = new Date(issueDate + "T12:00:00");
     if (!isNaN(parsed.getTime())) {
@@ -186,7 +264,7 @@ export default function NewInvoicePage() {
     }
   }, [issueDate]);
 
-  // ── Line item helpers ──────────────────────────────────────────────────────
+  // ── Line item helpers ────────────────────────────────────────────────────
   const updateLineItem = (index: number, field: keyof InvoiceLineItem, value: string | number) => {
     setLineItems((prev) => {
       const next = [...prev];
@@ -207,13 +285,13 @@ export default function NewInvoicePage() {
     setLineItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // ── Financials ─────────────────────────────────────────────────────────────
+  // ── Financials ───────────────────────────────────────────────────────────
   const { subtotal, taxAmount, discountAmount: discAmount, total } = useMemo(
     () => computeFinancials(lineItems, parseFloat(taxRate) || 0, discount),
     [lineItems, taxRate, discount]
   );
 
-  // ── Submit ──────────────────────────────────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeWorkspace?.id || !user?.id) return;
@@ -240,6 +318,17 @@ export default function NewInvoicePage() {
         issueDate: new Date(issueDate + "T12:00:00"),
         dueDate: new Date(dueDate + "T12:00:00"),
       });
+
+      // Mark time entries as billed (hourly mode)
+      if (invoiceType === "hourly" && selectedEntryIds.size > 0) {
+        const billedIds = timeEntries
+          .filter((e) => selectedEntryIds.has(e.id))
+          .map((e) => e.id);
+        if (billedIds.length > 0) {
+          markTimeEntriesAsBilled(billedIds, id, invoiceNumber).catch(() => {});
+        }
+      }
+
       toast.success("Invoice created");
       router.push(`/invoices/${id}`);
     } catch {
@@ -249,7 +338,7 @@ export default function NewInvoicePage() {
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -284,7 +373,6 @@ export default function NewInvoicePage() {
                 <CardTitle>New Invoice</CardTitle>
                 <CardDescription>Create an invoice for a client.</CardDescription>
               </div>
-              {/* Invoice number badge */}
               {invoiceNumber && (
                 <div className="flex items-center gap-1.5 rounded-md border bg-muted/50 px-3 py-1.5 text-sm font-medium">
                   <Hash className="h-3.5 w-3.5 text-muted-foreground" />
@@ -294,6 +382,24 @@ export default function NewInvoicePage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* ── Invoice Type Toggle ──────────────────────────────────────── */}
+            <Tabs
+              value={invoiceType}
+              onValueChange={(v) => setInvoiceType(v as "fixed" | "hourly")}
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="fixed">Fixed Price</TabsTrigger>
+                <TabsTrigger value="hourly">Hourly / Tracked Time</TabsTrigger>
+              </TabsList>
+              <div className="mt-1 text-xs text-muted-foreground">
+                {invoiceType === "fixed"
+                  ? "Manually enter line items with descriptions, quantities, and prices."
+                  : "Bill tracked time entries at an hourly rate. Manual items can still be added."}
+              </div>
+            </Tabs>
+
+            <Separator />
+
             {/* ── Client Selection ──────────────────────────────────────────── */}
             <div className="space-y-2">
               <Label htmlFor="client">
@@ -377,6 +483,105 @@ export default function NewInvoicePage() {
 
             <Separator />
 
+            {/* ── Hourly: Tracked Time Section ─────────────────────────────── */}
+            {invoiceType === "hourly" && (
+              <div className="space-y-4 rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Billable Tracked Time</span>
+                  </div>
+                </div>
+
+                {/* Hourly rate */}
+                <div className="flex items-center gap-3">
+                  <Label htmlFor="hourly-rate" className="shrink-0 text-sm">
+                    Hourly Rate
+                  </Label>
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm text-muted-foreground">$</span>
+                    <Input
+                      id="hourly-rate"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={hourlyRate}
+                      onChange={(e) => setHourlyRate(e.target.value)}
+                      className="h-8 w-20 text-sm"
+                    />
+                    <span className="text-sm text-muted-foreground">/hr</span>
+                  </div>
+                </div>
+
+                {/* Time entries list */}
+                {!projectId ? (
+                  <p className="text-sm text-muted-foreground py-2">
+                    Select a project to see billable tracked time.
+                  </p>
+                ) : loadingEntries ? (
+                  <Skeleton className="h-20 w-full" />
+                ) : timeEntries.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2">
+                    No unbilled billable time entries for this project.
+                  </p>
+                ) : (
+                  <>
+                    <div className="max-h-48 space-y-1 overflow-y-auto">
+                      {timeEntries.map((entry) => (
+                        <label
+                          key={entry.id}
+                          className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50 cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={selectedEntryIds.has(entry.id)}
+                            onCheckedChange={() => toggleEntry(entry.id)}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-xs font-medium">
+                              {entry.description || "No description"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {entry.date.toDate().toLocaleDateString()}
+                              {entry.memberId && (
+                                <>
+                                  {" "}&middot;{" "}
+                                  <User className="h-3 w-3 inline-block" />
+                                </>
+                              )}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs font-medium">
+                              {formatMinutes(entry.totalTime)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              ${(Math.round((entry.totalTime / 60) * 100) / 100 * (parseFloat(hourlyRate) || 0)).toFixed(2)}
+                            </p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-xs text-muted-foreground">
+                        {selectedEntryIds.size} selected &middot;{" "}
+                        {formatMinutes(selectedHours)} total
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={selectedEntryIds.size === 0}
+                        onClick={addSelectedEntries}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add to Invoice
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* ── Line Items ────────────────────────────────────────────────── */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -443,13 +648,10 @@ export default function NewInvoicePage() {
 
             {/* ── Totals & Tax & Discount ───────────────────────────────────── */}
             <div className="space-y-2 max-w-xs ml-auto">
-              {/* Subtotal */}
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
-
-              {/* Tax */}
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Tax</span>
@@ -472,15 +674,9 @@ export default function NewInvoicePage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Discount</span>
-                    <Switch
-                      checked={showDiscount}
-                      onCheckedChange={setShowDiscount}
-                      className="scale-75"
-                    />
+                    <Switch checked={showDiscount} onCheckedChange={setShowDiscount} className="scale-75" />
                   </div>
-                  {showDiscount && (
-                    <span className="text-sm text-green-600">-{formatCurrency(discAmount)}</span>
-                  )}
+                  {showDiscount && <span className="text-sm text-green-600">-{formatCurrency(discAmount)}</span>}
                 </div>
                 {showDiscount && (
                   <div className="flex items-center gap-2 pt-1">
@@ -490,16 +686,10 @@ export default function NewInvoicePage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="percentage">
-                          <span className="flex items-center gap-1">
-                            <Percent className="h-3 w-3" />
-                            Percentage
-                          </span>
+                          <span className="flex items-center gap-1"><Percent className="h-3 w-3" />Percentage</span>
                         </SelectItem>
                         <SelectItem value="fixed">
-                          <span className="flex items-center gap-1">
-                            <Tag className="h-3 w-3" />
-                            Fixed
-                          </span>
+                          <span className="flex items-center gap-1"><Tag className="h-3 w-3" />Fixed</span>
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -513,19 +703,13 @@ export default function NewInvoicePage() {
                       onChange={(e) => setDiscountAmount(e.target.value)}
                       className="h-8 flex-1 text-xs text-right"
                     />
-                    {discountType === "fixed" && (
-                      <span className="text-xs text-muted-foreground">USD</span>
-                    )}
-                    {discountType === "percentage" && (
-                      <span className="text-xs text-muted-foreground">%</span>
-                    )}
+                    {discountType === "fixed" && <span className="text-xs text-muted-foreground">USD</span>}
+                    {discountType === "percentage" && <span className="text-xs text-muted-foreground">%</span>}
                   </div>
                 )}
               </div>
 
               <Separator />
-
-              {/* Total */}
               <div className="flex items-center justify-between text-base font-bold">
                 <span>Total</span>
                 <span>{formatCurrency(total)}</span>
@@ -548,17 +732,14 @@ export default function NewInvoicePage() {
           </CardContent>
         </Card>
 
-        {/* ── Actions ────────────────────────────────────────────────────────── */}
+        {/* ── Actions ──────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-end gap-3 mt-6">
           <Button variant="outline" type="button" asChild>
             <Link href="/invoices">Cancel</Link>
           </Button>
           <Button type="submit" disabled={submitting || !clientId}>
             {submitting ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creating...
-              </>
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
             ) : (
               "Create Invoice"
             )}

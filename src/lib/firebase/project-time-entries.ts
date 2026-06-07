@@ -74,3 +74,22 @@ export async function deleteTimeEntry(id: string): Promise<void> {
     updatedAt: serverTimestamp(),
   });
 }
+
+/**
+ * Mark multiple time entries as billed on a given invoice.
+ */
+export async function markTimeEntriesAsBilled(
+  entryIds: string[],
+  invoiceId: string,
+  invoiceNumber: string
+): Promise<void> {
+  const writes = entryIds.map((id) =>
+    updateDoc(doc(db, COLLECTION, id), {
+      billed: true,
+      invoiceId,
+      invoiceNumber,
+      updatedAt: serverTimestamp(),
+    })
+  );
+  await Promise.all(writes);
+}
