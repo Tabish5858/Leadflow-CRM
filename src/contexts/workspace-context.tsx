@@ -49,6 +49,8 @@ interface WorkspaceContextValue {
   switchWorkspace: (workspaceId: string) => Promise<void>;
   createNewWorkspace: (name: string) => Promise<string>;
   refreshWorkspaces: () => void;
+  /** Re-read the user document from Firestore. Call after profile updates. */
+  refreshUser: () => Promise<void>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -230,6 +232,26 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
+  const refreshUser = useCallback(async () => {
+    const uid = user?.id || auth.currentUser?.uid;
+    if (!uid) return;
+    try {
+      const userRef = doc(db, "users", uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const freshData = userSnap.data() as User;
+        if (!freshData.id) freshData.id = uid;
+        // Preserve the effective role so it doesn't flash to owner on refresh
+        if (activeWorkspace) {
+          freshData.role = getEffectiveRole(freshData, activeWorkspace.id);
+        }
+        setUser(freshData);
+      }
+    } catch (error) {
+      console.error("Failed to refresh user:", error);
+    }
+  }, [user, activeWorkspace]);
+
   const value = useMemo(() => ({
     user,
     workspaces,
@@ -238,7 +260,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     switchWorkspace,
     createNewWorkspace,
     refreshWorkspaces,
-  }), [user, workspaces, activeWorkspace, loading, switchWorkspace, createNewWorkspace, refreshWorkspaces]);
+    refreshUser,
+  }), [user, workspaces, activeWorkspace, loading, switchWorkspace, createNewWorkspace, refreshWorkspaces, refreshUser]);
 
   return (
     <WorkspaceContext.Provider value={value}>

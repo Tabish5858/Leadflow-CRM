@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Loader2, Users, X, Plus } from "lucide-react";
 import { getWorkspaceMembers } from "@/lib/firebase/workspaces";
@@ -24,7 +24,7 @@ interface ManageGroupDialogProps {
   conversation: Conversation;
   workspaceId: string;
   currentUserId: string;
-  memberMap: Map<string, string>;
+  memberMap: Map<string, { displayName: string; photoURL?: string | null }>;
   onUpdateMembers: (addedIds: string[], removedIds: string[]) => Promise<void>;
 }
 
@@ -101,7 +101,7 @@ export function ManageGroupDialog({
 
   const getMemberName = (userId: string, idx: number): string => {
     if (idx >= 0 && participantNames[idx]) return participantNames[idx];
-    return memberMap.get(userId) || allMembers.find((m) => m.userId === userId)?.displayName || "Unknown";
+    return memberMap.get(userId)?.displayName || allMembers.find((m) => m.userId === userId)?.displayName || "Unknown";
   };
 
   const handleSave = async () => {
@@ -131,6 +131,7 @@ export function ManageGroupDialog({
     return (
       <div className="flex items-center gap-3 py-2">
         <Avatar className="h-8 w-8 border shrink-0">
+          <AvatarImage src={member.photoURL || undefined} />
           <AvatarFallback className="text-xs bg-primary/10 text-primary">
             {getInitials(name)}
           </AvatarFallback>

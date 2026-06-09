@@ -17,7 +17,7 @@ import {
   Timer,
   User,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function getInitials(name: string): string {
   return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -233,6 +233,7 @@ export default function ProjectTimeTracking({ projectId, workspaceId, userId, me
                   const entryMember = members.find((m) => m.userId === (entry.memberId || ""));
                   return entryMember ? (
                     <Avatar className="h-8 w-8">
+                      <AvatarImage src={entryMember.photoURL || undefined} />
                       <AvatarFallback className="bg-primary/10 text-primary text-[9px]">{getInitials(entryMember.displayName)}</AvatarFallback>
                     </Avatar>
                   ) : (

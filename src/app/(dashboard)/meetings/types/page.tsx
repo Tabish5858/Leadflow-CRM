@@ -6,6 +6,7 @@ import { usePermissions } from "@/lib/hooks/use-permissions";
 import { getApiAuthHeaders } from "@/lib/api/client";
 import { MeetingTypeDialog } from "@/components/meetings/meeting-type-dialog";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
   Card,
@@ -126,8 +127,20 @@ export default function MeetingTypesPage() {
 
   if (wsLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="space-y-4 p-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-lg border border-border p-4 space-y-2">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-64" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -164,8 +177,14 @@ export default function MeetingTypesPage() {
       </div>
 
       {loading && (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-lg border border-border p-4 space-y-2">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-64" />
+            </div>
+          ))}
         </div>
       )}
 

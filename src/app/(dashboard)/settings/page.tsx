@@ -98,7 +98,7 @@ const CalendarConnection = dynamic(() => import("@/components/settings/calendar-
 type Tab = "profile" | "workspace" | "members" | "preferences" | "integrations" | "client-portal";
 
 export default function SettingsPage() {
-  const { user, activeWorkspace, workspaces, switchWorkspace, refreshWorkspaces } = useWorkspace();
+  const { user, activeWorkspace, workspaces, switchWorkspace, refreshWorkspaces, refreshUser } = useWorkspace();
   const { firebaseUser } = useAuth();
   const router = useRouter();
   const VALID_SETTINGS_TABS: Tab[] = ["profile","workspace","members","preferences","integrations","client-portal"];
@@ -258,8 +258,9 @@ export default function SettingsPage() {
         displayName: trimmed,
         photoURL: profilePhotoURL.trim() || null,
       });
-      toast.success("Profile updated");
+      await refreshUser();
       refreshWorkspaces();
+      toast.success("Profile updated");
     } catch {
       toast.error("Failed to update profile");
     } finally {
@@ -575,7 +576,25 @@ export default function SettingsPage() {
                     currentUrl={profilePhotoURL || null}
                     endpoint="/api/upload/avatar"
                     workspaceId={activeWorkspace?.id || ""}
-                    onUploaded={(url) => setProfilePhotoURL(url)}
+                    onUploaded={async (url) => {
+                      setProfilePhotoURL(url);
+                      // Persist immediately so it survives reload
+                      if (user) {
+                        try {
+                          const { doc, updateDoc } = await import("firebase/firestore");
+                          const { db } = await import("@/lib/firebase/client");
+                          await updateDoc(doc(db, "users", user.id), {
+                            photoURL: url || null,
+                            updatedAt: new Date(),
+                          });
+                          // Refresh user context so sidebar updates immediately
+                          await refreshUser();
+                          toast.success(url ? "Photo uploaded" : "Photo removed");
+                        } catch {
+                          toast.error("Failed to save photo");
+                        }
+                      }
+                    }}
                     label="Upload Photo"
                     className="mt-2"
                   />

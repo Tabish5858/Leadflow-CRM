@@ -10,7 +10,7 @@ import { NewGroupDialog } from "@/components/messages/new-group-dialog";
 import { NewMemberConversationDialog } from "@/components/messages/new-member-conversation-dialog";
 import { RequireModuleAccess } from "@/components/shared/require-module-access";
 import { getApiAuthHeaders } from "@/lib/api/client";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -48,7 +48,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 function getConversationName(
   conv: Conversation,
   currentUserId: string,
-  memberMap: Map<string, string>
+  memberMap: Map<string, { displayName: string; photoURL?: string | null }>
 ): { name: string; detail: string; isMember: boolean; isGroup: boolean } {
   const isMember = conv.type === "member" || (!conv.type && !(conv.leadName || conv.leadEmail));
   if (isMember) {
@@ -66,7 +66,7 @@ function getConversationName(
         .filter((id) => id !== currentUserId)
         .map((id, i) => {
           const idx = ids.indexOf(id);
-          return names[idx] || memberMap.get(id) || "Unknown";
+          return names[idx] || memberMap.get(id)?.displayName || "Unknown";
         });
       const displayName = otherNames.slice(0, 3).join(", ");
       const suffix = otherNames.length > 3 ? ` +${otherNames.length - 3}` : "";
@@ -80,7 +80,7 @@ function getConversationName(
     }
     const otherId = ids.find((id) => id !== currentUserId);
     if (otherId && memberMap.has(otherId)) {
-      return { name: memberMap.get(otherId)!, detail: "Workspace member", isMember: true, isGroup: false };
+      return { name: memberMap.get(otherId)!.displayName, detail: "Workspace member", isMember: true, isGroup: false };
     }
     return { name: names[0] || "Team Member", detail: "Workspace member", isMember: true, isGroup: false };
   }
@@ -694,7 +694,7 @@ export default function MessagesPage() {
   // ─── Member name lookup map ──────────────────────────────────────────
 
   const memberMap = useMemo(
-    () => new Map(workspaceMembers.map((m) => [m.userId, m.displayName])),
+    () => new Map(workspaceMembers.map((m) => [m.userId, { displayName: m.displayName, photoURL: m.photoURL }])),
     [workspaceMembers]
   );
 
@@ -898,10 +898,14 @@ export default function MessagesPage() {
                       user?.role === "admin" ||
                       activeWorkspace?.ownerId === user?.id
                     );
+                    // Look up the other participant's photoURL from memberMap
+                    const otherId = !isGroup ? selected.participantIds.find(id => id !== user?.id) : undefined;
+                    const otherPhotoURL = otherId ? memberMap.get(otherId)?.photoURL : undefined;
                     return (
                       <>
                         <div className="flex items-center gap-3 min-w-0">
                           <Avatar className={`h-9 w-9 border shrink-0 ${isGroup ? "rounded-xl" : ""}`}>
+                            {!isGroup && <AvatarImage src={otherPhotoURL || undefined} />}
                             <AvatarFallback className={`text-xs ${isGroup
                                 ? "bg-violet-500/10 text-violet-600"
                                 : isMember
@@ -980,6 +984,7 @@ export default function MessagesPage() {
                 <div className="border-b px-4 py-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9 border">
+                      <AvatarImage src={draftMember.photoURL || undefined} />
                       <AvatarFallback className="text-xs bg-amber-500/10 text-amber-600">
                         {getInitials(draftMember.displayName)}
                       </AvatarFallback>

@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Loader2 } from "lucide-react";
 import { getLeadsByWorkspace } from "@/lib/firebase/firestore";
@@ -135,6 +135,7 @@ export function NewConversationDialog({
                     className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-muted/60 disabled:opacity-60"
                   >
                     <Avatar className="h-9 w-9 border shrink-0">
+                      <AvatarImage src={lead.avatarUrl || undefined} />
                       <AvatarFallback className="text-xs bg-primary/10 text-primary">
                         {getInitials(leadName)}
                       </AvatarFallback>

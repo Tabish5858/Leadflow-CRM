@@ -4,7 +4,7 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { createProject } from "@/lib/firebase/projects";
 import { getWorkspaceMembers } from "@/lib/firebase/workspaces";
 import type { WorkspaceMember } from "@/types";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -285,6 +285,7 @@ export default function NewProjectPage() {
                         title={isRequired ? "Owner/admin members are always included" : undefined}
                       >
                         <Avatar className="h-8 w-8 border shrink-0">
+                          <AvatarImage src={member.photoURL || undefined} />
                           <AvatarFallback className="text-xs bg-primary/10 text-primary">
                             {getInitials(member.displayName)}
                           </AvatarFallback>
@@ -330,6 +331,7 @@ export default function NewProjectPage() {
                         }`}
                       >
                         <Avatar className="h-8 w-8 border shrink-0">
+                          <AvatarImage src={client.photoURL || undefined} />
                           <AvatarFallback className="text-xs bg-primary/10 text-primary">
                             {getInitials(client.displayName)}
                           </AvatarFallback>

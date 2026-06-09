@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TaskCard } from "@/components/projects/shared/task-card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Plus,
   List,
@@ -38,6 +39,10 @@ import {
 import { cn } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getInitials(name: string): string {
+  return name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2);
+}
 
 function parseMsDate(dueDate: unknown): Date | null {
   if (!dueDate) return null;
@@ -255,11 +260,19 @@ function BoardView({
                           </span>
                         );
                       })()}
-                      {task.assigneeId && memberMap.has(task.assigneeId) && (
-                        <span className="text-[10px] text-muted-foreground ml-auto">
-                          {memberMap.get(task.assigneeId)?.displayName?.split(" ")[0]}
-                        </span>
-                      )}
+                      {task.assigneeId && memberMap.has(task.assigneeId) && (() => {
+                        const a = memberMap.get(task.assigneeId)!;
+                        return (
+                          <span className="ml-auto shrink-0">
+                            <Avatar className="h-5 w-5" title={a.displayName}>
+                              <AvatarImage src={a.photoURL || undefined} />
+                              <AvatarFallback className="text-[8px] font-medium bg-muted text-foreground">
+                                {getInitials(a.displayName)}
+                              </AvatarFallback>
+                            </Avatar>
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                 ))

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
@@ -30,8 +30,8 @@ export interface ConversationSection {
 function getMemberDisplay(
   conv: Conversation,
   currentUserId: string,
-  memberMap: Map<string, string>
-): { name: string; detail: string; isGroup: boolean } {
+  memberMap: Map<string, { displayName: string; photoURL?: string | null }>
+): { name: string; detail: string; isGroup: boolean; photoURL?: string | null } {
   const ids = conv.participantIds || [];
   const names = conv.participantNames || [];
   const isGroup = ids.length > 2 || !!conv.groupName;
@@ -46,7 +46,7 @@ function getMemberDisplay(
       .filter((id) => id !== currentUserId)
       .map((id) => {
         const idx = ids.indexOf(id);
-        return names[idx] || memberMap.get(id) || "Unknown";
+        return names[idx] || memberMap.get(id)?.displayName || "Unknown";
       });
     const displayName = otherNames.slice(0, 2).join(", ");
     const suffix = otherNames.length > 2 ? ` +${otherNames.length - 2}` : "";
@@ -60,7 +60,8 @@ function getMemberDisplay(
   }
   const otherId = ids.find((id) => id !== currentUserId);
   if (otherId && memberMap.has(otherId)) {
-    return { name: memberMap.get(otherId)!, detail: "Workspace member", isGroup: false };
+    const m = memberMap.get(otherId)!;
+    return { name: m.displayName, detail: "Workspace member", isGroup: false, photoURL: m.photoURL };
   }
   return { name: names[0] || "Team Member", detail: "Workspace member", isGroup: false };
 }
@@ -80,7 +81,7 @@ interface ConversationListProps {
   clientMembers: WorkspaceMember[];
   selectedId: string | null;
   currentUserId: string;
-  memberMap: Map<string, string>;
+  memberMap: Map<string, { displayName: string; photoURL?: string | null }>;
   onSelectConversation: (conv: Conversation) => void;
   onSelectMember: (member: WorkspaceMember) => void;
   onDeleteConversation?: (conv: Conversation) => void;
@@ -168,7 +169,7 @@ export function ConversationList({
                 const display = isLead
                   ? { ...getLeadDisplay(conv), isGroup: false }
                   : getMemberDisplay(conv, currentUserId, memberMap);
-                const { name, isGroup } = display;
+                const { name, isGroup, photoURL } = display;
                 const isSelected = selectedId === conv.id;
                 const hasUnread = (conv.unreadCount ?? 0) > 0;
 
@@ -188,6 +189,7 @@ export function ConversationList({
                       {/* Avatar */}
                       <div className="relative shrink-0">
                         <Avatar className="h-9 w-9 border">
+                          {!isGroup && <AvatarImage src={photoURL || undefined} />}
                           <AvatarFallback
                             className={`text-xs ${
                               isSelected
@@ -293,6 +295,7 @@ export function ConversationList({
                 }`}
               >
                 <Avatar className="h-9 w-9 border shrink-0">
+                  <AvatarImage src={member.photoURL || undefined} />
                   <AvatarFallback className={`text-xs ${
                     isSelected
                       ? "bg-primary text-primary-foreground"
@@ -333,6 +336,7 @@ export function ConversationList({
                   }`}
                 >
                   <Avatar className="h-9 w-9 border shrink-0">
+                    <AvatarImage src={member.photoURL || undefined} />
                     <AvatarFallback
                       className={`text-xs ${
                         isSelected

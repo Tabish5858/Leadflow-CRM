@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, Loader2, Users } from "lucide-react";
@@ -180,6 +180,7 @@ export function NewGroupDialog({
                   >
                     <Checkbox checked={isSelected} className="shrink-0" />
                     <Avatar className="h-8 w-8 border shrink-0">
+                      <AvatarImage src={member.photoURL || undefined} />
                       <AvatarFallback className="text-xs bg-primary/10 text-primary">
                         {getInitials(member.displayName)}
                       </AvatarFallback>

@@ -2,7 +2,7 @@
 "use client";
 
 import type { ProjectTask, ProjectTaskStatus } from "@/types";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
 import {
@@ -242,11 +242,16 @@ export function TaskCard({
                         {onAssigneeChange ? (
                           <>
                             <button onClick={(e) => { e.stopPropagation(); setShowAssigneeDropdown(!showAssigneeDropdown); }}
-                              className="flex items-center justify-center w-5 h-5 rounded-full bg-muted hover:bg-accent transition-colors shrink-0"
+                              className="flex items-center justify-center w-5 h-5 rounded-full shrink-0"
                               title={assignee ? assignee.displayName : "Assign"}
                             >
                               {assignee ? (
-                                <span className="text-[9px] font-medium text-foreground">{getInitials(assignee.displayName)}</span>
+                                <Avatar className="h-5 w-5">
+                                  <AvatarImage src={assignee.photoURL || undefined} />
+                                  <AvatarFallback className="text-[8px] font-medium bg-muted text-foreground">
+                                    {getInitials(assignee.displayName)}
+                                  </AvatarFallback>
+                                </Avatar>
                               ) : (
                                 <User className="h-3 w-3 text-muted-foreground" />
                               )}
@@ -273,9 +278,12 @@ export function TaskCard({
                             )}
                           </>
                         ) : assignee ? (
-                          <div className="flex items-center justify-center w-5 h-5 rounded-full bg-muted" title={assignee.displayName}>
-                            <span className="text-[9px] font-medium text-foreground">{getInitials(assignee.displayName)}</span>
-                          </div>
+                          <Avatar className="h-5 w-5" title={assignee.displayName}>
+                            <AvatarImage src={assignee.photoURL || undefined} />
+                            <AvatarFallback className="text-[8px] font-medium bg-muted text-foreground">
+                              {getInitials(assignee.displayName)}
+                            </AvatarFallback>
+                          </Avatar>
                         ) : null}
                       </div>
                       {/* Due date */}

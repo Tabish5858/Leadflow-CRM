@@ -8,6 +8,7 @@ import { MeetingTypeDialog } from "@/components/meetings/meeting-type-dialog";
 import { ScheduleMeetingDialog } from "@/components/meetings/schedule-meeting-dialog";
 import { CalendarTab } from "@/components/meetings/calendar-tab";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -332,8 +333,30 @@ export default function MeetingsPage() {
 
   if (wsLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <Skeleton className="h-10 w-36 rounded-md" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-lg border border-border p-4 space-y-3">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-2/3" />
+              <div className="flex items-center gap-2 pt-2">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <div className="space-y-1.5 flex-1">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -377,8 +400,21 @@ export default function MeetingsPage() {
 
       {/* Loading state */}
       {loading && (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-lg border border-border p-4 space-y-3">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-2/3" />
+              <div className="flex items-center gap-2 pt-2">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <div className="space-y-1.5 flex-1">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -524,8 +560,14 @@ export default function MeetingsPage() {
             </div>
 
             {typesLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <div className="space-y-3 py-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="rounded-lg border border-border p-4 space-y-2">
+                    <Skeleton className="h-5 w-48" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-64" />
+                  </div>
+                ))}
               </div>
             ) : meetingTypes.length === 0 ? (
               <Card>

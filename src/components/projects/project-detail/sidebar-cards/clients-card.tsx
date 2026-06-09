@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserPlus, X, ChevronDown, ChevronUp, User } from "lucide-react";
 import type { WorkspaceMember } from "@/types";
 import { updateProject } from "@/lib/firebase/projects";
@@ -115,6 +115,7 @@ export default function ClientsCard({ projectId, members, clientIds, onClientsCh
                             className="w-full px-3 py-2 text-left text-xs flex items-center gap-2 hover:bg-accent disabled:opacity-50"
                           >
                             <Avatar className="h-6 w-6 border">
+                              <AvatarImage src={m.photoURL || undefined} />
                               <AvatarFallback className="bg-primary/10 text-primary text-[8px]">{getInitials(m.displayName)}</AvatarFallback>
                             </Avatar>
                             <div className="min-w-0">
@@ -133,6 +134,7 @@ export default function ClientsCard({ projectId, members, clientIds, onClientsCh
                             className="w-full px-3 py-2 text-left text-xs flex items-center gap-2 hover:bg-accent disabled:opacity-50"
                           >
                             <Avatar className="h-6 w-6 border">
+                              <AvatarImage src={m.photoURL || undefined} />
                               <AvatarFallback className="bg-primary/10 text-primary text-[8px]">{getInitials(m.displayName)}</AvatarFallback>
                             </Avatar>
                             <div className="min-w-0">
@@ -162,6 +164,7 @@ export default function ClientsCard({ projectId, members, clientIds, onClientsCh
               <div key={client.userId}>
                 <div className="flex items-center gap-2.5 group pr-1">
                   <Avatar className="h-7 w-7 border shrink-0">
+                    <AvatarImage src={client.photoURL || undefined} />
                     <AvatarFallback className="bg-secondary text-secondary-foreground text-[10px]">
                       {getInitials(client.displayName)}
                     </AvatarFallback>

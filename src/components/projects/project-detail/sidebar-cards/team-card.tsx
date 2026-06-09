@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users, Plus, Trash2, ChevronDown, X } from "lucide-react";
 import type { WorkspaceMember } from "@/types";
 import { updateProject } from "@/lib/firebase/projects";
@@ -111,6 +111,7 @@ export default function TeamCard({ projectId, members, memberIds, onMembersChang
                       className="w-full px-3 py-2 text-left text-xs flex items-center gap-2 hover:bg-accent disabled:opacity-50"
                     >
                       <Avatar className="h-6 w-6 border">
+                        <AvatarImage src={m.photoURL || undefined} />
                         <AvatarFallback className="bg-primary/10 text-primary text-[8px]">
                           {getInitials(m.displayName)}
                         </AvatarFallback>
@@ -136,6 +137,7 @@ export default function TeamCard({ projectId, members, memberIds, onMembersChang
           teamMembers.map((member) => (
             <div key={member.userId} className="flex items-center gap-2.5 group pr-1">
               <Avatar className="h-7 w-7 border shrink-0">
+                <AvatarImage src={member.photoURL || undefined} />
                 <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
                   {getInitials(member.displayName)}
                 </AvatarFallback>

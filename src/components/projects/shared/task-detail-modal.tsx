@@ -37,7 +37,7 @@ import {
   Pencil,
   Check,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Timestamp } from "firebase/firestore";
 
 // ─── Status Config ──────────────────────────────────────────────────────────
@@ -553,6 +553,7 @@ export function TaskDetailModal({
                   {assignee ? (
                     <>
                       <Avatar className="h-6 w-6">
+                        <AvatarImage src={assignee.photoURL || undefined} />
                         <AvatarFallback className="bg-primary/10 text-primary text-[8px]">{getInitials(assignee.displayName)}</AvatarFallback>
                       </Avatar>
                       <span className="text-sm font-medium text-foreground">{assignee.displayName}</span>
@@ -574,6 +575,7 @@ export function TaskDetailModal({
                       <SelectItem key={m.userId} value={m.userId} className="text-xs">
                         <div className="flex items-center gap-2">
                           <Avatar className="h-5 w-5">
+                            <AvatarImage src={m.photoURL || undefined} />
                             <AvatarFallback className="bg-primary/10 text-primary text-[7px]">{getInitials(m.displayName)}</AvatarFallback>
                           </Avatar>
                           {m.displayName}

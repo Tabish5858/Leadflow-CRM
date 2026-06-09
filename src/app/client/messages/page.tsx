@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   createConversation,
   deleteConversation,
@@ -363,7 +363,7 @@ export default function ClientMessagesPage() {
   // ─── Derived data ──────────────────────────────────────────────────────
 
   const memberMap = useMemo(
-    () => new Map(workspaceMembers.map((m) => [m.userId, m.displayName])),
+    () => new Map(workspaceMembers.map((m) => [m.userId, { displayName: m.displayName, photoURL: m.photoURL }])),
     [workspaceMembers]
   );
 
@@ -466,6 +466,11 @@ export default function ClientMessagesPage() {
                 {/* Conversation header */}
                 <div className="flex items-center gap-3 border-b px-4 py-3">
                   <Avatar className="h-9 w-9 border shrink-0">
+                    {(() => {
+                      const otherId = selected.participantIds?.find(id => id !== uid);
+                      const otherPhoto = otherId ? workspaceMembers.find(m => m.userId === otherId)?.photoURL : undefined;
+                      return <AvatarImage src={otherPhoto || undefined} />;
+                    })()}
                     <AvatarFallback className="text-xs bg-amber-500/10 text-amber-600">
                       {getInitials(getOtherParticipantName(selected, uid || ""))}
                     </AvatarFallback>
