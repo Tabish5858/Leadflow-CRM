@@ -55,13 +55,11 @@ function getMemberDisplay(
 
   // 1:1 conversation
   const otherIdx = ids.findIndex((id) => id !== currentUserId);
-  if (otherIdx >= 0 && names[otherIdx]) {
-    return { name: names[otherIdx], detail: "Workspace member", isGroup: false };
-  }
-  const otherId = ids.find((id) => id !== currentUserId);
-  if (otherId && memberMap.has(otherId)) {
-    const m = memberMap.get(otherId)!;
-    return { name: m.displayName, detail: "Workspace member", isGroup: false, photoURL: m.photoURL };
+  if (otherIdx >= 0) {
+    const otherId = ids[otherIdx];
+    const photoURL = otherId ? memberMap.get(otherId)?.photoURL : undefined;
+    const displayName = names[otherIdx] || memberMap.get(otherId)?.displayName || "Team Member";
+    return { name: displayName, detail: "Workspace member", isGroup: false, photoURL };
   }
   return { name: names[0] || "Team Member", detail: "Workspace member", isGroup: false };
 }
