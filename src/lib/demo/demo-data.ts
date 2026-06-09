@@ -943,6 +943,96 @@ const DEMO_PROJECT_DELIVERABLES: Record<string, unknown>[] = [
   },
 ];
 
+// ─── Demo Spreadsheet Snapshot Builder ─────────────────────────────────────────
+
+/**
+ * Build a pre-populated UniverJS IWorkbookData snapshot of a "Sales Pipeline"
+ * spreadsheet. Uses the first 15 demo leads so the data feels realistic.
+ * The snapshot can be loaded directly by Univer:
+ *   univerAPI.createWorkbook(snapshot)
+ *
+ * Fields map to ICellData:
+ *   v = raw value (string/number)
+ *   t = CellValueType (0=number, 1=string) — omitted for simplicity, Univer auto-detects
+ */
+function createSalesPipelineSnapshot(): Record<string, unknown> {
+  const sheetId = "sheet-001";
+  const sheetName = "Pipeline";
+
+  // Columns — A through H
+  const cols = ["Name", "Company", "Email", "Phone", "Status", "Value", "Source", "Country"];
+
+  // Pick 15 leads (first 15)
+  const leadData = DEMO_LEADS.slice(0, 15).map((l) => ({
+    name: `${l.firstName} ${l.lastName}`,
+    company: l.company,
+    email: l.email,
+    phone: l.phone || "",
+    status: l.status,
+    value: l.value,
+    source: l.source || "",
+    country: l.country || "",
+  }));
+
+  // Build cellData matrix: { row: { col: { v: value } } }
+      const cellData: Record<number, Record<number, { v: string | number | null }>> = {};
+
+  // Header row (row 0)
+  cellData[0] = {};
+  cols.forEach((colName, ci) => {
+    cellData[0][ci] = { v: colName };
+  });
+
+  // Data rows (row 1+)
+  leadData.forEach((row, ri) => {
+    const rowIdx = ri + 1;
+    cellData[rowIdx] = {};
+    cellData[rowIdx][0] = { v: row.name };
+    cellData[rowIdx][1] = { v: row.company };
+    cellData[rowIdx][2] = { v: row.email };
+    cellData[rowIdx][3] = { v: row.phone };
+    cellData[rowIdx][4] = { v: row.status };
+    cellData[rowIdx][5] = { v: row.value };
+    cellData[rowIdx][6] = { v: row.source };
+    cellData[rowIdx][7] = { v: row.country };
+  });
+
+  const totalRows = leadData.length + 1; // +1 for header
+
+  return {
+    id: "demo-wb-pipeline",
+    sheetOrder: [sheetId],
+    name: "Sales Pipeline",
+    appVersion: "0.25.0",
+    locale: "enUS",
+    styles: {},
+    sheets: {
+      [sheetId]: {
+        id: sheetId,
+        name: sheetName,
+        rowCount: totalRows,
+        columnCount: cols.length,
+        cellData,
+        mergeData: [],
+        rowData: {},
+        columnData: {},
+        rowHeader: { width: 48, hidden: 0 },
+        columnHeader: { height: 24, hidden: 0 },
+        showGridlines: 1,
+        defaultColumnWidth: 120,
+        defaultRowHeight: 24,
+        tabColor: "",
+        hidden: 0,
+        freeze: { xSplit: 0, ySplit: 0 },
+        zoomRatio: 1,
+        scrollTop: 0,
+        scrollLeft: 0,
+      },
+    },
+    resources: [],
+  };
+}
+
 // ─── Mutable Store (for writes in demo mode) ──────────────────────────────────
 
 /**
@@ -1813,12 +1903,89 @@ export class DemoStore {
 
   // ── Spreadsheet Operations ──
 
-  // Spreadsheets require the full UniverJS data model which is too complex to mock.
-  // Returns an empty array; the UI shows an empty state with a note for demo mode.
-  private _spreadsheets: Array<Record<string, unknown>> = [];
+  private _spreadsheets: Array<{
+    id: string;
+    workspaceId: string;
+    name: string;
+    snapshot: Record<string, unknown> | null;
+    createdBy: string;
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
+  }> = [
+    {
+      id: "demo-spreadsheet-001",
+      workspaceId: DEMO_WORKSPACE_ID,
+      name: "Sales Pipeline",
+      snapshot: createSalesPipelineSnapshot(),
+      createdBy: DEMO_USER_ID,
+      createdAt: daysAgo(5),
+      updatedAt: hoursAgo(3),
+    },
+    {
+      id: "demo-spreadsheet-002",
+      workspaceId: DEMO_WORKSPACE_ID,
+      name: "Weekly Lead Tracker",
+      snapshot: null,
+      createdBy: DEMO_USER_ID,
+      createdAt: daysAgo(2),
+      updatedAt: hoursAgo(1),
+    },
+  ];
 
   getSpreadsheets(): Array<Record<string, unknown>> {
     return [...this._spreadsheets];
+  }
+
+  getSpreadsheet(id: string): Record<string, unknown> | null {
+    return this._spreadsheets.find((s) => s.id === id) ?? null;
+  }
+
+  createSpreadsheet(
+    workspaceId: string,
+    name: string,
+    createdBy: string
+  ): string {
+    const id = `demo-spreadsheet-${Date.now()}`;
+    const ss = {
+      id,
+      workspaceId,
+      name,
+      snapshot: null,
+      createdBy,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+    this._spreadsheets.unshift(ss);
+    return id;
+  }
+
+  updateSpreadsheetSnapshot(
+    spreadsheetId: string,
+    snapshot: Record<string, unknown>
+  ): void {
+    const idx = this._spreadsheets.findIndex((s) => s.id === spreadsheetId);
+    if (idx !== -1) {
+      this._spreadsheets[idx] = {
+        ...this._spreadsheets[idx],
+        snapshot,
+        updatedAt: Timestamp.now(),
+      };
+    }
+  }
+
+  updateSpreadsheetName(spreadsheetId: string, name: string): void {
+    const idx = this._spreadsheets.findIndex((s) => s.id === spreadsheetId);
+    if (idx !== -1) {
+      this._spreadsheets[idx] = {
+        ...this._spreadsheets[idx],
+        name,
+        updatedAt: Timestamp.now(),
+      };
+    }
+  }
+
+  deleteSpreadsheet(spreadsheetId: string): void {
+    this._spreadsheets = this._spreadsheets.filter((s) => s.id !== spreadsheetId);
   }
 
   // ── Notification Operations ──

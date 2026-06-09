@@ -24,6 +24,11 @@ export interface Spreadsheet {
   updatedAt: Timestamp;
 }
 
+function isDemoMode(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem("leadflow_demo_mode") === "true";
+}
+
 const spreadsheetsCol = (workspaceId: string) =>
   collection(db, "workspaces", workspaceId, "spreadsheets").withConverter<Omit<Spreadsheet, "id">>({
     toFirestore: (data) => data,
@@ -31,6 +36,10 @@ const spreadsheetsCol = (workspaceId: string) =>
   });
 
 export async function getSpreadsheets(workspaceId: string): Promise<Spreadsheet[]> {
+  if (isDemoMode()) {
+    const { demoStore } = await import("@/lib/demo/demo-data");
+    return demoStore.getSpreadsheets() as unknown as Spreadsheet[];
+  }
   const q = query(spreadsheetsCol(workspaceId), orderBy("updatedAt", "desc"));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Spreadsheet, "id">) }));
@@ -40,6 +49,10 @@ export async function getSpreadsheet(
   workspaceId: string,
   spreadsheetId: string
 ): Promise<Spreadsheet | null> {
+  if (isDemoMode()) {
+    const { demoStore } = await import("@/lib/demo/demo-data");
+    return demoStore.getSpreadsheet(spreadsheetId) as unknown as Spreadsheet | null;
+  }
   const ref = doc(db, "workspaces", workspaceId, "spreadsheets", spreadsheetId);
   const snap = await getDoc(ref);
   if (!snap.exists()) return null;
@@ -51,6 +64,10 @@ export async function createSpreadsheet(
   name: string,
   createdBy: string
 ): Promise<string> {
+  if (isDemoMode()) {
+    const { demoStore } = await import("@/lib/demo/demo-data");
+    return demoStore.createSpreadsheet(workspaceId, name, createdBy);
+  }
   const ref = await addDoc(spreadsheetsCol(workspaceId), {
     workspaceId,
     name,
@@ -67,6 +84,10 @@ export async function updateSpreadsheetSnapshot(
   spreadsheetId: string,
   snapshot: IWorkbookData
 ): Promise<void> {
+  if (isDemoMode()) {
+    const { demoStore } = await import("@/lib/demo/demo-data");
+    return demoStore.updateSpreadsheetSnapshot(spreadsheetId, snapshot as unknown as Record<string, unknown>);
+  }
   const ref = doc(db, "workspaces", workspaceId, "spreadsheets", spreadsheetId);
   await updateDoc(ref, {
     snapshot,
@@ -79,6 +100,10 @@ export async function updateSpreadsheetName(
   spreadsheetId: string,
   name: string
 ): Promise<void> {
+  if (isDemoMode()) {
+    const { demoStore } = await import("@/lib/demo/demo-data");
+    return demoStore.updateSpreadsheetName(spreadsheetId, name);
+  }
   const ref = doc(db, "workspaces", workspaceId, "spreadsheets", spreadsheetId);
   await updateDoc(ref, {
     name,
@@ -90,6 +115,10 @@ export async function deleteSpreadsheet(
   workspaceId: string,
   spreadsheetId: string
 ): Promise<void> {
+  if (isDemoMode()) {
+    const { demoStore } = await import("@/lib/demo/demo-data");
+    return demoStore.deleteSpreadsheet(spreadsheetId);
+  }
   const ref = doc(db, "workspaces", workspaceId, "spreadsheets", spreadsheetId);
   await deleteDoc(ref);
 }
