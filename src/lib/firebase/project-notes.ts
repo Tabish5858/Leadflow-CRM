@@ -15,7 +15,7 @@ const COLLECTION = "project_notes";
 
 function isDemoMode(): boolean {
   if (typeof window === "undefined") return false;
-  return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  return localStorage.getItem("leadflow_demo_mode") === "true";
 }
 
 // ── Create ───────────────────────────────────────────────────────────────────

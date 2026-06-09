@@ -119,6 +119,19 @@ export async function requireAuth(
 
   const workspaceId = req.headers.get("x-workspace-id");
 
+  // Demo mode bypass: "Bearer demo" token + demo workspace
+  const authHeader = req.headers.get("Authorization");
+  if (
+    authHeader === "Bearer demo" &&
+    workspaceId === "demo-workspace-001"
+  ) {
+    return {
+      userId: "demo-user-001",
+      workspaceId: "demo-workspace-001",
+      role: "owner",
+    };
+  }
+
   // Step 1: Verify Firebase ID token - this gives us the trusted userId
   const tokenResult = await verifyFirebaseToken(req);
   if (tokenResult instanceof NextResponse) return tokenResult;
