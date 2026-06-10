@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     template: "%s | LeadFlow CRM",
   },
   description:
-    "Open-source CRM with pipeline management, project tracking, invoicing, time tracking, messaging, and client portal — all in one platform. Self-host on any Node.js server or try instantly. No signup needed.",
+    "Open-source CRM with pipeline management, project tracking, invoicing, time tracking, messaging, and client portal — all in one platform. Runs on free Firebase + Vercel tiers — $0 to host. Self-host on any Node.js server or try instantly. No signup needed.",
   keywords: [
     "open source CRM",
     "self-hosted CRM",
@@ -42,6 +42,12 @@ export const metadata: Metadata = {
     "time tracking CRM",
     "CRM for freelancers",
     "small business CRM",
+    "free CRM no credit card",
+    "zero cost CRM",
+    "CRM that runs on free tier",
+    "self-hosted CRM without Docker",
+    "free hubspot alternative",
+    "free salesforce alternative",
   ],
   authors: [{ name: "LeadFlow Contributors" }],
   applicationName: "LeadFlow",

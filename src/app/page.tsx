@@ -459,21 +459,12 @@ export default function LandingPage() {
               <div
                 key={faq.q}
                 className="rounded-xl border border-border/40 bg-background/50 p-5"
-                itemScope
-                itemProp="mainEntity"
-                itemType="https://schema.org/Question"
               >
-                <h3 itemProp="name" className="font-semibold text-sm">
+                <h3 className="font-semibold text-sm">
                   {faq.q}
                 </h3>
-                <div
-                  itemScope
-                  itemProp="acceptedAnswer"
-                  itemType="https://schema.org/Answer"
-                >
-                  <div itemProp="text" className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                    {faq.a}
-                  </div>
+                <div className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                  {faq.a}
                 </div>
               </div>
             ))}

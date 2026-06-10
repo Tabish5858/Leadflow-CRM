@@ -10,46 +10,52 @@ import { DemoButton } from "../demo-button";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "HubSpot Alternative — LeadFlow vs HubSpot",
-  description:
-    "Comparing HubSpot and LeadFlow: FREE vs $45-90/seat/month, self-hosted vs cloud, no feature gates, no data sharing concerns. LeadFlow is the best open-source alternative to HubSpot.",
-  keywords: [
-    "hubspot alternative",
-    "open source hubspot alternative",
-    "hubspot vs leadflow",
-    "free hubspot alternative",
-    "self-hosted CRM",
-    "hubspot pricing comparison",
-    "open source CRM for small business",
-    "replace hubspot",
-    "hubspot free vs open source",
-  ],
-  openGraph: {
-    title: "HubSpot vs LeadFlow — Free Open-Source CRM Alternative",
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crm.tabishbinishfaq.dev";
+
+export function generateMetadata(): Metadata {
+  return {
+    title: "HubSpot Alternative — LeadFlow vs HubSpot",
     description:
-      "LeadFlow is 100% free, self-hosted, and MIT licensed. No feature gates, no per-seat pricing, no data sharing. Compare feature-by-feature with HubSpot.",
-    url: "https://crm.tabishbinishfaq.dev/compare/hubspot-vs-leadflow",
-    siteName: "LeadFlow",
-    images: [
-      {
-        url: "https://crm.tabishbinishfaq.dev/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "LeadFlow vs HubSpot Comparison",
-      },
+      "Comparing HubSpot and LeadFlow: FREE vs $45-90/seat/month, self-hosted vs cloud, no feature gates, no data sharing concerns. LeadFlow runs on free tiers — $0 to host. Best open-source alternative to HubSpot.",
+    keywords: [
+      "hubspot alternative",
+      "open source hubspot alternative",
+      "hubspot vs leadflow",
+      "free hubspot alternative",
+      "self-hosted CRM",
+      "hubspot pricing comparison",
+      "open source CRM for small business",
+      "replace hubspot",
+      "hubspot free vs open source",
+      "free hubspot alternative for freelancers",
+      "no cost CRM alternative to hubspot",
     ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "HubSpot vs LeadFlow — Free Open-Source CRM Alternative",
-    description:
-      "LeadFlow is 100% free, self-hosted, and MIT licensed. No feature gates, no per-seat pricing, no data sharing. Compare feature-by-feature with HubSpot.",
-  },
-  alternates: {
-    canonical: "https://crm.tabishbinishfaq.dev/compare/hubspot-vs-leadflow",
-  },
-};
+    openGraph: {
+      title: "HubSpot vs LeadFlow — Free Open-Source CRM Alternative",
+      description:
+        "LeadFlow is 100% free, self-hosted, and MIT licensed. Runs on free tiers — $0 to host. No feature gates, no per-seat pricing, no data sharing. Compare feature-by-feature with HubSpot.",
+      url: `${baseUrl}/compare/hubspot-vs-leadflow`,
+      siteName: "LeadFlow",
+      images: [
+        {
+          url: `${baseUrl}/og-image.svg`,
+          width: 1200,
+          height: 630,
+          alt: "LeadFlow vs HubSpot Comparison",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "HubSpot vs LeadFlow — Free Open-Source CRM Alternative",
+      description:
+        "LeadFlow is 100% free, self-hosted, and MIT licensed. Runs on free tiers — $0 to host. No per-seat pricing.",
+    },
+    alternates: {
+      canonical: `${baseUrl}/compare/hubspot-vs-leadflow`,
+    },
+  };
+}
 
 const FEATURES = [
   { name: "Pricing", leadflow: "FREE (MIT License)", hubspot: "$45–$90/seat/month (Starter–Enterprise)" },

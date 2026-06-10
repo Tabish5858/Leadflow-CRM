@@ -10,45 +10,51 @@ import { DemoButton } from "../demo-button";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "Salesforce Alternative — LeadFlow vs Salesforce",
-  description:
-    "Comparing Salesforce and LeadFlow: FREE vs $25-300/seat/month, self-hosted vs cloud, no per-seat pricing, MIT license. LeadFlow is the best open-source alternative to Salesforce for SMBs.",
-  keywords: [
-    "salesforce alternative",
-    "open source alternative to salesforce",
-    "salesforce vs leadflow",
-    "free salesforce alternative",
-    "self-hosted CRM",
-    "salesforce pricing comparison",
-    "open source CRM for small business",
-    "replace salesforce",
-  ],
-  openGraph: {
-    title: "Salesforce vs LeadFlow — Free Open-Source CRM Alternative",
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crm.tabishbinishfaq.dev";
+
+export function generateMetadata(): Metadata {
+  return {
+    title: "Salesforce Alternative — LeadFlow vs Salesforce",
     description:
-      "LeadFlow is 100% free, self-hosted, and MIT licensed. No per-seat pricing, no feature gates. Compare feature-by-feature with Salesforce.",
-    url: "https://crm.tabishbinishfaq.dev/compare/salesforce-vs-leadflow",
-    siteName: "LeadFlow",
-    images: [
-      {
-        url: "https://crm.tabishbinishfaq.dev/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "LeadFlow vs Salesforce Comparison",
-      },
+      "Comparing Salesforce and LeadFlow: FREE vs $25-300/seat/month, self-hosted vs cloud, no per-seat pricing, MIT license. LeadFlow runs on free Firebase + Vercel tiers — $0 to host. Best open-source alternative to Salesforce for SMBs.",
+    keywords: [
+      "salesforce alternative",
+      "open source alternative to salesforce",
+      "salesforce vs leadflow",
+      "free salesforce alternative",
+      "self-hosted CRM",
+      "salesforce pricing comparison",
+      "open source CRM for small business",
+      "replace salesforce",
+      "free salesforce alternative for freelancers",
+      "no cost salesforce replacement",
     ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Salesforce vs LeadFlow — Free Open-Source CRM Alternative",
-    description:
-      "LeadFlow is 100% free, self-hosted, and MIT licensed. No per-seat pricing, no feature gates. Compare feature-by-feature with Salesforce.",
-  },
-  alternates: {
-    canonical: "https://crm.tabishbinishfaq.dev/compare/salesforce-vs-leadflow",
-  },
-};
+    openGraph: {
+      title: "Salesforce vs LeadFlow — Free Open-Source CRM Alternative",
+      description:
+        "LeadFlow is 100% free, self-hosted, and MIT licensed. Runs on free tiers — $0 to host. No per-seat pricing, no feature gates. Compare feature-by-feature with Salesforce.",
+      url: `${baseUrl}/compare/salesforce-vs-leadflow`,
+      siteName: "LeadFlow",
+      images: [
+        {
+          url: `${baseUrl}/og-image.svg`,
+          width: 1200,
+          height: 630,
+          alt: "LeadFlow vs Salesforce Comparison",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Salesforce vs LeadFlow — Free Open-Source CRM Alternative",
+      description:
+        "LeadFlow is 100% free, self-hosted, and MIT licensed. Runs on free tiers — $0 to host. No per-seat pricing.",
+    },
+    alternates: {
+      canonical: `${baseUrl}/compare/salesforce-vs-leadflow`,
+    },
+  };
+}
 
 const FEATURES = [
   { name: "Pricing", leadflow: "FREE (MIT License)", salesforce: "$25–$300/seat/month" },

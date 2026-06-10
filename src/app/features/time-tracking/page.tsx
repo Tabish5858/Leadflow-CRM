@@ -29,13 +29,19 @@ export function generateMetadata(): Metadata {
       "CRM time tracking",
       "stopwatch time tracker",
       "work hours tracker",
+      "free time tracking CRM",
+      "no cost billable hours tracker",
+      "zero budget time management",
     ],
+    alternates: {
+      canonical: `${baseUrl}/features/time-tracking`,
+    },
     openGraph: {
       title: "Time Tracking for Freelancers & Billable Hours Tracker",
       description:
         "Track billable hours with start/stop timer, manual entry, and per-project tracking. Open-source CRM — self-host or try free.",
       url: `${baseUrl}/features/time-tracking`,
-      images: [{ url: `${baseUrl}/og-image.png`, width: 1200, height: 630, alt: "LeadFlow Time Tracking Dashboard" }],
+      images: [{ url: `${baseUrl}/og-image.svg`, width: 1200, height: 630, alt: "LeadFlow Time Tracking Dashboard" }],
     },
   };
 }

@@ -31,13 +31,19 @@ export function generateMetadata(): Metadata {
       "open source pipeline CRM",
       "drag and drop pipeline",
       "deal stage management",
+      "free pipeline management CRM",
+      "no cost sales pipeline",
+      "zero budget pipeline software",
     ],
+    alternates: {
+      canonical: `${baseUrl}/features/pipeline`,
+    },
     openGraph: {
       title: "Sales Pipeline Software & Pipeline Management CRM",
       description:
         "Drag-and-drop Kanban pipeline with probability forecasting, deal value tracking, and stage management. Open-source CRM — self-host or try free.",
       url: `${baseUrl}/features/pipeline`,
-      images: [{ url: `${baseUrl}/og-image.png`, width: 1200, height: 630, alt: "LeadFlow Sales Pipeline Kanban Board" }],
+      images: [{ url: `${baseUrl}/og-image.svg`, width: 1200, height: 630, alt: "LeadFlow Sales Pipeline Kanban Board" }],
     },
   };
 }

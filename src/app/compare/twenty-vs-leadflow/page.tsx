@@ -10,44 +10,50 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DemoButton } from "../demo-button";
 
-export const metadata: Metadata = {
-  title: "Twenty CRM Alternative — LeadFlow vs Twenty",
-  description:
-    "Comparing Twenty CRM and LeadFlow: MIT vs AGPL-3.0 license, built-in client portal, time tracking & invoicing, 9 modules in one workspace. LeadFlow is the better open-source CRM for SMBs.",
-  keywords: [
-    "twenty CRM alternative",
-    "twenty vs leadflow",
-    "twenty open source CRM alternative",
-    "twenty CRM review",
-    "open source CRM comparison",
-    "MIT license CRM",
-    "leadflow vs twenty",
-  ],
-  openGraph: {
-    title: "Twenty CRM vs LeadFlow — Which Open-Source CRM Wins?",
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crm.tabishbinishfaq.dev";
+
+export function generateMetadata(): Metadata {
+  return {
+    title: "Twenty CRM Alternative — LeadFlow vs Twenty",
     description:
-      "MIT-licensed, client portal, time tracking & invoicing built in. See how LeadFlow stacks up against Twenty CRM.",
-    url: "https://crm.tabishbinishfaq.dev/compare/twenty-vs-leadflow",
-    siteName: "LeadFlow",
-    images: [
-      {
-        url: "https://crm.tabishbinishfaq.dev/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "LeadFlow vs Twenty CRM Comparison",
-      },
+      "Comparing Twenty CRM and LeadFlow: MIT vs AGPL-3.0 license, built-in client portal, time tracking & invoicing, 9 modules in one workspace. LeadFlow is the better open-source CRM for SMBs. Runs on free tiers — $0 to host.",
+    keywords: [
+      "twenty CRM alternative",
+      "twenty vs leadflow",
+      "twenty open source CRM alternative",
+      "twenty CRM review",
+      "open source CRM comparison",
+      "MIT license CRM",
+      "leadflow vs twenty",
+      "free twenty alternative",
+      "no cost open source CRM",
     ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Twenty CRM vs LeadFlow — Which Open-Source CRM Wins?",
-    description:
-      "MIT-licensed, client portal, time tracking & invoicing built in. See how LeadFlow stacks up against Twenty CRM.",
-  },
-  alternates: {
-    canonical: "https://crm.tabishbinishfaq.dev/compare/twenty-vs-leadflow",
-  },
-};
+    openGraph: {
+      title: "Twenty CRM vs LeadFlow — Which Open-Source CRM Wins?",
+      description:
+        "MIT-licensed, client portal, time tracking & invoicing built in. Runs on free Firebase + Vercel tiers — $0 to host. See how LeadFlow stacks up against Twenty CRM.",
+      url: `${baseUrl}/compare/twenty-vs-leadflow`,
+      siteName: "LeadFlow",
+      images: [
+        {
+          url: `${baseUrl}/og-image.svg`,
+          width: 1200,
+          height: 630,
+          alt: "LeadFlow vs Twenty CRM Comparison",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "Twenty CRM vs LeadFlow — Which Open-Source CRM Wins?",
+      description:
+        "MIT-licensed, client portal, time tracking & invoicing built in. Runs on free Firebase + Vercel tiers — $0 to host.",
+    },
+    alternates: {
+      canonical: `${baseUrl}/compare/twenty-vs-leadflow`,
+    },
+  };
+}
 
 const FEATURES = [
   { name: "License", leadflow: "MIT (business-friendly)", twenty: "AGPL-3.0 (restrictive)" },

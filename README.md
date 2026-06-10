@@ -2,11 +2,11 @@
 
 **Open-source CRM for freelancers, small teams, and agencies. Own your data. Zero vendor lock-in.**
 
-LeadFlow is a full-featured customer relationship management platform built with Next.js 15 on Firebase. Manage leads, track deals through customizable pipelines, schedule meetings, automate follow-ups, collaborate with your team, and analyze performance- self-hosted on your own infrastructure.
+LeadFlow is a full-featured customer relationship management platform built with Next.js 16 on Firebase. Manage leads, track deals through customizable pipelines, schedule meetings, automate follow-ups, collaborate with your team, and analyze performance- self-hosted on your own infrastructure.
 
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License" />
-  <img src="https://img.shields.io/badge/Next.js-15-black" alt="Next.js 15" />
+  <img src="https://img.shields.io/badge/Next.js-16-black" alt="Next.js 16" />
   <img src="https://img.shields.io/badge/TypeScript-5.8-blue" alt="TypeScript 5.8" />
   <img src="https://img.shields.io/badge/Firebase-BaaS-orange" alt="Firebase" />
   <img src="https://img.shields.io/badge/React-19-61DAFB" alt="React 19" />
@@ -49,6 +49,23 @@ Most CRMs lock you into monthly subscriptions, limit your data portability, and 
 
 ---
 
+## Free Tier Infrastructure (What This Runs On)
+
+LeadFlow runs entirely on **free tiers** of best-in-class services. Your only cost is your domain.
+
+| Service | Free Tier Limit | What It Powers |
+|---------|----------------|----------------|
+| **Firebase Spark** | 50k reads/day, 20k writes/day, 1GB storage | Auth, database, storage |
+| **Vercel Hobby** | 100GB bandwidth, 100k function invocations/month | Next.js deployment |
+| **Cloudinary Free** | 25GB storage, 25GB bandwidth | File/image storage |
+| **Resend Free** | 3,000 emails/month, 100/day | Transactional emails |
+| **Google APIs** | Free within quota | Google Login, Calendar sync |
+| **Sentry Free** | 5k errors/month | Error monitoring |
+
+These are the actual free-tier limits. A solo freelancer or small team will hit none of them in normal use. When you outgrow them, each service offers a cheap paid upgrade with no lock-in.
+
+---
+
 ## Who Is This For
 
 | Audience           | Why LeadFlow Fits                                                                          |
@@ -74,7 +91,7 @@ Most CRMs lock you into monthly subscriptions, limit your data portability, and 
 
 | Module                    | What You Get                                                                                                                                                                                   |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Email**                 | Resend integration, open/click tracking (tracking pixel + link rewrite), email history per lead, draft management                                                                              |
+| **Email**                 | Resend integration (primary), Brevo fallback, open/click tracking (tracking pixel + link rewrite), email history per lead, draft management                                                      |
 | **Messaging**             | Real-time chat (lead + team), reply threading, read receipts (double checkmarks), reactions, file attachments, auto-open last conversation                                                     |
 | **Meetings & Scheduling** | Public booking pages with timezone-aware slot selection, configurable meeting types (30/45/60 min), Google Meet creation, conflict detection, custom booking questions, confirmation redirects |
 | **Calendar**              | Month/week/day views, create/edit/delete events, Google Calendar OAuth sync, upcoming events on dashboard                                                                                      |
@@ -131,6 +148,30 @@ The demo is pre-loaded with sample data so you can test every feature immediatel
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="https://crm.tabishbinishfaq.dev/og-image.svg" alt="LeadFlow Dashboard" width="600" />
+  <br />
+  <em>Dashboard with tasks, projects, invoices, meetings &amp; messages widgets</em>
+</p>
+
+<p align="center">
+  <img src="https://crm.tabishbinishfaq.dev/og-image.svg" alt="LeadFlow Pipeline Kanban" width="600" />
+  <br />
+  <em>Drag-and-drop Kanban pipeline with deal stages and probability forecasting</em>
+</p>
+
+<p align="center">
+  <img src="https://crm.tabishbinishfaq.dev/og-image.svg" alt="LeadFlow Invoice Manager" width="600" />
+  <br />
+  <em>Invoice management with status tracking, line items, and payment workflows</em>
+</p>
+
+> Full screenshots coming soon. The OG image above shows the LeadFlow branding. Visit the [live demo](https://crm.tabishbinishfaq.dev) to see the actual UI.
+
+---
+
 ## Tech Stack
 
 | Layer            | Technology                                                 |
@@ -142,7 +183,7 @@ The demo is pre-loaded with sample data so you can test every feature immediatel
 | Database         | Firestore (Firebase) with real-time listeners              |
 | Authentication   | Firebase Auth (Email, Google, GitHub) + Firebase Admin SDK |
 | File Storage     | Cloudinary (documents), Firebase Storage (fallback)        |
-| Email            | Resend (transactional with open/click tracking)            |
+| Email            | Resend (primary, transactional with open/click tracking), Brevo (optional fallback) |
 | Calendar         | Google Calendar API / Google Meet integration              |
 | Scheduling       | n8n Workflow SDK (meeting booking workflows)               |
 | Charts           | Recharts 2 (line, bar, pie, donut, funnel)                 |
@@ -168,7 +209,7 @@ The demo is pre-loaded with sample data so you can test every feature immediatel
 ```bash
 # Clone the repo
 git clone https://github.com/Tabish5858/Leadflow-CRM.git
-cd leadflow-crm/leadflow
+cd Leadflow-CRM
 
 # Install dependencies
 npm install
@@ -189,7 +230,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `NEXT_PUBLIC_FIREBASE_*` (6 vars) | Firebase Auth, Firestore, Storage |
 | `FIREBASE_ADMIN_*` (3 vars)       | Admin SDK for API routes          |
 | `NEXT_PUBLIC_APP_URL`             | OAuth redirects, invite links     |
-| `RESEND_API_KEY`                  | Email sending                     |
+| `RESEND_API_KEY` (or `BREVO_API_KEY`) | Email sending (Resend primary, Brevo fallback) |
 | `CLOUDINARY_*` (3 vars)           | Document/file storage             |
 | `GOOGLE_*` (4 vars)               | Calendar integration, Google Meet |
 

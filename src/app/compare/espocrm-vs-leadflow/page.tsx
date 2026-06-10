@@ -10,44 +10,50 @@ import { DemoButton } from "../demo-button";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "EspoCRM Alternative — LeadFlow vs EspoCRM",
-  description:
-    "Comparing EspoCRM and LeadFlow: modern Next.js stack vs PHP, built-in client portal, time tracking & invoicing, and better UI/UX. LeadFlow is the modern open-source CRM alternative.",
-  keywords: [
-    "espocrm alternative",
-    "espocrm vs leadflow",
-    "open source CRM",
-    "espocrm review",
-    "leadflow CRM",
-    "modern CRM alternative",
-    "next.js CRM",
-  ],
-  openGraph: {
-    title: "EspoCRM vs LeadFlow — Modern Open-Source CRM Comparison",
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crm.tabishbinishfaq.dev";
+
+export function generateMetadata(): Metadata {
+  return {
+    title: "EspoCRM Alternative — LeadFlow vs EspoCRM",
     description:
-      "Next.js 16 stack, client portal, time tracking & invoicing built in. See how LeadFlow compares to EspoCRM.",
-    url: "https://crm.tabishbinishfaq.dev/compare/espocrm-vs-leadflow",
-    siteName: "LeadFlow",
-    images: [
-      {
-        url: "https://crm.tabishbinishfaq.dev/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "LeadFlow vs EspoCRM Comparison",
-      },
+      "Comparing EspoCRM and LeadFlow: modern Next.js stack vs PHP, built-in client portal, time tracking & invoicing, and better UI/UX. LeadFlow is the modern open-source CRM alternative. Runs on free tiers — $0 to host.",
+    keywords: [
+      "espocrm alternative",
+      "espocrm vs leadflow",
+      "open source CRM",
+      "espocrm review",
+      "leadflow CRM",
+      "modern CRM alternative",
+      "next.js CRM",
+      "free espocrm alternative",
+      "no cost open source CRM",
     ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "EspoCRM vs LeadFlow — Modern Open-Source CRM Comparison",
-    description:
-      "Next.js 16 stack, client portal, time tracking & invoicing built in. See how LeadFlow compares to EspoCRM.",
-  },
-  alternates: {
-    canonical: "https://crm.tabishbinishfaq.dev/compare/espocrm-vs-leadflow",
-  },
-};
+    openGraph: {
+      title: "EspoCRM vs LeadFlow — Modern Open-Source CRM Comparison",
+      description:
+        "Next.js 16 stack, client portal, time tracking & invoicing built in. Runs on free Firebase + Vercel tiers — $0 to host. See how LeadFlow compares to EspoCRM.",
+      url: `${baseUrl}/compare/espocrm-vs-leadflow`,
+      siteName: "LeadFlow",
+      images: [
+        {
+          url: `${baseUrl}/og-image.svg`,
+          width: 1200,
+          height: 630,
+          alt: "LeadFlow vs EspoCRM Comparison",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "EspoCRM vs LeadFlow — Modern Open-Source CRM Comparison",
+      description:
+        "Next.js 16 stack, client portal, time tracking & invoicing built in. Runs on free Firebase + Vercel tiers — $0 to host.",
+    },
+    alternates: {
+      canonical: `${baseUrl}/compare/espocrm-vs-leadflow`,
+    },
+  };
+}
 
 const FEATURES = [
   { name: "Tech Stack", leadflow: "Next.js 16, React 19, Firebase", espocrm: "PHP, MySQL, Backbone.js" },

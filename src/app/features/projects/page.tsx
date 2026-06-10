@@ -30,13 +30,19 @@ export function generateMetadata(): Metadata {
       "project budget tracking",
       "task management CRM",
       "small business project software",
+      "free project management CRM",
+      "no cost project tracking",
+      "zero budget project software",
     ],
+    alternates: {
+      canonical: `${baseUrl}/features/projects`,
+    },
     openGraph: {
       title: "Project Management CRM & Client Project Tracking",
       description:
         "Track client projects with budgets, priorities, deadlines, and task assignment. Open-source CRM — self-host or try free.",
       url: `${baseUrl}/features/projects`,
-      images: [{ url: `${baseUrl}/og-image.png`, width: 1200, height: 630, alt: "LeadFlow Project Management Dashboard" }],
+      images: [{ url: `${baseUrl}/og-image.svg`, width: 1200, height: 630, alt: "LeadFlow Project Management Dashboard" }],
     },
   };
 }

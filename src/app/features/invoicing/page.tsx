@@ -30,13 +30,19 @@ export function generateMetadata(): Metadata {
       "CRM with invoicing",
       "free invoice generator",
       "small business invoicing",
+      "free invoice management CRM",
+      "no cost invoicing software",
+      "zero cost invoice generator",
     ],
+    alternates: {
+      canonical: `${baseUrl}/features/invoicing`,
+    },
     openGraph: {
       title: "Free Invoicing Software & Invoice Management CRM",
       description:
         "Create, send, and track invoices with line items, tax, and status workflows. Free open-source CRM — self-host or try without signup.",
       url: `${baseUrl}/features/invoicing`,
-      images: [{ url: `${baseUrl}/og-image.png`, width: 1200, height: 630, alt: "LeadFlow Invoice Management Interface" }],
+      images: [{ url: `${baseUrl}/og-image.svg`, width: 1200, height: 630, alt: "LeadFlow Invoice Management Interface" }],
     },
   };
 }

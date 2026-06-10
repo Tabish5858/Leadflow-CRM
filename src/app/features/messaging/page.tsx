@@ -29,13 +29,19 @@ export function generateMetadata(): Metadata {
       "open source team chat",
       "internal communication tool",
       "conversation threads CRM",
+      "free team messaging CRM",
+      "no cost internal chat",
+      "zero budget team inbox",
     ],
+    alternates: {
+      canonical: `${baseUrl}/features/messaging`,
+    },
     openGraph: {
       title: "Team Messaging CRM & CRM Internal Messaging",
       description:
         "Team inbox with read receipts, search, and per-conversation threads. Internal messaging built into your open-source CRM — try free.",
       url: `${baseUrl}/features/messaging`,
-      images: [{ url: `${baseUrl}/og-image.png`, width: 1200, height: 630, alt: "LeadFlow Team Messaging Interface" }],
+      images: [{ url: `${baseUrl}/og-image.svg`, width: 1200, height: 630, alt: "LeadFlow Team Messaging Interface" }],
     },
   };
 }

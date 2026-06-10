@@ -30,13 +30,19 @@ export function generateMetadata(): Metadata {
       "client invoice portal",
       "document sharing portal",
       "CRM client portal",
+      "free client portal CRM",
+      "no cost client dashboard",
+      "zero budget client portal",
     ],
+    alternates: {
+      canonical: `${baseUrl}/features/client-portal`,
+    },
     openGraph: {
       title: "Client Portal Software & Self-Hosted Client Portal",
       description:
         "Give clients a dedicated dashboard with project visibility, invoice access, document sharing, and role-based access. Self-hosted open-source CRM.",
       url: `${baseUrl}/features/client-portal`,
-      images: [{ url: `${baseUrl}/og-image.png`, width: 1200, height: 630, alt: "LeadFlow Client Portal Dashboard" }],
+      images: [{ url: `${baseUrl}/og-image.svg`, width: 1200, height: 630, alt: "LeadFlow Client Portal Dashboard" }],
     },
   };
 }
