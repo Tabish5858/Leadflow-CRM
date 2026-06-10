@@ -145,9 +145,7 @@ export default function RootLayout({
                 "@type": "Offer",
                 price: "0",
                 priceCurrency: "USD",
-                priceValidUntil: new Date(
-                  Date.now() + 365 * 24 * 60 * 60 * 1000
-                ).toISOString(),
+                priceValidUntil: "2027-06-10T00:00:00.000Z",
                 availability: "https://schema.org/InStock",
               },
               license:
