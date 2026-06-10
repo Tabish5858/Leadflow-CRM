@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
 import {
   CheckCircle,
@@ -7,10 +5,10 @@ import {
   Github,
   Star,
   X,
-  Zap,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DemoButton } from "../demo-button";
 
 export const metadata: Metadata = {
   title: "Twenty CRM Alternative — LeadFlow vs Twenty | LeadFlow CRM",
@@ -84,19 +82,7 @@ export default function TwentyVsLeadFlow() {
             <span className="text-base font-bold tracking-tight">LeadFlow</span>
           </Link>
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              className="gap-1.5"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  localStorage.setItem("leadflow_demo_mode", "true");
-                  window.location.href = "/dashboard";
-                }
-              }}
-            >
-              <Zap className="h-3.5 w-3.5" />
-              Try Demo
-            </Button>
+            <DemoButton label="Try Demo" />
             <Button asChild variant="ghost" size="sm">
               <Link href="/login">Sign in</Link>
             </Button>
@@ -228,19 +214,7 @@ export default function TwentyVsLeadFlow() {
               invoices, projects, time tracking, and client portal.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Button
-                size="lg"
-                className="gap-2 text-base h-12 px-6"
-                onClick={() => {
-                  if (typeof window !== "undefined") {
-                    localStorage.setItem("leadflow_demo_mode", "true");
-                    window.location.href = "/dashboard";
-                  }
-                }}
-              >
-                <Zap className="h-5 w-5" />
-                Launch Demo
-              </Button>
+              <DemoButton label="Launch Demo" />
               <Button asChild variant="outline" size="lg" className="gap-2 text-base h-12 px-6">
                 <a href="https://github.com/Tabish5858/Leadflow-CRM" target="_blank" rel="noopener noreferrer">
                   <Github className="h-5 w-5" />
