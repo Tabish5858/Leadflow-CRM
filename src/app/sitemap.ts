@@ -41,6 +41,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Blog
   const blog = [
     { url: `${baseUrl}/blog`, priority: 0.7, freq: "weekly" as const },
+    { url: `${baseUrl}/blog/how-to-run-crm-on-free-tiers-firebase-vercel`, priority: 0.6, freq: "monthly" as const },
+    { url: `${baseUrl}/blog/open-source-crm-without-docker`, priority: 0.6, freq: "monthly" as const },
+    { url: `${baseUrl}/blog/leadflow-vs-twenty-crm-comparison`, priority: 0.6, freq: "monthly" as const },
   ];
 
   const all = [...core, ...features, ...docs, ...compare, ...blog];
