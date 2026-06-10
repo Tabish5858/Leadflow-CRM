@@ -150,28 +150,114 @@ The demo is pre-loaded with sample data so you can test every feature immediatel
 
 ## Screenshots
 
+### Dashboard
+
 <p align="center">
-  <img src="screenshots/dashboard.png" alt="LeadFlow Dashboard" width="600" />
+  <img src="screenshots/dashboard.png" alt="LeadFlow Dashboard" width="700" />
   <br />
-  <em>Dashboard with tasks, projects, invoices, meetings and messages widgets</em>
+  <em>Dashboard with tasks, projects, invoices, meetings and messages widgets. Drag-and-drop to reorder cards.</em>
+</p>
+
+### Leads & Pipeline
+
+<p align="center">
+  <img src="screenshots/leads.png" alt="LeadFlow Spreadsheet View" width="700" />
+  <br />
+  <em>Lead spreadsheet view with data management and filtering capabilities.</em>
 </p>
 
 <p align="center">
-  <img src="screenshots/pipeline.png" alt="LeadFlow Pipeline Kanban" width="600" />
+  <img src="screenshots/spreadsheet-detail.png" alt="LeadFlow Spreadsheet Detail" width="700" />
   <br />
-  <em>Lead and pipeline management with spreadsheet and Kanban views</em>
+  <em>Spreadsheet detail view with full data editing and column management.</em>
+</p>
+
+### Projects
+
+<p align="center">
+  <img src="screenshots/projects.png" alt="LeadFlow Projects List" width="700" />
+  <br />
+  <em>Project list with progress tracking, budgets, and deadlines.</em>
 </p>
 
 <p align="center">
-  <img src="screenshots/invoices.png" alt="LeadFlow Invoice Manager" width="600" />
+  <img src="screenshots/project-detail.png" alt="LeadFlow Project Detail" width="700" />
   <br />
-  <em>Invoice management with status tracking, line items, and payment workflows</em>
+  <em>Project detail view with tasks, milestones, deliverables, and team collaboration.</em>
+</p>
+
+### Invoices
+
+<p align="center">
+  <img src="screenshots/invoices.png" alt="LeadFlow Invoice List" width="700" />
+  <br />
+  <em>Invoice list with status tracking (paid, sent, draft, overdue) and client information.</em>
 </p>
 
 <p align="center">
-  <img src="screenshots/projects.png" alt="LeadFlow Project Management" width="600" />
+  <img src="screenshots/invoice-detail.png" alt="LeadFlow Invoice Detail" width="700" />
   <br />
-  <em>Client project tracking with progress, budgets, and deadlines</em>
+  <em>Invoice detail with line items, tax calculation, and payment history.</em>
+</p>
+
+### Contracts
+
+<p align="center">
+  <img src="screenshots/contracts.png" alt="LeadFlow Contracts" width="700" />
+  <br />
+  <em>Contract and proposal management with e-signatures and status tracking.</em>
+</p>
+
+### Meetings
+
+<p align="center">
+  <img src="screenshots/meetings.png" alt="LeadFlow Meetings" width="700" />
+  <br />
+  <em>Meeting calendar with scheduling, Google Meet integration, and booking pages.</em>
+</p>
+
+### Messages
+
+<p align="center">
+  <img src="screenshots/messages.png" alt="LeadFlow Messages" width="700" />
+  <br />
+  <em>Team messaging with read receipts, reply threading, and conversation management.</em>
+</p>
+
+### Time Tracking
+
+<p align="center">
+  <img src="screenshots/time-tracker.png" alt="LeadFlow Time Tracker" width="700" />
+  <br />
+  <em>Time tracking with start/stop timer, manual entry, per-project billable hours.</em>
+</p>
+
+### Clients
+
+<p align="center">
+  <img src="screenshots/clients.png" alt="LeadFlow Clients" width="700" />
+  <br />
+  <em>Client management with contact details, linked projects, invoices, and activity history.</em>
+</p>
+
+### Settings & Themes
+
+<p align="center">
+  <img src="screenshots/settings.png" alt="LeadFlow Settings" width="700" />
+  <br />
+  <em>Profile settings with display name, photo, and account management.</em>
+</p>
+
+<p align="center">
+  <img src="screenshots/settings-workspace.png" alt="LeadFlow Workspace Settings" width="700" />
+  <br />
+  <em>Workspace settings for team configuration and branding.</em>
+</p>
+
+<p align="center">
+  <img src="screenshots/settings-themes.png" alt="LeadFlow Themes & Preferences" width="700" />
+  <br />
+  <em>Accent color themes (18 options), dark/light mode, and interface preferences.</em>
 </p>
 
 ---
