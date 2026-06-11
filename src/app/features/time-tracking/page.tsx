@@ -84,7 +84,7 @@ const COMPARISON = [
   { label: "Manual time entry", leadflow: "Included", others: "Often missing" },
   { label: "Per-project tracking", leadflow: "Native", others: "Add-on" },
   { label: "Billable vs non-billable", leadflow: "Per-entry toggle", others: "Separate views" },
-  { label: "CRM integration", leadflow: "Deep — pipeline & invoices", others: "None or shallow" },
+  { label: "CRM integration", leadflow: "Deep — projects & invoices", others: "None or shallow" },
   { label: "Per-seat pricing", leadflow: "None — free", others: "$$$ per user/mo" },
 ];
 

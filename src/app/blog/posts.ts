@@ -99,7 +99,7 @@ export const posts: BlogPost[] = [
       },
       {
         heading: "Built-in Features",
-        body: "LeadFlow includes invoicing, time tracking, and a client portal as core modules — not plugins or extensions. Twenty focuses on pipeline and contact management and requires plugins or custom development for invoicing and client portals. Both have Kanban pipelines, but LeadFlow adds built-in time tracking (start/stop timer, billable hours) and a full invoice management system with line items, tax, and payment tracking.",
+        body: "LeadFlow includes invoicing, time tracking, and a client portal as core modules — not plugins or extensions. Twenty focuses on project and contact management and requires plugins or custom development for invoicing and client portals. Both have Kanban project views, but LeadFlow adds built-in time tracking (start/stop timer, billable hours) and a full invoice management system with line items, tax, and payment tracking.",
       },
       {
         heading: "Cost of Ownership",

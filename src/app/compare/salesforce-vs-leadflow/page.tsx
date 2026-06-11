@@ -62,7 +62,6 @@ const FEATURES = [
   { name: "Per-Seat Pricing", leadflow: "None", salesforce: "Yes" },
   { name: "Data Ownership", leadflow: "100% yours", salesforce: "On Salesforce servers" },
   { name: "Client Portal", leadflow: "Built-in", salesforce: "$75+/seat + Experience Cloud" },
-  { name: "Pipeline Management", leadflow: "Yes", salesforce: "Yes" },
   { name: "Projects", leadflow: "Yes", salesforce: "Requires add-on" },
   { name: "Invoicing", leadflow: "Built-in", salesforce: "Requires CPQ ($75+/seat)" },
   { name: "Time Tracking", leadflow: "Built-in", salesforce: "Requires add-on" },
@@ -113,7 +112,7 @@ export default function SalesforceVsLeadFlow() {
             </h1>
             <p className="mt-4 text-base text-muted-foreground sm:text-lg max-w-2xl mx-auto">
               Salesforce is the industry giant — and expensive. LeadFlow is the 
-              free, open-source alternative that gives you pipeline, projects, 
+              free, open-source alternative that gives you projects, 
               invoices, time tracking, and a client portal without the per-seat 
               pricing or vendor lock-in.
             </p>
@@ -214,7 +213,7 @@ export default function SalesforceVsLeadFlow() {
                 },
                 {
                   title: "All Essential Features Built In",
-                  desc: "Pipeline, projects, invoices, time tracking, messaging, meetings, analytics, contracts, and client portal — all in one platform. No add-ons, no integrations to maintain.",
+                  desc: "Projects, invoices, time tracking, messaging, meetings, analytics, contracts, and client portal — all in one platform. No add-ons, no integrations to maintain.",
                 },
               ].map((item) => (
                 <div
@@ -238,8 +237,8 @@ export default function SalesforceVsLeadFlow() {
               Try LeadFlow — No signup needed
             </h2>
             <p className="mt-3 text-muted-foreground max-w-lg mx-auto">
-              Click one button and explore a fully-loaded workspace with pipeline, 
-              invoices, projects, time tracking, and client portal.
+              Click one button and explore a fully-loaded workspace with projects, 
+              invoices, time tracking, and client portal.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <DemoButton label="Launch Demo" />

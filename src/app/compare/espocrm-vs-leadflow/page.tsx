@@ -60,9 +60,8 @@ const FEATURES = [
   { name: "Client Portal", leadflow: "Built-in", espocrm: "Via extension" },
   { name: "Time Tracking", leadflow: "Built-in", espocrm: "Via extension" },
   { name: "Invoicing", leadflow: "Built-in", espocrm: "Via extension" },
-  { name: "Pipeline Management", leadflow: "Yes", espocrm: "Yes" },
-  { name: "No-Code Customization", leadflow: "Code-based", espocrm: "Built-in (strong)" },
   { name: "Projects", leadflow: "Yes", espocrm: "Yes" },
+  { name: "No-Code Customization", leadflow: "Code-based", espocrm: "Built-in (strong)" },
   { name: "Messaging", leadflow: "Yes", espocrm: "Yes" },
   { name: "Meetings / Scheduling", leadflow: "Yes", espocrm: "Yes" },
   { name: "Analytics", leadflow: "Yes", espocrm: "Basic" },
@@ -191,7 +190,7 @@ export default function EspoVsLeadFlow() {
                 },
                 {
                   title: "All-in-One Workspace",
-                  desc: "Pipeline, projects, invoices, time tracking, messaging, meetings, analytics, contracts, and client portal — 9 modules, one workspace.",
+                  desc: "Projects, invoices, time tracking, messaging, meetings, analytics, contracts, and client portal — 8 integrated modules in one workspace.",
                 },
                 {
                   title: "MIT License",
@@ -219,8 +218,8 @@ export default function EspoVsLeadFlow() {
               Try LeadFlow — No signup needed
             </h2>
             <p className="mt-3 text-muted-foreground max-w-lg mx-auto">
-              Click one button and explore a fully-loaded workspace with pipeline, 
-              invoices, projects, time tracking, and client portal.
+              Click one button and explore a fully-loaded workspace with projects, 
+              invoices, time tracking, and client portal.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <DemoButton label="Launch Demo" />

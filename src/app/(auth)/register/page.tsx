@@ -126,7 +126,7 @@ export default function RegisterPage() {
           </p>
           <div className="space-y-3 pt-4">
             {[
-              "Unlimited leads & pipelines",
+              "Unlimited leads & contacts",
               "Built-in time tracking",
               "Real-time analytics",
               "100% open source",

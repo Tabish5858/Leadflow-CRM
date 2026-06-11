@@ -9,12 +9,12 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crm.tabishbinishfaq.
 export const metadata: Metadata = {
   title: "Blog: Open-Source CRM Guides, Tips & Comparisons",
   description:
-    "Learn about open-source CRM, self-hosting, pipeline management, and team productivity. Guides, comparisons, and best practices from the LeadFlow team.",
+    "Learn about open-source CRM, self-hosting, project management, and team productivity. Guides, comparisons, and best practices from the LeadFlow team.",
   keywords: [
     "open-source CRM blog",
     "CRM guides",
     "self-hosting CRM",
-    "pipeline management",
+    "project management",
     "CRM comparisons",
     "LeadFlow blog",
     "team productivity",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Blog: Open-Source CRM Guides, Tips & Comparisons",
     description:
-      "Learn about open-source CRM, self-hosting, and pipeline management. Guides and comparisons from the LeadFlow team.",
+      "Learn about open-source CRM, self-hosting, and project management. Guides and comparisons from the LeadFlow team.",
     url: `${baseUrl}/blog`,
     siteName: "LeadFlow",
     type: "website",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Blog: Open-Source CRM Guides, Tips & Comparisons",
     description:
-      "Learn about open-source CRM, self-hosting, and pipeline management. Guides and comparisons from the LeadFlow team.",
+      "Learn about open-source CRM, self-hosting, and project management. Guides and comparisons from the LeadFlow team.",
   },
   alternates: {
     canonical: `${baseUrl}/blog`,
@@ -102,7 +102,7 @@ export default function BlogPage() {
             </h1>
             <p className="mt-4 text-base text-muted-foreground sm:text-lg max-w-2xl mx-auto">
               Guides, comparisons, and best practices for open-source CRM, self-hosting,
-              pipeline management, and team productivity.
+              project management, and team productivity.
             </p>
           </div>
         </section>

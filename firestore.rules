@@ -191,13 +191,6 @@ service cloud.firestore {
         getWorkspace(resource.data.workspaceId).ownerId == request.auth.uid;
     }
 
-    // Automations
-    match /automations/{automationId} {
-      allow read: if isWorkspaceMember(resource.data.workspaceId);
-      allow create, update, delete: if hasRole(resource.data.workspaceId, 'admin') ||
-        getWorkspace(resource.data.workspaceId).ownerId == request.auth.uid;
-    }
-
     // Notifications
     match /notifications/{notificationId} {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;

@@ -20,7 +20,7 @@ export function generateMetadata(): Metadata {
   return {
     title: "Project Management CRM & Client Project Tracking",
     description:
-      "LeadFlow's open-source project management CRM with progress tracking, budgets, priorities, deadlines, and task assignment. Manage client projects alongside your pipeline. Self-host or try free.",
+      "LeadFlow's open-source project management CRM with progress tracking, budgets, priorities, deadlines, and task assignment. Manage client projects alongside your leads. Self-host or try free.",
     keywords: [
       "project management CRM",
       "client project tracking",

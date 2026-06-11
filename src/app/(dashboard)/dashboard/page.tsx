@@ -43,7 +43,7 @@ export default function DashboardPage() {
 
   const userName = user?.displayName || "there";
   const hasAnyModule: ModuleId[] = [
-    "leads", "pipeline", "projects", "invoices",
+    "leads", "projects", "invoices",
     "contracts", "meetings", "messages",
   ];
   const anyModuleAccessible = hasAnyModule.some((m) => canAccess(m));

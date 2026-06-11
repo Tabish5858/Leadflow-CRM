@@ -64,7 +64,6 @@ const FEATURES = [
   { name: "Data Ownership", leadflow: "100% yours", hubspot: "On HubSpot servers" },
   { name: "Feature Gates", leadflow: "None — all features included", hubspot: "Many features behind paywalls" },
   { name: "Client Portal", leadflow: "Built-in", hubspot: "Only in Enterprise ($5,000+/month)" },
-  { name: "Pipeline Management", leadflow: "Yes", hubspot: "Free tier (limited)" },
   { name: "Projects", leadflow: "Yes", hubspot: "Requires paid plan" },
   { name: "Invoicing", leadflow: "Built-in", hubspot: "Requires Payments add-on" },
   { name: "Time Tracking", leadflow: "Built-in", hubspot: "Not available" },
@@ -197,7 +196,7 @@ export default function HubspotVsLeadFlow() {
               {[
                 {
                   title: "Completely Free",
-                  desc: "LeadFlow is 100% free under the MIT license. HubSpot's free CRM is limited — to unlock pipelines, reporting, and automation, you need Sales Hub Starter at $45/seat or Professional at $90/seat.",
+                  desc: "LeadFlow is 100% free under the MIT license. HubSpot's free CRM is limited — to unlock reporting and automation, you need Sales Hub Starter at $45/seat or Professional at $90/seat.",
                 },
                 {
                   title: "No Feature Gates",
@@ -217,7 +216,7 @@ export default function HubspotVsLeadFlow() {
                 },
                 {
                   title: "All Features Included",
-                  desc: "Pipeline, projects, invoices, time tracking, messaging, meetings, analytics, contracts, and client portal — all built into one platform with no upgrades, no add-ons, no hidden costs.",
+                  desc: "Projects, invoices, time tracking, messaging, meetings, analytics, contracts, and client portal — all built into one platform with no upgrades, no add-ons, no hidden costs.",
                 },
               ].map((item) => (
                 <div
@@ -241,8 +240,8 @@ export default function HubspotVsLeadFlow() {
               Try LeadFlow — No signup needed
             </h2>
             <p className="mt-3 text-muted-foreground max-w-lg mx-auto">
-              Click one button and explore a fully-loaded workspace with pipeline, 
-              invoices, projects, time tracking, and client portal.
+              Click one button and explore a fully-loaded workspace with projects, 
+              invoices, time tracking, and client portal.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <DemoButton label="Launch Demo" />

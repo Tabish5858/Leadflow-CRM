@@ -1214,7 +1214,7 @@ export default function SettingsPage() {
               <DialogTitle>Leave Workspace</DialogTitle>
               <DialogDescription>
                 Are you sure you want to leave &quot;{activeWorkspace.name}&quot;?
-                You will lose access to all leads, pipelines, and data in this workspace.
+                You will lose access to all data in this workspace.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>

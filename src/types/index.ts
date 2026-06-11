@@ -128,7 +128,7 @@ export const MODULE_LABELS: Record<ModuleId, string> = {
 export const DEFAULT_MEMBER_PERMISSIONS: ModulePermissionsMap = {
   dashboard: true,
   leads: true,
-  pipeline: true,
+  pipeline: false,
   analytics: true,
   time_tracker: true,
   messages: true,

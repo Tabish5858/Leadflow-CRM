@@ -2,7 +2,7 @@
   "name": "leadflow",
   "version": "0.3.0",
   "private": false,
-  "description": "Open-source CRM for freelancers and teams. Pipeline, projects, invoicing, time tracking, client portal — all on free tiers.",
+  "description": "Open-source CRM for freelancers and teams. Spreadsheet-powered leads, projects, invoicing, time tracking, client portal — all on free tiers.",
   "scripts": {
     "dev": "next dev --webpack",
     "build": "NODE_OPTIONS=--max-old-space-size=4096 next build --webpack",

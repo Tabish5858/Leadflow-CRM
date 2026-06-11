@@ -44,10 +44,8 @@ body:
       multiple: true
       options:
         - Lead Management
-        - Pipeline / Kanban
         - Time Tracking
         - Analytics / Charts
-        - Automation
         - Messaging
         - Settings
         - Authentication

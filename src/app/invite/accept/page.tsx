@@ -770,12 +770,12 @@ function LeftPanel({ invite }: { invite: InviteDetails | null }) {
           {invite?.workspaceName}
         </p>
         <p className="text-lg text-muted-foreground">
-          LeadFlow CRM helps teams manage leads, track pipelines, and
+          LeadFlow CRM helps teams manage leads, manage projects, and
           close deals faster - all in one place.
         </p>
         <div className="space-y-3 pt-4">
           {[
-            "Unlimited leads & pipelines",
+            "Unlimited leads & projects",
             "Built-in time tracking",
             "Real-time analytics",
             "100% open source",

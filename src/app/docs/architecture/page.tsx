@@ -70,8 +70,8 @@ const layers = [
     subtitle: "UniverJS + Custom Analytics Engine",
     items: [
       "UniverJS powers the lead spreadsheet module with Excel-like functionality",
-      "Custom analytics engine for pipeline value, conversion rates, and cycle times",
-      "Exportable reports for pipeline, invoices, and time tracking data",
+      "Custom analytics engine for project value, conversion rates, and cycle times",
+      "Exportable reports for projects, invoices, and time tracking data",
       "Real-time collaboration on spreadsheet data",
     ],
   },
@@ -241,7 +241,7 @@ export default function ArchitecturePage() {
                 },
                 {
                   title: "Modular by Default",
-                  desc: "Each module (pipeline, projects, invoices, etc.) is independently accessible and can be disabled per workspace.",
+                  desc: "Each module (projects, invoices, etc.) is independently accessible and can be disabled per workspace.",
                 },
                 {
                   title: "Real-Time Everywhere",
@@ -268,7 +268,7 @@ export default function ArchitecturePage() {
               See LeadFlow in Action
             </h2>
             <p className="mt-3 text-muted-foreground max-w-lg mx-auto text-sm">
-              Explore a fully-loaded workspace with pipeline, invoices, projects, and more.
+              Explore a fully-loaded workspace with projects, invoices, and more.
               No account required.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">

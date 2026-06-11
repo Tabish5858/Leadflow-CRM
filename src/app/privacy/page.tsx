@@ -39,8 +39,7 @@ export default function PrivacyPolicyPage() {
               Account information such as name, email address, and password.
             </li>
             <li>
-              Workspace data you add, including leads, contacts, notes, and
-              pipeline settings.
+              Workspace data you add, including leads, contacts, and notes.
             </li>
             <li>
               Usage data like pages viewed, features used, and basic device and

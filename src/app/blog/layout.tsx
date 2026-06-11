@@ -4,11 +4,11 @@ import Script from "next/script";
 export const metadata: Metadata = {
   title: "Blog: Open-Source CRM Guides, Tips & Comparisons",
   description:
-    "Learn about open-source CRM, self-hosting, pipeline management, and team productivity. Guides, comparisons, and best practices from the LeadFlow team.",
+    "Learn about open-source CRM, self-hosting, project management, and team productivity. Guides, comparisons, and best practices from the LeadFlow team.",
   openGraph: {
     title: "Blog: Open-Source CRM Guides, Tips & Comparisons",
     description:
-      "Learn about open-source CRM, self-hosting, pipeline management, and team productivity. Guides, comparisons, and best practices from the LeadFlow team.",
+      "Learn about open-source CRM, self-hosting, project management, and team productivity. Guides, comparisons, and best practices from the LeadFlow team.",
     url: "https://crm.tabishbinishfaq.dev/blog",
     type: "website",
   },
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     "open-source CRM blog",
     "CRM guides",
     "self-hosting CRM",
-    "pipeline management",
+    "project management",
     "CRM comparisons",
     "LeadFlow blog",
     "team productivity",

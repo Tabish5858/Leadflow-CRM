@@ -110,7 +110,6 @@ Vercel Dashboard → Project → Settings → Environment Variables → Producti
 | `emails` | Email history |
 | `email_events` | Email tracking events (opens/clicks) |
 | `documents` | Document metadata (Cloudinary URLs) |
-| `automations` | Automation rules |
 | `tasks` | Tasks and follow-ups |
 | `time_entries` | Time tracking records |
 | `notifications` | In-app notifications |

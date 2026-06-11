@@ -33,7 +33,7 @@
   <text x="80" y="320" font-family="'Inter', 'SF Pro Display', -apple-system, sans-serif" font-size="26" font-weight="500" fill="#94a3b8" letter-spacing="0.3">Open-Source CRM</text>
 
   <!-- Value proposition -->
-  <text x="80" y="360" font-family="'Inter', 'SF Pro Display', -apple-system, sans-serif" font-size="18" fill="#64748b" letter-spacing="0.2">Pipeline management, project tracking, invoicing, time tracking,</text>
+  <text x="80" y="360" font-family="'Inter', 'SF Pro Display', -apple-system, sans-serif" font-size="18" fill="#64748b" letter-spacing="0.2">Project tracking, invoicing, time tracking,</text>
   <text x="80" y="390" font-family="'Inter', 'SF Pro Display', -apple-system, sans-serif" font-size="18" fill="#64748b" letter-spacing="0.2">team messaging, and a client portal in one platform.</text>
 
   <!-- Infrastructure note -->

@@ -16,7 +16,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // Feature pages (public-facing, indexable)
   const features = [
-    { url: `${baseUrl}/features/pipeline`, priority: 0.8, freq: "monthly" as const },
     { url: `${baseUrl}/features/projects`, priority: 0.8, freq: "monthly" as const },
     { url: `${baseUrl}/features/invoicing`, priority: 0.8, freq: "monthly" as const },
     { url: `${baseUrl}/features/time-tracking`, priority: 0.8, freq: "monthly" as const },

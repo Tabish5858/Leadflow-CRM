@@ -2,7 +2,7 @@
 
 **Open-source CRM for freelancers, small teams, and agencies. Own your data. Zero vendor lock-in.**
 
-LeadFlow is a full-featured customer relationship management platform built with Next.js 16 on Firebase. Manage leads, track deals through customizable pipelines, schedule meetings, automate follow-ups, collaborate with your team, and analyze performance- self-hosted on your own infrastructure.
+LeadFlow is a full-featured customer relationship management platform built with Next.js 16 on Firebase. Manage contacts with spreadsheet-powered data, schedule meetings, collaborate with your team, and analyze performance — self-hosted on your own infrastructure.
 
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License" />
@@ -76,7 +76,7 @@ These are the actual free-tier limits. A solo freelancer or small team will hit 
   <em>Dashboard with tasks, projects, invoices, meetings and messages widgets. Drag-and-drop to reorder cards.</em>
 </p>
 
-### Leads & Pipeline
+### Leads (Spreadsheet)
 
 <p align="center">
   <img src="public/screenshots/leads.png" alt="LeadFlow Spreadsheet View" width="700" />
@@ -185,7 +185,7 @@ These are the actual free-tier limits. A solo freelancer or small team will hit 
 | Audience           | Why LeadFlow Fits                                                                          |
 | ------------------ | ------------------------------------------------------------------------------------------ |
 | **Freelancers**    | Track leads, manage projects, send invoices, time track--- all in one place. Free to host. |
-| **Small Agencies** | Multi-workspace support, role-based access (Owner/Admin/Member/Viewer), shared pipeline.   |
+| **Small Agencies** | Multi-workspace support, role-based access (Owner/Admin/Member/Viewer), team collaboration.   |
 | **Developers**     | Full TypeScript, clean architecture, Firebase backend, easy to customize and extend.       |
 | **Startups**       | Ship a complete CRM without building from scratch. MIT license means no restrictions.      |
 
@@ -195,11 +195,10 @@ These are the actual free-tier limits. A solo freelancer or small team will hit 
 
 ### Core CRM
 
-| Module                  | What You Get                                                                                                                                         |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Lead Management**     | Full CRUD with real-time sync, Kanban board, advanced filters, lead scoring (0-100), CSV import, bulk operations, duplicate detection, custom fields |
-| **Pipeline Management** | Drag-and-drop Kanban with customizable stages, colors, win probabilities, WIP limits                                                                 |
-| **Contact Management**  | Store contacts, companies, deal- all linked together with activity history                                                                           |
+| Module                 | What You Get                                                                                                                            |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Lead Management**    | Spreadsheet-powered data management with CRUD, real-time sync, advanced filters, CSV import, bulk operations, duplicate detection       |
+| **Contact Management** | Store contacts, companies, deals — all linked together with activity history                                                            |
 
 ### Sales & Communication
 
@@ -217,15 +216,14 @@ These are the actual free-tier limits. A solo freelancer or small team will hit 
 | **Dashboard**     | Drag-and-drop reorderable cards for each module (Tasks, Projects, Invoices, Contracts, Meetings, Messages). Permission-gated visibility. Card order persists per user. |
 | **Time Tracking** | Live stopwatch, manual entries, per-lead association, billable tracking, daily grouped view, real-time sync                           |
 | **Documents**     | Cloudinary upload (drag-and-drop), preview, type icons, 10MB limit, per-lead and per-workspace organization, delete with confirmation |
-| **Analytics**     | KPI cards, time-series charts, pipeline/revenue/source distributions, conversion funnel, industry breakdown, PDF export               |
+| **Analytics**     | KPI cards, time-series charts, revenue/source distributions, conversion funnel, industry breakdown, PDF export               |
 | **Notifications** | Real-time in-app notification bell with unread count badge, mark all read, delete, color-coded icons by type                          |
 
-### Team & Automation
+### Team & Workspace
 
 | Module              | What You Get                                                                                             |
 | ------------------- | -------------------------------------------------------------------------------------------------------- |
 | **Workspaces**      | Multi-workspace membership, 4 roles (Owner/Admin/Member/Viewer), email invite system, full audit logging |
-| **Automation**      | Trigger/action engine (5 triggers, 5 actions), enable/disable per rule, full CRUD                        |
 | **User Management** | Editable profiles (name, photo), synced across workspace member views, role-based permissions            |
 
 ### Client Portal
@@ -245,7 +243,6 @@ These are the actual free-tier limits. A solo freelancer or small team will hit 
 | ---------------------- | -------------------------------------------- |
 | **Accent Colors**      | 18 color themes applied across the entire UI |
 | **Theme**              | Dark mode + light mode                       |
-| **Pipeline Stages**    | Fully customizable per workspace             |
 | **Custom Lead Fields** | Define your own data model for leads         |
 
 ---
@@ -266,7 +263,7 @@ The demo is pre-loaded with sample data so you can test every feature immediatel
 
 | Layer            | Technology                                                 |
 | ---------------- | ---------------------------------------------------------- |
-| Framework        | Next.js 15 (App Router)                                    |
+| Framework        | Next.js 16 (App Router)                                    |
 | Language         | TypeScript 5.8 (strict mode)                               |
 | UI               | React 19, Tailwind CSS 4, shadcn/ui (20+ primitives)       |
 | State Management | Zustand 5, TanStack Query 5                                |
@@ -341,8 +338,8 @@ leadflow/
   src/
     app/                    # Next.js App Router
       (auth)/               # Login, Register, Forgot/Reset Password
-      (dashboard)/          # Dashboard, Leads, Pipeline, Analytics,
-                            # Time Tracker, Messages, Meetings, Automations, Settings
+      (dashboard)/          # Dashboard, Leads, Analytics,
+                            # Time Tracker, Messages, Meetings, Settings
       b/[token]/            # Public meeting booking pages
       invite/accept/        # Workspace invite acceptance
       api/                  # API routes
@@ -350,14 +347,13 @@ leadflow/
       ui/                   # shadcn/ui primitives
       leads/                # Lead form, detail, filters, score badge, CSV import,
                             #   documents, email composer, activity timeline
-      pipeline/             # Kanban board, column, card
+
       meetings/             # Meeting type dialog, calendar tab, booking questions,
                             #   public booking page client
       messages/             # Conversation list, message thread, input, reply threading,
                             #   read receipt indicators, sidebar unread badge
       notifications/        # Notification bell with dropdown, real-time listener
-      automations/          # Automation builder
-      settings/             # Pipeline editor, custom fields editor, calendar connection
+      settings/             # Custom fields editor, calendar connection
       shared/               # Page header, stat card, status badge, export button, empty state
       skeletons/            # Loading placeholders (card, chart, table, list)
       workspace/            # Workspace switcher, invite dialog
@@ -366,7 +362,7 @@ leadflow/
       stores/               # Zustand stores
       hooks/                # Custom hooks
       schemas/              # Zod validation schemas
-      constants/            # Pipeline stages, sources, niches
+      constants/            # Sources, niches
       calendar.ts           # Google Calendar OAuth + API
       cloudinary-config.ts  # Cloudinary config (client-safe)
       csv.ts                # CSV parsing/generation
@@ -374,7 +370,6 @@ leadflow/
       email-tracking.ts     # Tracking pixel and link rewriting
       export.ts             # CSV/Excel/PDF export
       lead-filters.ts       # Filter state with URL sync
-      lead-scoring.ts       # Scoring algorithm
       audit-log.ts          # Audit trail
       permissions.ts        # Role-based access control
     types/                  # TypeScript interfaces
@@ -416,13 +411,12 @@ leadflow/
 
 | Collection              | Description                                                        |
 | ----------------------- | ------------------------------------------------------------------ |
-| `leads`                 | Lead records with pipeline status, value, source                   |
+| `leads`                 | Lead records with value, source                                    |
 | `activities`            | Per-lead activity timeline                                         |
 | `audit_logs`            | Workspace audit trail                                              |
 | `emails`                | Email history with tracking                                        |
 | `email_events`          | Open/click tracking events                                         |
 | `documents`             | Cloudinary document metadata                                       |
-| `automations`           | Automation rule configurations                                     |
 | `timeEntries`           | Time tracking records                                              |
 | `conversations`         | Message conversations with unread counts                           |
 | `messages`              | Individual messages with reactions, read receipts, reply threading |
@@ -442,20 +436,6 @@ leadflow/
 | `contract_templates`    | Reusable contract templates                                        |
 | `client_documents`      | Client-facing document metadata                                    |
 | `client_portal_settings`| Per-workspace client portal configuration (modules, welcome card)  |
-
----
-
-## Lead Scoring Algorithm
-
-The scoring engine computes a 0-100 score per lead:
-
-| Component        | Weight | Inputs                           |
-| ---------------- | ------ | -------------------------------- |
-| Deal Value       | 30 pts | Normalized against workspace max |
-| Activity Recency | 25 pts | Last activity timestamp          |
-| Pipeline Stage   | 25 pts | Stage probability percentage     |
-| Email Engagement | 10 pts | Open/click rate                  |
-| Notes Presence   | 10 pts | Has notes or not                 |
 
 ---
 

@@ -26,16 +26,15 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crm.tabishbinishfaq.
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: "LeadFlow - Open-Source CRM | Pipeline, Projects, Invoices & Client Portal",
+    default: "LeadFlow - Open-Source CRM | Projects, Invoices & Client Portal",
     template: "%s | LeadFlow CRM",
   },
   description:
-    "Open-source CRM with pipeline management, project tracking, invoicing, time tracking, messaging, and client portal — all in one platform. Runs on free Firebase + Vercel tiers — $0 to host. Self-host on any Node.js server or try instantly. No signup needed.",
+    "Open-source CRM with project tracking, invoicing, time tracking, messaging, and client portal — all in one platform. Runs on free Firebase + Vercel tiers — $0 to host. Self-host on any Node.js server or try instantly. No signup needed.",
   keywords: [
     "open source CRM",
     "self-hosted CRM",
     "free CRM software",
-    "sales pipeline software",
     "client portal software",
     "project management CRM",
     "invoicing software",
@@ -62,15 +61,15 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: baseUrl,
     siteName: "LeadFlow",
-    title: "LeadFlow - Open-Source CRM with Pipeline, Projects, Invoices & Client Portal",
+    title: "LeadFlow - Open-Source CRM with Projects, Invoices & Client Portal",
     description:
-      "Pipeline management, projects, invoices, time tracking, messaging, and client portal — all open source. Self-host or try instantly. No signup needed.",
+      "Projects, invoices, time tracking, messaging, and client portal — all open source. Self-host or try instantly. No signup needed.",
     images: [
       {
         url: `${baseUrl}/og-image.svg`,
         width: 1200,
         height: 630,
-        alt: "LeadFlow Open-Source CRM - Pipeline, Projects, Invoices & Client Portal",
+        alt: "LeadFlow Open-Source CRM - Projects, Invoices & Client Portal",
       },
     ],
   },
@@ -78,7 +77,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "LeadFlow - Open-Source CRM",
     description:
-      "Pipeline, projects, invoices, time tracking & client portal — all in one open-source platform.",
+      "Projects, invoices, time tracking & client portal — all in one open-source platform.",
     images: [`${baseUrl}/og-image.svg`],
   },
   icons: {
@@ -142,7 +141,7 @@ export default function RootLayout({
               applicationCategory: "BusinessApplication",
               operatingSystem: "Web, Linux, macOS, Windows",
               description:
-                "Open-source CRM with pipeline management, project tracking, invoicing, time tracking, messaging, and client portal. Self-host on any Node.js server.",
+                "Open-source CRM with project tracking, invoicing, time tracking, messaging, and client portal. Self-host on any Node.js server.",
               url: baseUrl,
               sameAs: [
                 "https://github.com/Tabish5858/Leadflow-CRM",
@@ -176,7 +175,7 @@ export default function RootLayout({
                 "https://github.com/Tabish5858/Leadflow-CRM",
               ],
               description:
-                "Open-source CRM platform for modern teams. Pipeline management, projects, invoices, time tracking, messaging, and client portal.",
+                "Open-source CRM platform for modern teams. Projects, invoices, time tracking, messaging, and client portal.",
             }),
           }}
         />

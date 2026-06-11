@@ -60,7 +60,6 @@ const FEATURES = [
   { name: "Client Portal", leadflow: "Built-in", twenty: "Not available" },
   { name: "Time Tracking", leadflow: "Built-in", twenty: "Requires plugin" },
   { name: "Invoicing", leadflow: "Built-in", twenty: "Requires plugin" },
-  { name: "Pipeline Management", leadflow: "Yes", twenty: "Yes" },
   { name: "Projects", leadflow: "Yes", twenty: "Limited" },
   { name: "Messaging", leadflow: "Yes", twenty: "No" },
   { name: "Meetings / Scheduling", leadflow: "Yes", twenty: "No" },
@@ -184,7 +183,7 @@ export default function TwentyVsLeadFlow() {
                 },
                 {
                   title: "9 Integrated Modules",
-                  desc: "Pipeline, projects, invoices, time tracking, messaging, meetings, analytics, contracts, and client portal — all in one workspace.",
+                  desc: "Projects, invoices, time tracking, messaging, meetings, analytics, contracts, and client portal — all in one workspace.",
                 },
                 {
                   title: "Business-Friendly Stack",
@@ -216,8 +215,8 @@ export default function TwentyVsLeadFlow() {
               Try LeadFlow — No signup needed
             </h2>
             <p className="mt-3 text-muted-foreground max-w-lg mx-auto">
-              Click one button and explore a fully-loaded workspace with pipeline, 
-              invoices, projects, time tracking, and client portal.
+              Click one button and explore a fully-loaded workspace with projects, 
+              invoices, time tracking, and client portal.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <DemoButton label="Launch Demo" />

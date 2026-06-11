@@ -19,6 +19,7 @@ const baseUrl = "https://crm.tabishbinishfaq.dev";
 
 export function generateMetadata(): Metadata {
   return {
+    robots: { index: false, follow: false },
     title: "Sales Pipeline Software & Pipeline Management CRM",
     description:
       "LeadFlow's open-source pipeline management CRM with drag-and-drop Kanban board, deal stages, probability forecasting, and deal value tracking. Self-host or try free — no signup needed.",

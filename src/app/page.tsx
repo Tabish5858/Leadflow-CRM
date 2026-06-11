@@ -36,15 +36,14 @@ interface ModuleItem {
 }
 
 const MODULES: ModuleItem[] = [
-  { icon: LayoutDashboard, title: "Dashboard", description: "Real-time overview of leads, pipeline value, and team activity at a glance." },
-  { icon: Users, title: "Leads", description: "Capture, qualify, and nurture leads with custom fields, stages, and activity tracking." },
-  { icon: KanbanSquare, title: "Pipeline", description: "Drag-and-drop Kanban pipeline with stage probability, deal value, and forecasts." },
+  { icon: LayoutDashboard, title: "Dashboard", description: "Real-time overview of your workspace activity at a glance." },
+  { icon: Users, title: "Leads", description: "Capture, qualify, and nurture leads with spreadsheet-powered data and custom fields." },
   { icon: FolderKanban, title: "Projects", description: "Manage client projects with progress tracking, budgets, priorities, and deadlines." },
   { icon: FileText, title: "Invoices", description: "Create, send, and track invoices with line items, tax, and status workflows." },
   { icon: MessageSquare, title: "Messages", description: "Team inbox for lead and member conversations with read receipts and search." },
   { icon: Calendar, title: "Meetings", description: "Schedule, join, and manage meetings with client attendance and calendar sync." },
   { icon: Clock, title: "Time Tracking", description: "Track billable hours per lead and project with start/stop and manual entry." },
-  { icon: BarChart3, title: "Analytics", description: "Pipeline value, conversion rates, cycle times, and exportable reports." },
+  { icon: BarChart3, title: "Analytics", description: "Revenue, conversion rates, time reports, and exportable reports." },
 ];
 
 const STATS = [
@@ -55,7 +54,7 @@ const STATS = [
 
 const TESTIMONIALS = [
   {
-    quote: "We replaced spreadsheets and two SaaS tools with LeadFlow. Pipeline, invoices, and time tracking in one place.",
+    quote: "We replaced spreadsheets and two SaaS tools with LeadFlow. Invoices, time tracking, and messaging in one place.",
     name: "Ariana Holt",
     role: "Growth Lead, Fieldstack",
   },
@@ -171,12 +170,12 @@ export default function LandingPage() {
               Open-Source CRM
               <br />
               <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                Pipeline, Projects, Invoices & More
+                Projects, Invoices & More
               </span>
             </h1>
             <p className="mt-4 text-base text-muted-foreground sm:text-lg max-w-2xl mx-auto">
-              LeadFlow is the open-source CRM your team will actually use. Pipeline management,
-              project tracking, invoicing, time tracking, messaging, and a client portal — all in one
+              LeadFlow is the open-source CRM your team will actually use. Project tracking,
+              invoicing, time tracking, messaging, and a client portal — all in one
               self-hosted platform. No per-seat pricing, no vendor lock-in.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -382,7 +381,7 @@ export default function LandingPage() {
                     name: "How is LeadFlow different from other open-source CRMs like Twenty or SuiteCRM?",
                     acceptedAnswer: {
                       "@type": "Answer",
-                      text: "LeadFlow combines pipeline management, project tracking, invoicing, time tracking, messaging, and a client portal in one platform — all built on a modern Next.js and React stack. Unlike Twenty (AGPL-3.0), LeadFlow is MIT licensed. We also offer built-in time tracking and a dedicated client portal, which most open-source CRMs lack.",
+                      text: "LeadFlow combines project tracking, invoicing, time tracking, messaging, and a client portal in one platform — all built on a modern Next.js and React stack. Unlike Twenty (AGPL-3.0), LeadFlow is MIT licensed. We also offer built-in time tracking and a dedicated client portal, which most open-source CRMs lack.",
                     },
                   },
                   {
@@ -398,7 +397,7 @@ export default function LandingPage() {
                     name: "Is LeadFlow really free?",
                     acceptedAnswer: {
                       "@type": "Answer",
-                      text: "Yes. LeadFlow is 100% free and open source under the MIT license. There are no paid tiers, no feature gates, no hidden costs. You can use every module — pipeline, projects, invoices, time tracking, client portal — without paying a cent.",
+                      text: "Yes. LeadFlow is 100% free and open source under the MIT license. There are no paid tiers, no feature gates, no hidden costs. You can use every module — projects, invoices, time tracking, client portal — without paying a cent.",
                     },
                   },
                   {
@@ -437,7 +436,7 @@ export default function LandingPage() {
               },
               {
                 q: "How is LeadFlow different from other open-source CRMs like Twenty or SuiteCRM?",
-                a: "LeadFlow combines pipeline management, project tracking, invoicing, time tracking, messaging, and a client portal in one platform — all built on a modern Next.js and React stack. Unlike Twenty (AGPL-3.0), LeadFlow is MIT licensed. We also offer built-in time tracking and a dedicated client portal, which most open-source CRMs lack.",
+                a: "LeadFlow combines project tracking, invoicing, time tracking, messaging, and a client portal in one platform — all built on a modern Next.js and React stack. Unlike Twenty (AGPL-3.0), LeadFlow is MIT licensed. We also offer built-in time tracking and a dedicated client portal, which most open-source CRMs lack.",
               },
               {
                 q: "Can I self-host LeadFlow on my own server?",
@@ -445,7 +444,7 @@ export default function LandingPage() {
               },
               {
                 q: "Is LeadFlow really free?",
-                a: "Yes. LeadFlow is 100% free and open source under the MIT license. There are no paid tiers, no feature gates, no hidden costs. You can use every module — pipeline, projects, invoices, time tracking, client portal — without paying a cent.",
+                a: "Yes. LeadFlow is 100% free and open source under the MIT license. There are no paid tiers, no feature gates, no hidden costs. You can use every module — projects, invoices, time tracking, client portal — without paying a cent.",
               },
               {
                 q: "Does LeadFlow have a client portal?",
@@ -479,7 +478,7 @@ export default function LandingPage() {
             </h2>
             <p className="mt-3 text-muted-foreground max-w-lg mx-auto">
               Click one button and you&apos;re in a fully-loaded workspace with real demo data.
-              Pipeline, invoices, projects, documents - all pre-configured.
+              Invoices, projects, documents — all pre-configured with sample data.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Button

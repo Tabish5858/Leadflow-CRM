@@ -166,12 +166,12 @@ export default function LoginPage() {
             Manage your leads, close more deals.
           </h1>
           <p className="text-lg text-muted-foreground">
-            The open-source CRM built for modern sales teams. Track pipelines,
+            The open-source CRM built for modern teams. Track projects,
             manage contacts, and grow your business.
           </p>
           <div className="space-y-3 pt-4">
             {[
-              "Visual pipeline management",
+              "Visual project management",
               "Time tracking & billing",
               "Analytics & reporting",
               "Open source & free forever",
