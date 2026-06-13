@@ -150,9 +150,96 @@ export default function ArchitecturePage() {
         </li>
       </ul>
 
-      <div className="not-prose rounded-lg border border-dashed border-neutral-800 bg-white/[3%] p-8 text-center text-sm text-neutral-400">
-        <p className="font-medium text-neutral-300">Diagram: System Architecture Overview</p>
-        <p className="mt-1 text-xs text-neutral-500">Show a layered architecture diagram: Browser → Vercel (Next.js SSR) → Firebase (Auth, Firestore, Storage) → Cloudinary → Resend → Google Calendar. Arrows showing data flow between layers.</p>
+      <div className="not-prose my-8 overflow-hidden rounded-xl border border-neutral-800 bg-black">
+        <svg viewBox="0 0 800 300" className="w-full" style={{ maxHeight: "300px" }} role="img" aria-label="LeadFlow system architecture diagram">
+          {/* Background grid */}
+          <defs>
+            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgb(38,38,38)" strokeWidth="0.5" />
+            </pattern>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="rgb(251,146,60)" />
+            </marker>
+            <marker id="arrowDim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="rgb(82,82,82)" />
+            </marker>
+            <linearGradient id="boxGlow" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="rgb(23,23,23)" />
+              <stop offset="100%" stopColor="rgb(10,10,10)" />
+            </linearGradient>
+          </defs>
+          
+          <rect width="800" height="300" fill="url(#boxGlow)" />
+          <rect width="800" height="300" fill="url(#grid)" />
+
+          {/* Labels on left */}
+          <text x="20" y="30" fill="rgb(163,163,163)" fontSize="10" fontWeight="600" textTransform="uppercase" letterSpacing="2">Presentation</text>
+          <text x="20" y="130" fill="rgb(163,163,163)" fontSize="10" fontWeight="600" textTransform="uppercase" letterSpacing="2">Edge</text>
+          <text x="20" y="230" fill="rgb(163,163,163)" fontSize="10" fontWeight="600" textTransform="uppercase" letterSpacing="2">Services</text>
+
+          {/* Dashed vertical guides */}
+          <line x1="135" y1="40" x2="135" y2="280" stroke="rgb(64,64,64)" strokeWidth="0.5" strokeDasharray="4,4" />
+          <line x1="345" y1="40" x2="345" y2="280" stroke="rgb(64,64,64)" strokeWidth="0.5" strokeDasharray="4,4" />
+          <line x1="555" y1="40" x2="555" y2="280" stroke="rgb(64,64,64)" strokeWidth="0.5" strokeDasharray="4,4" />
+
+          {/* ── Layer 1: Browser ── */}
+          <rect x="160" y="50" width="160" height="60" rx="8" fill="rgb(20,20,20)" stroke="rgb(251,146,60)" strokeWidth="1.5" />
+          <text x="240" y="76" fill="rgb(250,250,250)" fontSize="13" fontWeight="600" textAnchor="middle">Browser</text>
+          <text x="240" y="94" fill="rgb(163,163,163)" fontSize="10" textAnchor="middle">React 19 · Tailwind CSS</text>
+
+          {/* Arrow 1 → 2 */}
+          <line x1="320" y1="80" x2="375" y2="80" stroke="rgb(251,146,60)" strokeWidth="2" markerEnd="url(#arrow)" />
+
+          {/* ── Layer 2: Vercel ── */}
+          <rect x="380" y="38" width="160" height="84" rx="8" fill="rgb(20,20,20)" stroke="rgb(82,82,82)" strokeWidth="1.5" />
+          <rect x="380" y="38" width="160" height="22" rx="8" fill="rgb(30,30,30)" />
+          <rect x="380" y="52" width="160" height="8" fill="rgb(30,30,30)" />
+          <text x="460" y="53" fill="rgb(250,250,250)" fontSize="12" fontWeight="600" textAnchor="middle">Vercel</text>
+          <text x="460" y="73" fill="rgb(163,163,163)" fontSize="10" textAnchor="middle">Next.js 16 SSR</text>
+          <text x="460" y="88" fill="rgb(163,163,163)" fontSize="10" textAnchor="middle">API Route Handlers</text>
+          <text x="460" y="103" fill="rgb(163,163,163)" fontSize="10" textAnchor="middle">Server Actions</text>
+
+          {/* Arrow 2 → 3 */}
+          <line x1="540" y1="80" x2="595" y2="80" stroke="rgb(251,146,60)" strokeWidth="2" markerEnd="url(#arrow)" />
+
+          {/* ── Layer 3: Firebase ── */}
+          <rect x="600" y="38" width="175" height="84" rx="8" fill="rgb(20,20,20)" stroke="rgb(82,82,82)" strokeWidth="1.5" />
+          <rect x="600" y="38" width="175" height="22" rx="8" fill="rgb(30,30,30)" />
+          <rect x="600" y="52" width="175" height="8" fill="rgb(30,30,30)" />
+          <text x="687" y="53" fill="rgb(250,250,250)" fontSize="12" fontWeight="600" textAnchor="middle">Firebase</text>
+          <text x="687" y="73" fill="rgb(163,163,163)" fontSize="10" textAnchor="middle">Firebase Auth</text>
+          <text x="687" y="88" fill="rgb(163,163,163)" fontSize="10" textAnchor="middle">Firestore (Real-time DB)</text>
+          <text x="687" y="103" fill="rgb(163,163,163)" fontSize="10" textAnchor="middle">Cloud Storage (Fallback)</text>
+
+          {/* ── Layer 2 → Services (bottom row) ── */}
+          {/* Vercel to Cloudinary */}
+          <line x1="420" y1="122" x2="420" y2="180" stroke="rgb(82,82,82)" strokeWidth="1.5" />
+          <line x1="420" y1="180" x2="175" y2="180" stroke="rgb(82,82,82)" strokeWidth="1.5" />
+          <line x1="175" y1="180" x2="175" y2="200" stroke="rgb(82,82,82)" strokeWidth="1.5" markerEnd="url(#arrowDim)" />
+
+          {/* Vercel to Resend */}
+          <line x1="460" y1="122" x2="460" y2="180" stroke="rgb(82,82,82)" strokeWidth="1.5" />
+          <line x1="460" y1="180" x2="395" y2="180" stroke="rgb(82,82,82)" strokeWidth="1.5" />
+          <line x1="395" y1="180" x2="395" y2="200" stroke="rgb(82,82,82)" strokeWidth="1.5" markerEnd="url(#arrowDim)" />
+
+          {/* Vercel to Google Calendar */}
+          <line x1="500" y1="122" x2="500" y2="180" stroke="rgb(82,82,82)" strokeWidth="1.5" />
+          <line x1="500" y1="180" x2="615" y2="180" stroke="rgb(82,82,82)" strokeWidth="1.5" />
+          <line x1="615" y1="180" x2="615" y2="200" stroke="rgb(82,82,82)" strokeWidth="1.5" markerEnd="url(#arrowDim)" />
+
+          {/* ── Services (bottom row) ── */}
+          <rect x="90" y="205" width="170" height="50" rx="8" fill="rgb(20,20,20)" stroke="rgb(251,146,60)" strokeWidth="1" />
+          <text x="175" y="228" fill="rgb(250,250,250)" fontSize="12" fontWeight="600" textAnchor="middle">Cloudinary</text>
+          <text x="175" y="244" fill="rgb(163,163,163)" fontSize="10" textAnchor="middle">File &amp; Image Storage</text>
+
+          <rect x="310" y="205" width="170" height="50" rx="8" fill="rgb(20,20,20)" stroke="rgb(59,130,246)" strokeWidth="1" />
+          <text x="395" y="228" fill="rgb(250,250,250)" fontSize="12" fontWeight="600" textAnchor="middle">Resend</text>
+          <text x="395" y="244" fill="rgb(163,163,163)" fontSize="10" textAnchor="middle">Transactional Email</text>
+
+          <rect x="530" y="205" width="170" height="50" rx="8" fill="rgb(20,20,20)" stroke="rgb(34,197,94)" strokeWidth="1" />
+          <text x="615" y="228" fill="rgb(250,250,250)" fontSize="12" fontWeight="600" textAnchor="middle">Google Calendar</text>
+          <text x="615" y="244" fill="rgb(163,163,163)" fontSize="10" textAnchor="middle">Calendar Sync &amp; Meet</text>
+        </svg>
       </div>
 
       <hr />

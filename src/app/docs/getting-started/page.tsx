@@ -78,13 +78,13 @@ export default function GettingStartedPage() {
         <li>Click <strong>Create fork</strong></li>
       </ol>
 
-      {/* Screenshot placeholder */}
-      <div className="not-prose rounded-lg border border-dashed border-neutral-800 bg-white/[3%] p-8 text-center text-sm text-neutral-400">
-        <Github className="mx-auto mb-2 h-8 w-8 text-neutral-600" />
-        <p className="font-medium text-neutral-300">Screenshot: GitHub Fork Button</p>
-        <p className="mt-1 text-xs text-neutral-500">
-          Show the &ldquo;Fork&rdquo; button in the top-right corner of the repository page.
-        </p>
+      {/* Fork screenshot — place your fork-screenshot.png in /public/docs/ */}
+      <div className="not-prose my-6 overflow-hidden rounded-lg border border-neutral-800 bg-black">
+        <img
+          src="/docs/fork-screenshot.png"
+          alt="GitHub Fork button in the top-right corner of the repository page"
+          className="w-full"
+        />
       </div>
 
       <hr />
