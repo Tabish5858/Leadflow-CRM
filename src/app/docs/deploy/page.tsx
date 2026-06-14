@@ -48,7 +48,7 @@ export default function DeployPage() {
 
       <hr />
 
-      <h2>Step 1: Push Your Fork to GitHub</h2>
+      <h2>Prerequisite: Push Your Fork to GitHub</h2>
 
       <p>
         If you haven&apos;t already, push your forked repository to GitHub:
@@ -66,93 +66,16 @@ git push origin main`}</code>
 
       <hr />
 
-      <h2>Step 2: Import to Vercel</h2>
+      <h2>Step-by-Step Deployment Guide</h2>
+      <p>Follow this interactive walkthrough to deploy LeadFlow CRM on Vercel — covers importing from GitHub, configuring environment variables, and deploying:</p>
 
-      <ol>
-        <li>
-          Go to{" "}
-          <a href="https://vercel.com" target="_blank" rel="noopener noreferrer">
-            vercel.com
-          </a>{" "}
-          and sign in with your GitHub account.
-        </li>
-        <li>
-          Click <strong>Add New</strong> → <strong>Project</strong>.
-        </li>
-        <li>
-          Find your forked <code>Leadflow-CRM</code> repository and click <strong>Import</strong>.
-        </li>
-        <li>
-          Vercel auto-detects Next.js · no build configuration is needed. The default settings work:
-          <ul>
-            <li><strong>Framework Preset:</strong> Next.js</li>
-            <li><strong>Root Directory:</strong> <code>./</code></li>
-            <li><strong>Build Command:</strong> <code>next build</code> (auto-detected)</li>
-            <li><strong>Output Directory:</strong> <code>.next</code> (auto-detected)</li>
-          </ul>
-        </li>
-      </ol>
-
-      <div className="not-prose rounded-lg border border-dashed border-neutral-800 bg-white/[3%] p-8 text-center text-sm text-neutral-400">
-        <p className="font-medium text-neutral-300">Screenshot: Vercel Import Project</p>
-        <p className="mt-1 text-xs text-neutral-500">Show the Vercel dashboard with the Import Git Repository page. Highlight the Leadflow-CRM repository and Import button.</p>
-      </div>
-
-      <hr />
-
-      <h2>Step 3: Configure Environment Variables</h2>
-
-      <p>
-        Before deploying, add all environment variables in Vercel&apos;s project settings.
-        This step is critical · without these variables, the app won&apos;t connect to Firebase
-        or other services.
-      </p>
-
-      <ol>
-        <li>In the Vercel project configuration page, expand <strong>Environment Variables</strong>.</li>
-        <li>Add each variable from your <code>.env.local</code> file.</li>
-        <li>
-          For <code>FIREBASE_ADMIN_PRIVATE_KEY</code>, paste the entire key value including
-          <code>-----BEGIN PRIVATE KEY-----</code> and <code>-----END PRIVATE KEY-----</code>.
-          Vercel handles newlines automatically.
-        </li>
-        <li>
-          Make sure <code>NEXT_PUBLIC_APP_URL</code> is set to your production URL
-          (e.g. <code>https://crm.yourdomain.com</code>).
-        </li>
-      </ol>
-
-      <div className="not-prose rounded-lg border border-dashed border-neutral-800 bg-white/[3%] p-8 text-center text-sm text-neutral-400">
-        <p className="font-medium text-neutral-300">Screenshot: Vercel Environment Variables</p>
-        <p className="mt-1 text-xs text-neutral-500">Show the Vercel project settings with environment variables filled in: Firebase config, Admin SDK, Cloudinary, Resend, Google Calendar. Highlight the key-value pairs.</p>
-      </div>
-
-      <Callout type="tip">
-        <strong>Bulk import:</strong> You can copy all variables from your <code>.env.local</code>
-        file and paste them in bulk using the &ldquo;Import .env&rdquo; feature in the Vercel UI.
-        Vercel will parse and add them automatically.
-      </Callout>
-
-      <hr />
-
-      <h2>Step 4: Deploy</h2>
-
-      <ol>
-        <li>Click <strong>Deploy</strong>. Vercel will:
-          <ul>
-            <li>Clone your repository</li>
-            <li>Install dependencies (<code>npm install</code>)</li>
-            <li>Build the Next.js application (<code>next build</code>)</li>
-            <li>Deploy to Vercel&apos;s global edge network</li>
-          </ul>
-        </li>
-        <li>The first deployment takes 1–3 minutes.</li>
-        <li>Once complete, Vercel shows a <strong>Congratulations</strong> page with your deployment URL.</li>
-      </ol>
-
-      <div className="not-prose rounded-lg border border-dashed border-neutral-800 bg-white/[3%] p-8 text-center text-sm text-neutral-400">
-        <p className="font-medium text-neutral-300">Screenshot: Vercel Deployment Complete</p>
-        <p className="mt-1 text-xs text-neutral-500">Show the Vercel Congratulations screen with the deployment URL (e.g. leadflow-crm.vercel.app) and the Visit button.</p>
+      <div className="not-prose my-6 overflow-hidden rounded-lg border border-neutral-800 bg-black">
+        <iframe
+          src="https://scribehow.com/embed/Deploy_on_Vercel__UWaF5DsOTjyScz5BA8YnLQ"
+          className="w-full"
+          style={{ height: "600px" }}
+          allow="fullscreen"
+        />
       </div>
 
       <Callout type="warning">
@@ -163,38 +86,16 @@ git push origin main`}</code>
 
       <hr />
 
-      <h2>Step 5: Set Up a Custom Domain (Optional)</h2>
+      <h2>Set Up a Custom Domain (Optional)</h2>
+      <p>Follow this walkthrough to add and configure a custom domain for your Vercel deployment:</p>
 
-      <p>
-        Vercel assigns a <code>.vercel.app</code> domain by default. For production, use
-        your own domain:
-      </p>
-
-      <ol>
-        <li>
-          In your Vercel project dashboard, go to <strong>Settings</strong> → <strong>Domains</strong>.
-        </li>
-        <li>
-          Enter your domain (e.g. <code>crm.yourdomain.com</code>) and click <strong>Add</strong>.
-        </li>
-        <li>
-          Vercel will show DNS configuration instructions:
-          <ul>
-            <li>Add a <strong>CNAME record</strong> pointing <code>crm</code> to <code>cname.vercel-dns.com</code></li>
-            <li>Or point your nameservers to Vercel (for apex domain support)</li>
-          </ul>
-        </li>
-        <li>
-          Configure the DNS record in your domain registrar or Cloudflare dashboard.
-        </li>
-        <li>
-          Vercel automatically provisions a TLS certificate (HTTPS) for your domain.
-        </li>
-      </ol>
-
-      <div className="not-prose rounded-lg border border-dashed border-neutral-800 bg-white/[3%] p-8 text-center text-sm text-neutral-400">
-        <p className="font-medium text-neutral-300">Screenshot: Vercel Custom Domain Configuration</p>
-        <p className="mt-1 text-xs text-neutral-500">Show the Vercel Domains settings with a custom domain added, DNS instructions displayed, and TLS status as 'Auto Renew'.</p>
+      <div className="not-prose my-6 overflow-hidden rounded-lg border border-neutral-800 bg-black">
+        <iframe
+          src="https://scribehow.com/embed/How_to_Add_and_Edit_Custom_Domain__hnzSw1ZMTOaELuv1ZH3Nyg"
+          className="w-full"
+          style={{ height: "600px" }}
+          allow="fullscreen"
+        />
       </div>
 
       <Callout type="tip">
@@ -204,7 +105,7 @@ git push origin main`}</code>
 
       <hr />
 
-      <h2>Step 6: Continuous Deployment</h2>
+      <h2>Continuous Deployment</h2>
 
       <p>
         Vercel automatically deploys every time you push to your GitHub repository&apos;s
