@@ -125,7 +125,7 @@ FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n..."`}</code>
         <strong>Private key formatting:</strong> The <code>FIREBASE_ADMIN_PRIVATE_KEY</code>
         contains newlines. In <code>.env.local</code>, wrap the value in double quotes and
         replace actual newlines with <code>\n</code>:
-        <pre><code>FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n"</code></pre>
+        <pre><code>FIREBASE_ADMIN_PRIVATE_KEY=&quot;-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----\n&quot;</code></pre>
         In Vercel, paste the value directly (the UI handles newlines automatically).
       </Callout>
 
