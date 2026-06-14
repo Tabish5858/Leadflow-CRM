@@ -7,8 +7,8 @@
    ============================================ */
 @theme {
   /* ── Typography ──────────────────────────── */
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, monospace;
+  --font-sans: "Outfit", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* ── Border Radius ────────────────────────── */
   --radius-sm: 0.5rem;
@@ -23,16 +23,16 @@
   --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
 
   /* ── Primary Accent (static defaults - overridden via JS at runtime) ── */
-  --color-primary-50: #fff7ed;
-  --color-primary-100: #ffedd5;
-  --color-primary-200: #fed7aa;
-  --color-primary-300: #fdba74;
-  --color-primary-400: #fb923c;
-  --color-primary-500: #f97316;
-  --color-primary-600: #ea580c;
-  --color-primary-700: #c2410c;
-  --color-primary-800: #9a3412;
-  --color-primary-900: #7c2d12;
+  --color-primary-50: #f8fafc;
+  --color-primary-100: #f1f5f9;
+  --color-primary-200: #e2e8f0;
+  --color-primary-300: #cbd5e1;
+  --color-primary-400: #94a3b8;
+  --color-primary-500: #64748b;
+  --color-primary-600: #475569;
+  --color-primary-700: #334155;
+  --color-primary-800: #1e293b;
+  --color-primary-900: #0f172a;
 
   /* ── Semantic Colors ────────────────────────── */
   --color-background: hsl(var(--background));
@@ -90,7 +90,7 @@
   --card-foreground: 210 40% 98%;
   --popover: 220 13% 12%;
   --popover-foreground: 210 40% 98%;
-  --primary: 24 94% 58%;
+  --primary: 215 16% 47%;
   --primary-foreground: 0 0% 100%;
   --secondary: 217 20% 18%;
   --secondary-foreground: 210 40% 98%;
@@ -102,9 +102,9 @@
   --destructive-foreground: 0 0% 100%;
   --border: 220 13% 18%;
   --input: 220 13% 18%;
-  --ring: 24 94% 58%;
+  --ring: 215 16% 47%;
 
-  --chart-1: 24 94% 58%;
+  --chart-1: 215 16% 47%;
   --chart-2: 212 72% 58%;
   --chart-3: 152 55% 42%;
   --chart-4: 38 92% 50%;
@@ -134,7 +134,7 @@
   --card-foreground: 220 14% 12%;
   --popover: 0 0% 100%;
   --popover-foreground: 220 14% 12%;
-  --primary: 24 94% 52%;
+  --primary: 215 16% 42%;
   --primary-foreground: 0 0% 100%;
   --secondary: 30 15% 92%;
   --secondary-foreground: 220 14% 12%;
@@ -146,7 +146,7 @@
   --destructive-foreground: 0 0% 100%;
   --border: 30 12% 88%;
   --input: 30 12% 88%;
-  --ring: 24 94% 52%;
+  --ring: 215 16% 42%;
 
   --success: 152 55% 38%;
   --success-foreground: 0 0% 100%;
@@ -176,7 +176,7 @@
   --card-foreground: 210 40% 98%;
   --popover: 0 0% 3%;
   --popover-foreground: 210 40% 98%;
-  --primary: 24 94% 58%;
+  --primary: 215 16% 47%;
   --primary-foreground: 0 0% 100%;
   --secondary: 220 13% 10%;
   --secondary-foreground: 210 40% 98%;
@@ -188,24 +188,24 @@
   --destructive-foreground: 0 0% 100%;
   --border: 220 13% 16%;
   --input: 220 13% 16%;
-  --ring: 24 94% 58%;
+  --ring: 215 16% 47%;
 }
 
 .docs-dark ::selection {
-  background: hsl(24 94% 58% / 0.3);
+  background: hsl(215 16% 47% / 0.3);
 }
 
 /* Docs prose overrides — always forced dark */
 .docs-dark .prose {
   --tw-prose-body: hsl(210 40% 88%);
   --tw-prose-headings: hsl(210 40% 98%);
-  --tw-prose-links: hsl(24 94% 70%);
+  --tw-prose-links: hsl(215 16% 65%);
   --tw-prose-bold: hsl(210 40% 98%);
   --tw-prose-code: hsl(210 40% 95%);
   --tw-prose-pre-bg: hsl(220 13% 4%);
   --tw-prose-pre-code: hsl(210 40% 88%);
   --tw-prose-quotes: hsl(210 40% 88%);
-  --tw-prose-quote-borders: hsl(24 94% 58% / 0.35);
+  --tw-prose-quote-borders: hsl(215 16% 47% / 0.35);
   --tw-prose-hr: hsl(220 13% 14%);
   --tw-prose-th-bg: hsl(220 13% 6%);
   --tw-prose-th-borders: hsl(220 13% 16%);
@@ -261,11 +261,11 @@
 .docs-dark .prose a {
   font-weight: 500;
   text-decoration: none;
-  border-bottom: 1px solid hsl(24 94% 58% / 0.3);
+  border-bottom: 1px solid hsl(215 16% 47% / 0.3);
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 .docs-dark .prose a:hover {
-  color: hsl(24 94% 80%);
+  color: hsl(215 16% 70%);
   border-bottom-color: hsl(24 94% 58% / 0.7);
 }
 
@@ -290,7 +290,7 @@
   top: 0.6em;
   width: 10px;
   height: 10px;
-  background: hsl(24 94% 58% / 0.6);
+  background: hsl(215 16% 47% / 0.6);
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M6 4l4 4-4 4' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   mask-size: contain;
   mask-repeat: no-repeat;
@@ -353,7 +353,7 @@
 .docs-dark .prose blockquote {
   font-style: normal;
   padding: 0.75em 1em;
-  background: hsl(24 94% 58% / 0.04);
+  background: hsl(215 16% 47% / 0.04);
   border-radius: 0.5rem;
 }
 

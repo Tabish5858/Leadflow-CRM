@@ -1,5 +1,6 @@
 import { posts, featuredPosts } from "./posts";
 import type { Metadata } from "next";
+import { Logo } from "@/components/Logo";
 import Link from "next/link";
 import { Calendar, Github, Tag, User, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,8 +55,8 @@ export default function BlogPage() {
       <header className="sticky top-0 z-20 border-b border-border/40 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3.5">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-xs shadow-sm">
-              LF
+            <div className="flex h-8 w-8 items-center justify-center">
+              <Logo />
             </div>
             <span className="text-base font-bold tracking-tight">LeadFlow</span>
           </Link>
@@ -185,8 +186,8 @@ export default function BlogPage() {
       <footer className="border-t border-border/40">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10 text-sm md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-[10px]">
-              LF
+            <div className="flex h-7 w-7 items-center justify-center">
+              <Logo />
             </div>
             <span className="font-semibold">LeadFlow</span>
             <span className="text-muted-foreground">·</span>

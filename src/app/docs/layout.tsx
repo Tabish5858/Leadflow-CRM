@@ -1,5 +1,6 @@
 "use client";
 
+import { Logo } from "@/components/Logo";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -107,8 +108,8 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
       <div className="sticky top-0 z-30 border-b border-neutral-800 bg-black/80 backdrop-blur-xl lg:hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href="/docs" className="flex items-center gap-2 text-sm font-semibold text-white">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/70 text-white font-bold text-[10px]">
-              LF
+            <div className="flex h-7 w-7 items-center justify-center">
+              <Logo color="white" />
             </div>
             Documentation
           </Link>
@@ -132,8 +133,8 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
               href="/docs"
               className="mb-6 flex items-center gap-2 text-sm font-semibold text-white"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/70 text-white font-bold text-[10px]">
-                LF
+              <div className="flex h-7 w-7 items-center justify-center">
+                <Logo color="white" />
               </div>
               Documentation
             </Link>
@@ -157,8 +158,8 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
               onClick={() => setSidebarOpen(false)}
               className="flex items-center gap-2 text-sm font-semibold text-white"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/70 text-white font-bold text-[10px]">
-                LF
+              <div className="flex h-7 w-7 items-center justify-center">
+                <Logo color="white" />
               </div>
               Documentation
             </Link>

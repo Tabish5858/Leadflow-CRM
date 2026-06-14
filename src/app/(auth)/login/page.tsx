@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { Logo } from "@/components/Logo";
 import { LoginForm } from "./LoginForm";
 
 export const metadata: Metadata = {
@@ -15,8 +16,8 @@ function LoginFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-sm shadow-sm">
-          LF
+        <div className="flex h-9 w-9 items-center justify-center">
+          <Logo />
         </div>
         <div className="space-y-2">
           <div className="h-3 w-28 rounded bg-muted animate-pulse" />

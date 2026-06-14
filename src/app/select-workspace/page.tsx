@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase/client";
+import { Logo } from "@/components/Logo";
 import { doc, getDoc, updateDoc, Timestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { getWorkspace } from "@/lib/firebase/workspaces";
@@ -115,8 +116,8 @@ export default function SelectWorkspacePage() {
       <div className="w-full max-w-lg space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold shadow-sm mx-auto">
-            LF
+          <div className="flex h-12 w-12 items-center justify-center mx-auto">
+            <Logo />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Select Workspace</h1>
           <p className="text-sm text-muted-foreground">

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -166,8 +167,8 @@ export function LoginForm() {
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-center bg-gradient-to-br from-primary/10 via-background to-primary/5 p-12">
         <div className="mx-auto max-w-md space-y-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold shadow-sm">
-              LF
+            <div className="flex h-10 w-10 items-center justify-center">
+              <Logo />
             </div>
             <span className="text-xl font-bold tracking-tight">LeadFlow</span>
           </div>
@@ -204,8 +205,8 @@ export function LoginForm() {
           <CardContent className="space-y-6">
             {/* Mobile Logo */}
             <div className="flex items-center gap-3 lg:hidden">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-sm shadow-sm">
-                LF
+              <div className="flex h-9 w-9 items-center justify-center">
+                <Logo />
               </div>
               <span className="text-lg font-bold tracking-tight">
                 LeadFlow

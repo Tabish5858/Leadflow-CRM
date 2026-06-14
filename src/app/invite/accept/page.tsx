@@ -1,5 +1,6 @@
 "use client";
 
+import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -474,8 +475,8 @@ function AcceptInviteContent() {
         <div className="flex w-full lg:w-1/2 items-center justify-center p-8">
           <div className="w-full max-w-sm space-y-6">
             <div className="text-center space-y-2 lg:hidden">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold shadow-sm mx-auto">
-                LF
+              <div className="flex h-10 w-10 items-center justify-center mx-auto">
+                <Logo />
               </div>
               <h1 className="text-xl font-bold">Sign in to accept</h1>
             </div>
@@ -602,8 +603,8 @@ function AcceptInviteContent() {
         <div className="w-full max-w-sm space-y-6">
           {/* Mobile branding */}
           <div className="lg:hidden text-center space-y-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold shadow-sm mx-auto">
-              LF
+            <div className="flex h-10 w-10 items-center justify-center mx-auto">
+              <Logo />
             </div>
             <h1 className="text-xl font-bold tracking-tight">
               Join {invite?.workspaceName}
@@ -758,8 +759,8 @@ function LeftPanel({ invite }: { invite: InviteDetails | null }) {
     <div className="hidden lg:flex lg:w-1/2 flex-col justify-center bg-gradient-to-br from-primary/10 via-background to-primary/5 p-12">
       <div className="mx-auto max-w-md space-y-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold shadow-sm">
-            LF
+          <div className="flex h-10 w-10 items-center justify-center">
+            <Logo />
           </div>
           <span className="text-xl font-bold tracking-tight">LeadFlow</span>
         </div>

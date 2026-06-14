@@ -1,6 +1,8 @@
 "use client";
 
+import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import { BentoSection } from "@/components/landing/bento-section";
 import { auth } from "@/lib/firebase/client";
 import { onAuthStateChanged } from "firebase/auth";
 import {
@@ -8,8 +10,10 @@ import {
   BookOpen,
   Calendar,
   CheckCircle,
+  ChevronDown,
   Clock,
   ExternalLink,
+  FileSignature,
   FileText,
   FolderKanban,
   Github,
@@ -23,6 +27,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import { AnimatePresence, motion, type Variants } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
@@ -45,6 +50,7 @@ const MODULES: ModuleItem[] = [
   { icon: Calendar, title: "Meetings", description: "Schedule, join, and manage meetings with client attendance and calendar sync." },
   { icon: Clock, title: "Time Tracking", description: "Track billable hours per lead and project with start/stop and manual entry." },
   { icon: BarChart3, title: "Analytics", description: "Revenue, conversion rates, time reports, and exportable reports." },
+  { icon: FileSignature, title: "Contracts", description: "Create proposals, contracts, and agreements with e-signature workflows." },
 ];
 
 const STATS = [
@@ -53,23 +59,210 @@ const STATS = [
   { label: "Free & open source", value: "MIT" },
 ];
 
-const TESTIMONIALS = [
+interface Testimonial {
+  quote: string;
+  name: string;
+  role: string;
+  company: string;
+  initials: string;
+  gradient: string;
+  glow: string;
+  stars: number;
+  featured?: boolean;
+}
+
+const TESTIMONIALS: Testimonial[] = [
   {
     quote: "We replaced spreadsheets and two SaaS tools with LeadFlow. Invoices, time tracking, and messaging in one place.",
     name: "Ariana Holt",
-    role: "Growth Lead, Fieldstack",
+    role: "Growth Lead",
+    company: "Fieldstack",
+    initials: "AH",
+    gradient: "from-violet-500 to-purple-600",
+    glow: "rgba(139, 92, 246, 0.15)",
+    stars: 5,
+    featured: true,
   },
   {
     quote: "Open source means we own our data. Self-hosted in 10 minutes, no vendor lock-in, no per-seat pricing surprises.",
     name: "Marcus Lee",
-    role: "RevOps Manager, Harbor",
+    role: "RevOps Manager",
+    company: "Harbor",
+    initials: "ML",
+    gradient: "from-emerald-500 to-teal-600",
+    glow: "rgba(16, 185, 129, 0.15)",
+    stars: 5,
   },
   {
     quote: "The modules actually cover our workflow - leads through invoices. Clients see their own portal. It just works.",
     name: "Priya Das",
-    role: "Founder, Sunpath Studio",
+    role: "Founder",
+    company: "Sunpath Studio",
+    initials: "PD",
+    gradient: "from-amber-500 to-orange-600",
+    glow: "rgba(245, 158, 11, 0.15)",
+    stars: 5,
   },
 ];
+
+// ─── Animation Variants ────────────────────────────────────────────────────
+
+const staggerContainer: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 100, damping: 20 } as const,
+  },
+};
+
+const fadeUpHeavy: Variants = {
+  hidden: { opacity: 0, y: 40 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 80, damping: 18 } as const,
+  },
+};
+
+const fadeLeft: Variants = {
+  hidden: { opacity: 0, x: -40 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { type: "spring", stiffness: 100, damping: 20 } as const,
+  },
+};
+
+const fadeRight: Variants = {
+  hidden: { opacity: 0, x: 40 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { type: "spring", stiffness: 100, damping: 20 } as const,
+  },
+};
+
+const scaleFade: Variants = {
+  hidden: { opacity: 0, scale: 0.95 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: { type: "spring", stiffness: 120, damping: 18 } as const,
+  },
+};
+
+// ─── FAQ Data ──────────────────────────────────────────────────────────────
+
+interface FAQItem {
+  q: string;
+  a: string;
+}
+
+const FAQ_ITEMS: FAQItem[] = [
+  {
+    q: "What is an open-source CRM?",
+    a: "An open-source CRM is customer relationship management software whose source code is publicly available. You can view, modify, and self-host it on your own infrastructure. Unlike proprietary CRMs like Salesforce or HubSpot, there are no per-seat licensing fees, no vendor lock-in, and you retain full ownership of your data.",
+  },
+  {
+    q: "How is LeadFlow different from other open-source CRMs like Twenty or SuiteCRM?",
+    a: "LeadFlow combines project tracking, invoicing, time tracking, messaging, and a client portal in one platform — all built on a modern Next.js and React stack. Unlike Twenty (AGPL-3.0), LeadFlow is MIT licensed. We also offer built-in time tracking and a dedicated client portal, which most open-source CRMs lack.",
+  },
+  {
+    q: "Can I self-host LeadFlow on my own server?",
+    a: "Yes. LeadFlow is designed for self-hosting. Clone the repo, run npm install && npm run build && npm start on any Node.js server, or deploy instantly on Vercel. Your data never leaves your infrastructure.",
+  },
+  {
+    q: "Is LeadFlow really free?",
+    a: "Yes. LeadFlow is 100% free and open source under the MIT license. There are no paid tiers, no feature gates, no hidden costs. You can use every module — projects, invoices, time tracking, client portal — without paying a cent.",
+  },
+  {
+    q: "Does LeadFlow have a client portal?",
+    a: "Yes. LeadFlow includes a dedicated client portal where your clients can view their projects, invoices, documents, and time entries. Each client gets a personalized dashboard with role-based access. This is a feature most open-source CRMs charge extra for or don't offer at all.",
+  },
+  {
+    q: "What tech stack does LeadFlow use?",
+    a: "LeadFlow is built with Next.js 16 and React 19 on the frontend, Firebase for authentication and data, and Vercel for deployment. The spreadsheet module uses UniverJS. It runs on a modern, developer-friendly stack that's easy to customize and extend.",
+  },
+];
+
+// ─── FAQ Accordion Component ────────────────────────────────────────────────
+
+function FAQAccordion() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  const toggle = (index: number) => {
+    setOpenIndex(openIndex === index ? null : index);
+  };
+
+  return (
+    <motion.div
+      className="space-y-3"
+      variants={staggerContainer}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: "-40px" }}
+    >
+      {FAQ_ITEMS.map((faq, index) => {
+        const isOpen = openIndex === index;
+
+        return (
+          <motion.div
+            key={faq.q}
+            variants={fadeUp}
+            layout
+            className="rounded-xl border border-border/40 bg-background/50 overflow-hidden"
+          >
+            <button
+              onClick={() => toggle(index)}
+              className="flex w-full items-center justify-between gap-3 p-5 text-left transition-colors hover:bg-background/80"
+              aria-expanded={isOpen}
+              aria-controls={`faq-answer-${index}`}
+            >
+              <h3 className="font-semibold text-sm leading-snug pr-2">
+                {faq.q}
+              </h3>
+              <motion.div
+                animate={{ rotate: isOpen ? 180 : 0 }}
+                transition={{ type: "spring", stiffness: 200, damping: 18 }}
+                className="shrink-0 rounded-full bg-primary/10 p-1 text-primary"
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </motion.div>
+            </button>
+            <AnimatePresence initial={false}>
+              {isOpen && (
+                <motion.div
+                  key="answer"
+                  id={`faq-answer-${index}`}
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed">
+                    {faq.a}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        );
+      })}
+    </motion.div>
+  );
+}
 
 // ─── Page ──────────────────────────────────────────────────────────────────
 
@@ -92,8 +285,8 @@ export default function LandingPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-sm">
-            LF
+          <div className="flex h-9 w-9 items-center justify-center">
+            <Logo />
           </div>
           <div className="space-y-2">
             <div className="h-3 w-28 rounded bg-muted animate-pulse" />
@@ -115,11 +308,16 @@ export default function LandingPage() {
       </div>
 
       {/* ── Nav ── */}
-      <header className="sticky top-0 z-20 border-b border-border/40 bg-background/80 backdrop-blur-xl">
+      <motion.header
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 120, damping: 20 }}
+        className="sticky top-0 z-20 border-b border-border/40 bg-background/80 backdrop-blur-xl"
+      >
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3.5">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-xs shadow-sm">
-              LF
+          <Link href="/" className="flex items-center gap-1">
+            <div className="flex h-8 w-8 items-center justify-center">
+              <Logo />
             </div>
             <span className="text-base font-bold tracking-tight">LeadFlow</span>
           </Link>
@@ -158,29 +356,42 @@ export default function LandingPage() {
             </Button>
           </div>
         </div>
-      </header>
+      </motion.header>
 
       <main className="relative z-10">
         {/* ── Hero ── */}
         <section className="mx-auto w-full max-w-6xl px-6 pb-16 pt-16 md:pt-24">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/50 bg-background/60 px-3.5 py-1 text-xs text-muted-foreground mb-6">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              Open-source CRM built for modern teams
-            </div>
-            <h1 className="font-display text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+          <motion.div
+            className="mx-auto max-w-3xl text-center"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+          >
+            <motion.div variants={fadeUp}>
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/50 bg-background/60 px-3.5 py-1 text-xs text-muted-foreground mb-6">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                Open-source CRM built for modern teams
+              </div>
+            </motion.div>
+            <motion.h1
+              variants={fadeUpHeavy}
+              className="font-display text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl"
+            >
               Open-Source CRM
               <br />
               <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 Projects, Invoices & More
               </span>
-            </h1>
-            <p className="mt-4 text-base text-muted-foreground sm:text-lg max-w-2xl mx-auto">
+            </motion.h1>
+            <motion.p
+              variants={fadeUp}
+              className="mt-4 text-base text-muted-foreground sm:text-lg max-w-2xl mx-auto"
+            >
               LeadFlow is the open-source CRM your team will actually use. Project tracking,
               invoicing, time tracking, messaging, and a client portal — all in one
               self-hosted platform. No per-seat pricing, no vendor lock-in.
-            </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
+            </motion.p>
+            <motion.div variants={fadeUp} className="mt-8 flex flex-wrap justify-center gap-3">
               <Button
                 size="lg"
                 className="gap-2 text-base h-12 px-6"
@@ -207,8 +418,11 @@ export default function LandingPage() {
                   Read the Docs
                 </Link>
               </Button>
-            </div>
-            <div className="mt-6 flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm text-muted-foreground">
+            </motion.div>
+            <motion.div
+              variants={fadeUp}
+              className="mt-6 flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm text-muted-foreground"
+            >
               <div className="flex items-center gap-1.5">
                 <CheckCircle className="h-4 w-4 text-green-500" />
                 No account needed
@@ -221,59 +435,42 @@ export default function LandingPage() {
                 <ShieldCheck className="h-4 w-4 text-green-500" />
                 Self-host available
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </section>
 
         {/* ── Stats strip ── */}
         <section className="mx-auto w-full max-w-5xl px-6 pb-12">
-          <div className="grid grid-cols-1 gap-4 rounded-2xl border border-border/40 bg-background/50 p-6 sm:grid-cols-3">
+          <motion.div
+            className="grid grid-cols-1 gap-4 rounded-2xl border border-border/40 bg-background/50 p-6 sm:grid-cols-3"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-40px" }}
+          >
             {STATS.map((s) => (
-              <div key={s.label} className="text-center">
+              <motion.div key={s.label} variants={fadeUp} className="text-center">
                 <p className="text-lg font-bold text-foreground">{s.value}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </section>
 
-        {/* ── Modules Grid ── */}
-        <section id="modules" className="scroll-mt-20 mx-auto w-full max-w-6xl px-6 pb-16">
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/50 bg-background/60 px-3.5 py-1 text-xs text-muted-foreground mb-4">
-              <LayoutDashboard className="h-3.5 w-3.5 text-primary" />
-              Everything your team needs
-            </div>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Nine modules. One workspace.
-            </h2>
-            <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-              From lead capture to invoicing, every workflow lives in a single, shared workspace.
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {MODULES.map((mod) => (
-              <div
-                key={mod.title}
-                className="group rounded-xl border border-border/40 bg-background/40 p-5 transition-all hover:border-primary/30 hover:shadow-sm hover:shadow-primary/5"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary group-hover:bg-primary/15 transition-colors">
-                  <mod.icon className="h-5 w-5" />
-                </div>
-                <h3 className="mt-3 font-semibold text-sm">{mod.title}</h3>
-                <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                  {mod.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
+        {/* ── Bento Modules Grid ── */}
+        <BentoSection />
 
         {/* ── Open Source ── */}
         <section id="open-source" className="scroll-mt-20 border-t border-border/40 bg-background/50">
           <div className="mx-auto w-full max-w-6xl px-6 py-16">
             <div className="grid items-center gap-10 lg:grid-cols-2">
-              <div className="space-y-5">
+              <motion.div
+                className="space-y-5"
+                variants={fadeLeft}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-60px" }}
+              >
                 <div className="inline-flex items-center gap-2 rounded-full border border-border/50 bg-background/60 px-3.5 py-1 text-xs text-muted-foreground">
                   <Github className="h-3.5 w-3.5 text-primary" />
                   Open source, forever
@@ -312,32 +509,44 @@ export default function LandingPage() {
                     </a>
                   </Button>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Feature highlights */}
-              <div className="grid gap-4 sm:grid-cols-2">
+              <motion.div
+                className="grid gap-4 sm:grid-cols-2"
+                variants={staggerContainer}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-60px" }}
+              >
                 {[
                   { icon: Globe, title: "Self-hosted", desc: "Your server, your data. Deploy on any Node.js host." },
                   { icon: Users, title: "Role-based access", desc: "Owner, admin, member, viewer, client - each with granular permissions." },
                   { icon: ShieldCheck, title: "Audit trail", desc: "Every mutation logged. Know who did what and when." },
                   { icon: FileText, title: "Client portal", desc: "Clients see projects, invoices, and documents in a dedicated dashboard." },
                 ].map((f) => (
-                  <div key={f.title} className="rounded-xl border border-border/40 bg-background/40 p-4">
+                  <motion.div key={f.title} variants={fadeUp} className="rounded-xl border border-border/40 bg-background/40 p-4">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                       <f.icon className="h-4 w-4" />
                     </div>
                     <h4 className="mt-2 font-semibold text-sm">{f.title}</h4>
                     <p className="mt-0.5 text-xs text-muted-foreground">{f.desc}</p>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             </div>
           </div>
         </section>
 
         {/* ── Testimonials ── */}
         <section id="testimonials" className="scroll-mt-20 mx-auto w-full max-w-6xl px-6 py-16">
-          <div className="text-center mb-10">
+          <motion.div
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ type: "spring", stiffness: 100, damping: 20 }}
+          >
             <div className="inline-flex items-center gap-2 rounded-full border border-border/50 bg-background/60 px-3.5 py-1 text-xs text-muted-foreground mb-4">
               <Star className="h-3.5 w-3.5 text-primary" />
               Loved by teams
@@ -345,21 +554,84 @@ export default function LandingPage() {
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               Teams switching to LeadFlow
             </h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
+          </motion.div>
+          <motion.div
+            className="grid gap-5 md:grid-cols-3"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-40px" }}
+          >
             {TESTIMONIALS.map((t) => (
-              <div
+              <motion.div
                 key={t.name}
-                className="rounded-xl border border-border/40 bg-background/40 p-6"
+                variants={fadeUp}
+                className="group relative rounded-xl border border-border/40 bg-background/40 p-6 transition-all duration-300"
+                whileHover={{
+                  y: -6,
+                  transition: { type: "spring", stiffness: 200, damping: 15 },
+                }}
               >
-                <p className="text-sm text-muted-foreground leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
-                <div className="mt-4 border-t border-border/40 pt-4">
-                  <p className="text-sm font-semibold">{t.name}</p>
-                  <p className="text-xs text-muted-foreground">{t.role}</p>
+                {/* Decorative glow on hover */}
+                <div
+                  className="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                  style={{
+                    background: `radial-gradient(600px circle at 50% 0%, ${t.glow}, transparent 70%)`,
+                  }}
+                />
+
+                {/* Decorative quote mark */}
+                <div
+                  className="pointer-events-none absolute -top-2 right-4 select-none text-[5rem] leading-none font-serif font-bold"
+                  style={{
+                    background: `linear-gradient(135deg, ${t.glow.replace("0.15", "0.25")}, transparent)`,
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  &rdquo;
                 </div>
-              </div>
+
+                {/* Avatar + Stars row */}
+                <div className="relative mb-4 flex items-center gap-3">
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${t.gradient} text-[11px] font-bold text-white shadow-lg`}
+                    style={{
+                      boxShadow: `0 4px 12px ${t.glow}`,
+                    }}
+                  >
+                    {t.initials}
+                  </div>
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: t.stars }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quote */}
+                <p className="relative text-sm text-muted-foreground leading-relaxed">
+                  &ldquo;{t.quote}&rdquo;
+                </p>
+
+                {/* Author */}
+                <div className="mt-5 flex items-center gap-2.5 border-t border-border/40 pt-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{t.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{t.role}</p>
+                  </div>
+                  <span
+                    className="shrink-0 rounded-md border border-border/40 bg-background/60 px-2.5 py-1 text-[10px] font-medium text-muted-foreground tracking-wide uppercase"
+                  >
+                    {t.company}
+                  </span>
+                </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </section>
 
         {/* ── FAQ ── */}
@@ -367,7 +639,7 @@ export default function LandingPage() {
           id="faq"
           className="scroll-mt-20 mx-auto w-full max-w-4xl px-6 pb-16"
         >
-          <Script
+           <Script
             id="schema-faq"
             strategy="afterInteractive"
             type="application/ld+json"
@@ -375,112 +647,43 @@ export default function LandingPage() {
               __html: JSON.stringify({
                 "@context": "https://schema.org",
                 "@type": "FAQPage",
-                mainEntity: [
-                  {
-                    "@type": "Question",
-                    name: "What is an open-source CRM?",
-                    acceptedAnswer: {
-                      "@type": "Answer",
-                      text: "An open-source CRM is customer relationship management software whose source code is publicly available. You can view, modify, and self-host it on your own infrastructure. Unlike proprietary CRMs like Salesforce or HubSpot, there are no per-seat licensing fees, no vendor lock-in, and you retain full ownership of your data.",
-                    },
+                mainEntity: FAQ_ITEMS.map((item) => ({
+                  "@type": "Question",
+                  name: item.q,
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: item.a,
                   },
-                  {
-                    "@type": "Question",
-                    name: "How is LeadFlow different from other open-source CRMs like Twenty or SuiteCRM?",
-                    acceptedAnswer: {
-                      "@type": "Answer",
-                      text: "LeadFlow combines project tracking, invoicing, time tracking, messaging, and a client portal in one platform — all built on a modern Next.js and React stack. Unlike Twenty (AGPL-3.0), LeadFlow is MIT licensed. We also offer built-in time tracking and a dedicated client portal, which most open-source CRMs lack.",
-                    },
-                  },
-                  {
-                    "@type": "Question",
-                    name: "Can I self-host LeadFlow on my own server?",
-                    acceptedAnswer: {
-                      "@type": "Answer",
-                      text: "Yes. LeadFlow is designed for self-hosting. Clone the repo, run npm install && npm run build && npm start on any Node.js server, or deploy instantly on Vercel. Your data never leaves your infrastructure.",
-                    },
-                  },
-                  {
-                    "@type": "Question",
-                    name: "Is LeadFlow really free?",
-                    acceptedAnswer: {
-                      "@type": "Answer",
-                      text: "Yes. LeadFlow is 100% free and open source under the MIT license. There are no paid tiers, no feature gates, no hidden costs. You can use every module — projects, invoices, time tracking, client portal — without paying a cent.",
-                    },
-                  },
-                  {
-                    "@type": "Question",
-                    name: "Does LeadFlow have a client portal?",
-                    acceptedAnswer: {
-                      "@type": "Answer",
-                      text: "Yes. LeadFlow includes a dedicated client portal where your clients can view their projects, invoices, documents, and time entries. Each client gets a personalized dashboard with role-based access. This is a feature most open-source CRMs charge extra for or don't offer at all.",
-                    },
-                  },
-                  {
-                    "@type": "Question",
-                    name: "What tech stack does LeadFlow use?",
-                    acceptedAnswer: {
-                      "@type": "Answer",
-                      text: "LeadFlow is built with Next.js 16 and React 19 on the frontend, Firebase for authentication and data, and Vercel for deployment. The spreadsheet module uses UniverJS. It runs on a modern, developer-friendly stack that's easy to customize and extend.",
-                    },
-                  },
-                ],
+                })),
               }),
             }}
           />
-          <div className="text-center mb-10">
+          <motion.div
+            className="text-center mb-10"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ type: "spring", stiffness: 100, damping: 20 }}
+          >
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               Frequently asked questions
             </h2>
             <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
               Everything you need to know about open-source CRM and self-hosting.
             </p>
-          </div>
-          <div className="space-y-3">
-            {[
-              {
-                q: "What is an open-source CRM?",
-                a: "An open-source CRM is customer relationship management software whose source code is publicly available. You can view, modify, and self-host it on your own infrastructure. Unlike proprietary CRMs like Salesforce or HubSpot, there are no per-seat licensing fees, no vendor lock-in, and you retain full ownership of your data.",
-              },
-              {
-                q: "How is LeadFlow different from other open-source CRMs like Twenty or SuiteCRM?",
-                a: "LeadFlow combines project tracking, invoicing, time tracking, messaging, and a client portal in one platform — all built on a modern Next.js and React stack. Unlike Twenty (AGPL-3.0), LeadFlow is MIT licensed. We also offer built-in time tracking and a dedicated client portal, which most open-source CRMs lack.",
-              },
-              {
-                q: "Can I self-host LeadFlow on my own server?",
-                a: "Yes. LeadFlow is designed for self-hosting. Clone the repo, run npm install && npm run build && npm start on any Node.js server, or deploy instantly on Vercel. Your data never leaves your infrastructure.",
-              },
-              {
-                q: "Is LeadFlow really free?",
-                a: "Yes. LeadFlow is 100% free and open source under the MIT license. There are no paid tiers, no feature gates, no hidden costs. You can use every module — projects, invoices, time tracking, client portal — without paying a cent.",
-              },
-              {
-                q: "Does LeadFlow have a client portal?",
-                a: "Yes. LeadFlow includes a dedicated client portal where your clients can view their projects, invoices, documents, and time entries. Each client gets a personalized dashboard with role-based access. This is a feature most open-source CRMs charge extra for or don't offer at all.",
-              },
-              {
-                q: "What tech stack does LeadFlow use?",
-                a: "LeadFlow is built with Next.js 16 and React 19 on the frontend, Firebase for authentication and data, and Vercel for deployment. The spreadsheet module uses UniverJS. It runs on a modern, developer-friendly stack that's easy to customize and extend.",
-              },
-            ].map((faq) => (
-              <div
-                key={faq.q}
-                className="rounded-xl border border-border/40 bg-background/50 p-5"
-              >
-                <h3 className="font-semibold text-sm">
-                  {faq.q}
-                </h3>
-                <div className="mt-2 text-sm text-muted-foreground leading-relaxed">
-                  {faq.a}
-                </div>
-              </div>
-            ))}
-          </div>
+          </motion.div>
+          <FAQAccordion />
         </section>
 
         {/* ── CTA ── */}
         <section className="mx-auto w-full max-w-6xl px-6 pb-20">
-          <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-primary/5 via-background to-background p-8 text-center sm:p-12">
+          <motion.div
+            className="rounded-2xl border border-border/40 bg-gradient-to-br from-primary/5 via-background to-background p-8 text-center sm:p-12"
+            variants={scaleFade}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-60px" }}
+          >
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               Try it now. No signup needed.
             </h2>
@@ -518,16 +721,22 @@ export default function LandingPage() {
             <p className="mt-4 text-xs text-muted-foreground">
               No account. No credit card. Just click and explore.
             </p>
-          </div>
+          </motion.div>
         </section>
       </main>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-border/40">
+      <motion.footer
+        className="border-t border-border/40"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+      >
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10 text-sm md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-[10px]">
-              LF
+            <div className="flex h-7 w-7 items-center justify-center">
+              <Logo />
             </div>
             <span className="font-semibold">LeadFlow</span>
             <span className="text-muted-foreground">·</span>
@@ -560,7 +769,7 @@ export default function LandingPage() {
             </span>
           </div>
         </div>
-      </footer>
+      </motion.footer>
     </div>
   );
 }

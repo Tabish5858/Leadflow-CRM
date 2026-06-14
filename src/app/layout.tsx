@@ -3,11 +3,11 @@ import { Providers } from "@/components/shared/providers";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Metadata } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Outfit, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
-const inter = Inter({
+const outfit = Outfit({
   subsets: ["latin"],
   variable: "--font-sans",
   weight: ["300", "400", "500", "600", "700"],
@@ -15,10 +15,18 @@ const inter = Inter({
   preload: true,
 });
 
-const plusJakarta = Plus_Jakarta_Sans({
+const outfitDisplay = Outfit({
   subsets: ["latin"],
   variable: "--font-display",
   weight: ["400", "600", "700", "800"],
+  display: "swap",
+  preload: true,
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  weight: ["400", "500", "600"],
   display: "swap",
   preload: true,
 });
@@ -100,7 +108,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${plusJakarta.variable} font-sans antialiased flex flex-col min-h-screen`}
+        className={`${outfit.variable} ${outfitDisplay.variable} ${jetbrainsMono.variable} font-sans antialiased flex flex-col min-h-screen`}
       >
         {/* Skip-to-content link (accessibility) */}
         <a href="#main-content" className="skip-to-content">

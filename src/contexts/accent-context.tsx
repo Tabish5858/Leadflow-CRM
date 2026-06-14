@@ -60,7 +60,7 @@ export const ACCENT_OPTIONS: AccentOption[] = [
   { value: "slate", label: "Slate", hex: "#64748B" },
 ];
 
-export const DEFAULT_ACCENT: AccentColor = "orange";
+export const DEFAULT_ACCENT: AccentColor = "slate";
 
 /* ── Color scales (hex → RGB channels) ──────────────────────────── */
 
