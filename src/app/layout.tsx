@@ -12,6 +12,7 @@ const inter = Inter({
   variable: "--font-sans",
   weight: ["300", "400", "500", "600", "700"],
   display: "swap",
+  preload: true,
 });
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -19,6 +20,7 @@ const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-display",
   weight: ["400", "600", "700", "800"],
   display: "swap",
+  preload: true,
 });
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crm.tabishbinishfaq.dev";
@@ -131,7 +133,7 @@ export default function RootLayout({
         {/* Structured Data: SoftwareApplication */}
         <Script
           id="schema-software-application"
-          strategy="beforeInteractive"
+          strategy="lazyOnload"
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
@@ -162,7 +164,7 @@ export default function RootLayout({
         {/* Structured Data: Organization */}
         <Script
           id="schema-organization"
-          strategy="beforeInteractive"
+          strategy="lazyOnload"
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
