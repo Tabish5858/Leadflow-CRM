@@ -504,7 +504,7 @@ Open issues: [github.com/Tabish5858/Leadflow-CRM/issues](https://github.com/Tabi
 - E2E tests with Playwright
 - Gmail OAuth integration
 - PWA / offline mode
-- Docker deployment / containerized setup
+- Deployment configuration (Vercel)
 - App Check enforcement
 - CSP headers
 
