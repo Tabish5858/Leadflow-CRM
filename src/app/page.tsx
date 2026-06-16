@@ -390,7 +390,7 @@ function DashboardPreview() {
             {[
               { name: "James Thompson", msg: "Thanks, the website looks great!", time: "1h ago", unread: 1, initial: "JT", color: "bg-blue-500" },
               { name: "Marcus Johnson", msg: "I'll send the proposal by EOD", time: "2h ago", unread: 0, initial: "MJ", color: "bg-amber-500" },
-              { name: "Emily Rodriguez", msg: "Pipeline report is ready for review", time: "5h ago", unread: 2, initial: "ER", color: "bg-violet-500" },
+              { name: "Emily Rodriguez", msg: "Pipeline report is ready for review", time: "5h ago", unread: 2, initial: "ER", color: "bg-blue-500" },
               { name: "Sales Team", msg: "Great call with TechSphere!", time: "8h ago", unread: 1, initial: "ST", color: "bg-emerald-500" },
             ].map((m) => (
               <div key={m.name} className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-white/[0.04] cursor-pointer transition-colors">
@@ -520,8 +520,8 @@ function ProjectsPreview() {
                   <span className="text-zinc-400">Progress</span>
                   <span className="text-zinc-300 font-medium">75%</span>
                 </div>
-                <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
-                  <div className="h-full w-3/4 rounded-full bg-gradient-to-r from-blue-500 to-primary" />
+                  <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
+                  <div className="h-full w-3/4 rounded-full bg-primary" />
                 </div>
               </div>
               {/* Tasks */}
@@ -551,7 +551,7 @@ function ProjectsPreview() {
                   <h4 className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">Team</h4>
                   <div className="flex items-center">
                     {[
-                      { initials: "SC", color: "bg-violet-500" },
+                      { initials: "SC", color: "bg-blue-500" },
                       { initials: "MJ", color: "bg-amber-500" },
                       { initials: "ER", color: "bg-primary" },
                     ].map((m, i) => (
@@ -673,12 +673,12 @@ function MessagesPreview() {
     <section id="messages" className="scroll-mt-20 mx-auto w-full max-w-6xl px-6 py-16 border-t border-white/5">
       <SectionHeader badge="Team Communication" title="Messages" description="Real-time team messaging with read receipts, reply threading, file sharing, and reactions." />
       <motion.div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden" initial={{ opacity: 0, y: 32 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ type: "spring", stiffness: 80, damping: 18 }}>
-        <div className="flex h-[320px]">
-          {/* Sidebar */}
-          <div className="w-56 border-r border-white/5 p-3 space-y-1">
+        <div className="flex flex-col sm:flex-row min-h-[300px] sm:h-[340px]">
+          {/* Sidebar — hidden on mobile, visible sm+ */}
+          <div className="sm:w-56 shrink-0 border-b sm:border-b-0 sm:border-r border-white/5 p-3 space-y-1 hidden sm:block overflow-y-auto">
             <div className="flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.02] px-2 py-1.5 text-xs text-zinc-400 mb-3"><Search className="h-3 w-3" /> Search</div>
             {[
-              { name: "Sarah Chen", msg: "Great, sending the contract...", time: "2m", unread: 2, color: "bg-violet-500" },
+              { name: "Sarah Chen", msg: "Great, sending the contract...", time: "2m", unread: 2, color: "bg-blue-500" },
               { name: "Marcus Johnson", msg: "Updated the proposal", time: "1h", unread: 0, color: "bg-amber-500" },
               { name: "Emily Rodriguez", msg: "Pipeline report is ready", time: "3h", unread: 1, color: "bg-emerald-500" },
               { name: "TechSphere Client", msg: "Onboarding docs complete", time: "5h", unread: 0, color: "bg-blue-500" },
@@ -693,22 +693,34 @@ function MessagesPreview() {
               </div>
             ))}
           </div>
-          {/* Chat area */}
-          <div className="flex-1 flex flex-col">
-            <div className="flex items-center gap-2 p-3 border-b border-white/5"><MockAvatar letter="SC" color="bg-violet-500" /><span className="text-sm font-medium">Sarah Chen</span></div>
-            <div className="flex-1 p-4 space-y-3 overflow-hidden">
+          {/* Chat area — full width on mobile */}
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Mobile contact header */}
+            <div className="flex items-center gap-2 p-3 border-b border-white/5">
+              <div className="sm:hidden flex items-center gap-1.5 text-xs text-zinc-400 pr-2 border-r border-white/10">
+                <MessageSquare className="h-3.5 w-3.5" /> 4
+              </div>
+              <MockAvatar letter="SC" color="bg-blue-500" />
+              <span className="text-sm font-medium">Sarah Chen</span>
+              <span className="text-[10px] text-zinc-500 ml-auto sm:hidden">active</span>
+            </div>
+            <div className="flex-1 p-3 sm:p-4 space-y-3 overflow-y-auto">
               <div className="flex gap-2">
-                <MockAvatar letter="S" color="bg-violet-500" />
-                <div className="rounded-lg bg-white/[0.04] px-3 py-2 text-xs max-w-[65%]"><p>Hey! The website redesign is looking great. I left a few comments on the Figma file.</p><span className="text-[10px] text-zinc-500 mt-1 block">10:32 AM</span></div>
+                <MockAvatar letter="S" color="bg-blue-500" />
+                <div className="rounded-lg bg-white/[0.04] px-3 py-2 text-xs max-w-[75%] sm:max-w-[65%]"><p>Hey! The website redesign is looking great. I left a few comments on the Figma file.</p><span className="text-[10px] text-zinc-500 mt-1 block">10:32 AM</span></div>
               </div>
               <div className="flex gap-2 justify-end">
-                <div className="rounded-lg bg-primary/20 px-3 py-2 text-xs max-w-[65%]"><p>Thanks Sarah! I'll take a look right now. Are we still on for the 2pm call?</p><span className="text-[10px] text-zinc-500 mt-1 block">10:35 AM</span></div>
+                <div className="rounded-lg bg-primary/20 px-3 py-2 text-xs max-w-[75%] sm:max-w-[65%]"><p>Thanks Sarah! I&rsquo;ll take a look right now. Are we still on for the 2pm call?</p><span className="text-[10px] text-zinc-500 mt-1 block">10:35 AM</span></div>
                 <MockAvatar letter="M" color="bg-primary" />
+              </div>
+              <div className="flex gap-2">
+                <MockAvatar letter="S" color="bg-blue-500" />
+                <div className="rounded-lg bg-white/[0.04] px-3 py-2 text-xs max-w-[75%] sm:max-w-[65%]"><p>Yes! 2pm works. I&rsquo;ll have the feedback ready by then.</p><span className="text-[10px] text-zinc-500 mt-1 block">10:38 AM</span></div>
               </div>
             </div>
             <div className="p-3 border-t border-white/5 flex items-center gap-2">
-              <div className="flex-1 rounded-md border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-zinc-500">Type a message...</div>
-              <div className="flex items-center gap-1"><Paperclip className="h-4 w-4 text-zinc-600" /><Smile className="h-4 w-4 text-zinc-600" /><Send className="h-4 w-4 text-primary" /></div>
+              <div className="flex-1 rounded-md border border-white/10 bg-white/[0.02] px-3 py-1.5 text-xs text-zinc-500 truncate">Type a message...</div>
+              <div className="flex items-center gap-1 shrink-0"><Paperclip className="h-4 w-4 text-zinc-600" /><Smile className="h-4 w-4 text-zinc-600" /><Send className="h-4 w-4 text-primary" /></div>
             </div>
           </div>
         </div>
@@ -746,7 +758,7 @@ function MeetingsPreview() {
           <div className="mt-4 space-y-2">
             {[
               { time: "10:00 AM", title: "Client Discovery Call", color: "bg-blue-500" },
-              { time: "2:00 PM", title: "Design Review - Website", color: "bg-purple-500" },
+              { time: "2:00 PM", title: "Design Review - Website", color: "bg-amber-500" },
               { time: "4:30 PM", title: "Sprint Planning", color: "bg-amber-500" },
             ].map((ev) => (
               <div key={ev.title} className="flex items-center gap-2 text-xs p-1.5 rounded hover:bg-white/[0.04]">
@@ -759,7 +771,7 @@ function MeetingsPreview() {
         </div>
         {/* Booking page mock */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 flex flex-col items-center text-center">
-          <MockAvatar letter="SC" color="bg-violet-500" />
+          <MockAvatar letter="SC" color="bg-blue-500" />
           <h4 className="text-sm font-semibold mt-2">Sarah Chen</h4>
           <p className="text-[11px] text-zinc-400">30 Minute Meeting</p>
           <div className="w-full mt-3 space-y-1">
@@ -952,15 +964,21 @@ function AnalyticsPreview() {
               { revenue: 60, expenses: 35, label: "Apr" },
               { revenue: 50, expenses: 30, label: "May" },
               { revenue: 80, expenses: 42, label: "Jun" },
-            ].map((m) => (
-              <div key={m.label} className="flex-1 flex flex-col items-center gap-1.5 min-w-0">
-                <div className="relative w-full flex items-end justify-center gap-0.5" style={{ height: `${Math.max(m.revenue, 35)}%` }}>
-                  <div className="w-1/2 max-w-[30px] rounded-t bg-primary/40 hover:bg-primary/60 transition-colors" style={{ height: `${m.revenue}%` }} />
-                  <div className="w-1/2 max-w-[30px] rounded-t bg-emerald-400/30 hover:bg-emerald-400/50 transition-colors" style={{ height: `${m.expenses}%` }} />
+            ].map((m) => {
+              const maxVal = 80;
+              const maxH = 110;
+              const revH = (m.revenue / maxVal) * maxH;
+              const expH = (m.expenses / maxVal) * maxH;
+              return (
+                <div key={m.label} className="flex-1 flex flex-col items-center gap-1.5 min-w-0 self-end">
+                  <div className="flex items-end justify-center gap-0.5 w-full">
+                    <div className="w-1/2 max-w-[28px] rounded-t bg-primary/40 hover:bg-primary/60 transition-colors" style={{ height: revH + 'px' }} />
+                    <div className="w-1/2 max-w-[28px] rounded-t bg-emerald-400/30 hover:bg-emerald-400/50 transition-colors" style={{ height: expH + 'px' }} />
+                  </div>
+                  <span className="text-[10px] text-zinc-600">{m.label}</span>
                 </div>
-                <span className="text-[10px] text-zinc-600">{m.label}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
         {/* Funnel + Quick Actions */}
@@ -971,7 +989,7 @@ function AnalyticsPreview() {
               {[
                 { label: "Leads", count: "1,248", pct: 100, color: "bg-blue-500" },
                 { label: "Qualified", count: "486", pct: 39, color: "bg-primary" },
-                { label: "Proposal", count: "215", pct: 17, color: "bg-violet-500" },
+                { label: "Proposal", count: "215", pct: 17, color: "bg-blue-500" },
                 { label: "Closed Won", count: "98", pct: 8, color: "bg-emerald-500" },
               ].map((f) => (
                 <div key={f.label} className="flex items-center gap-2 text-xs">
@@ -1059,13 +1077,13 @@ function ClientPortalPreview() {
                 ))}
               </div>
               {/* Project progress */}
-              <div className="rounded-lg border border-white/5 bg-gradient-to-r from-blue-500/[0.03] to-purple-500/[0.03] p-3 sm:p-4 mb-4">
+              <div className="rounded-lg border border-white/5 bg-white/[0.03] p-3 sm:p-4 mb-4">
                 <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
                   <span className="text-xs font-medium">Website Redesign</span>
                   <MockBadge className="bg-emerald-500/10 text-emerald-400">75% Complete</MockBadge>
                 </div>
                 <div className="h-1.5 rounded-full bg-zinc-800 mb-1 overflow-hidden">
-                  <div className="h-full w-3/4 rounded-full bg-gradient-to-r from-blue-500 to-purple-500" />
+                  <div className="h-full w-3/4 rounded-full bg-primary" />
                 </div>
                 <span className="text-[10px] text-zinc-600">Next milestone: Design Review &mdash; Jun 18th</span>
               </div>
@@ -1127,11 +1145,11 @@ function FeaturesGrid() {
 
 // ─── Testimonials ──────────────────────────────────────────────────────────
 
-interface Testimonial { quote: string; name: string; role: string; company: string; initials: string; gradient: string; glow: string; stars: number; }
+interface Testimonial { quote: string; name: string; role: string; company: string; initials: string; color: string; stars: number; }
 const TESTIMONIALS: Testimonial[] = [
-  { quote: "We replaced spreadsheets and two SaaS tools with LeadFlow. Invoices, time tracking, and messaging in one place.", name: "Ariana Holt", role: "Growth Lead", company: "Fieldstack", initials: "AH", gradient: "from-violet-500 to-purple-600", glow: "rgba(139, 92, 246, 0.15)", stars: 5 },
-  { quote: "Open source means we own our data. Self-hosted in 10 minutes, no vendor lock-in, no per-seat pricing surprises.", name: "Marcus Lee", role: "RevOps Manager", company: "Harbor", initials: "ML", gradient: "from-emerald-500 to-teal-600", glow: "rgba(16, 185, 129, 0.15)", stars: 5 },
-  { quote: "The modules actually cover our workflow - leads through invoices. Clients see their own portal. It just works.", name: "Priya Das", role: "Founder", company: "Sunpath Studio", initials: "PD", gradient: "from-amber-500 to-orange-600", glow: "rgba(245, 158, 11, 0.15)", stars: 5 },
+  { quote: "We replaced spreadsheets and two SaaS tools with LeadFlow. Invoices, time tracking, and messaging in one place.", name: "Ariana Holt", role: "Growth Lead", company: "Fieldstack", initials: "AH", color: "bg-blue-600", stars: 5 },
+  { quote: "Open source means we own our data. Self-hosted in 10 minutes, no vendor lock-in, no per-seat pricing surprises.", name: "Marcus Lee", role: "RevOps Manager", company: "Harbor", initials: "ML", color: "bg-emerald-600", stars: 5 },
+  { quote: "The modules actually cover our workflow - leads through invoices. Clients see their own portal. It just works.", name: "Priya Das", role: "Founder", company: "Sunpath Studio", initials: "PD", color: "bg-amber-600", stars: 5 },
 ];
 
 function TestimonialsSection() {
@@ -1140,15 +1158,13 @@ function TestimonialsSection() {
       <SectionHeader badge="Social Proof" title="Teams switching to LeadFlow" description="Join freelancers, agencies, and startups who moved from spreadsheets and SaaS tools." />
       <motion.div className="grid gap-5 md:grid-cols-3" variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }}>
         {TESTIMONIALS.map((t) => (
-          <motion.div key={t.name} variants={fadeUp} className="group relative rounded-xl border border-white/10 bg-white/[0.02] p-6 transition-all duration-300"
+          <motion.div key={t.name} variants={fadeUp} className="rounded-xl border border-white/10 bg-white/[0.02] p-6 transition-all duration-300"
             whileHover={{ y: -6, transition: { type: "spring", stiffness: 200, damping: 15 } }}>
-            <div className="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-              style={{ background: `radial-gradient(600px circle at 50% 0%, ${t.glow}, transparent 70%)` }} />
-            <div className="relative mb-4 flex items-center gap-3">
-              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${t.gradient} text-[11px] font-bold text-white shadow-lg`} style={{ boxShadow: `0 4px 12px ${t.glow}` }}>{t.initials}</div>
+            <div className="mb-4 flex items-center gap-3">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${t.color} text-[11px] font-bold text-white`}>{t.initials}</div>
               <div className="flex gap-0.5">{Array.from({ length: t.stars }).map((_, i) => <Star key={i} className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />)}</div>
             </div>
-            <p className="relative text-sm text-zinc-400 leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
+            <p className="text-sm text-zinc-400 leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
             <div className="mt-5 flex items-center gap-2.5 border-t border-white/5 pt-4">
               <div className="flex-1 min-w-0"><p className="text-sm font-semibold truncate">{t.name}</p><p className="text-xs text-zinc-500 truncate">{t.role}</p></div>
               <span className="shrink-0 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-medium text-zinc-500 uppercase">{t.company}</span>
@@ -1215,7 +1231,7 @@ export default function LandingPage() {
           </nav>
           <div className="flex items-center gap-2">
             <Button variant="default" size="sm" className="gap-1.5" onClick={() => { localStorage.setItem("leadflow_demo_mode", "true"); window.location.href = "/dashboard"; }}>
-              <Zap className="h-3.5 w-3.5" /> Try Demo
+              Try Demo
             </Button>
             <Button asChild variant="ghost" size="sm"><Link href="/login">Sign in</Link></Button>
           </div>
@@ -1234,14 +1250,14 @@ export default function LandingPage() {
             </motion.div>
             <motion.h1 variants={fadeUpHeavy} className="text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl mx-auto max-w-2xl">
               The CRM your team<br />
-              <span className="bg-gradient-to-r from-white via-white to-primary/60 bg-clip-text text-transparent">will actually use</span>
+              <span className="text-white">will actually use</span>
             </motion.h1>
             <motion.p variants={fadeUp} className="mt-4 text-base sm:text-lg text-zinc-400 max-w-sm mx-auto">
               Open-source. Self-hosted. Zero cost.
             </motion.p>
             <motion.div variants={fadeUp} className="mt-8 flex flex-wrap justify-center gap-3">
               <Button size="lg" className="gap-2 text-base h-12 px-8" onClick={() => { localStorage.setItem("leadflow_demo_mode", "true"); window.location.href = "/dashboard"; }}>
-                <Zap className="h-5 w-5" /> Try Demo — No Signup
+                Try Demo — No Signup
               </Button>
               <Button asChild variant="outline" size="lg" className="gap-2 text-base h-12 px-8 border-white/10">
                 <a href="https://github.com/Tabish5858/Leadflow-CRM" target="_blank" rel="noopener noreferrer">
@@ -1280,7 +1296,7 @@ export default function LandingPage() {
             <p className="mt-3 text-zinc-400 max-w-lg mx-auto">One click into a fully-loaded workspace with real demo data. Invoices, projects, documents — all pre-configured.</p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Button size="lg" className="gap-2 text-base h-12 px-6" onClick={() => { localStorage.setItem("leadflow_demo_mode", "true"); window.location.href = "/dashboard"; }}>
-                <Zap className="h-5 w-5" /> Launch Demo
+                Launch Demo
               </Button>
               <Button asChild variant="outline" size="lg" className="gap-2 text-base h-12 px-6">
                 <a href="https://github.com/Tabish5858/Leadflow-CRM" target="_blank" rel="noopener noreferrer">
