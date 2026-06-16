@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Circle, Clock, ListTodo, AlertCircle } from "lucide-react";
+import { CheckCircle2, Circle, Clock, ListTodo, AlertCircle, CalendarDays } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/contexts/workspace-context";
@@ -10,6 +10,7 @@ import { getProjectTasks } from "@/lib/firebase/project-tasks";
 import { getProjects } from "@/lib/firebase/projects";
 import type { ProjectTask } from "@/types";
 import { cn } from "@/lib/utils";
+import { formatDistanceToNow, isPast, isToday } from "date-fns";
 
 /** Get the status dot color for a task */
 function getStatusColor(status: string): string {
@@ -37,6 +38,27 @@ function StatusIcon({ status }: { status: string }) {
     default:
       return <Circle className="h-4 w-4 text-muted-foreground/50" />;
   }
+}
+
+/** Format due date with color coding */
+function DueDate({ dueDate }: { dueDate?: { seconds: number } | null }) {
+  if (!dueDate) return null;
+  const date = new Date(dueDate.seconds * 1000);
+  const past = isPast(date) && !isToday(date);
+  const today = isToday(date);
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 text-[11px] shrink-0",
+        past && "text-red-500 font-medium",
+        today && "text-amber-500 font-medium",
+        !past && !today && "text-muted-foreground"
+      )}
+    >
+      <CalendarDays className="h-3 w-3" />
+      {past ? "Overdue" : today ? "Today" : formatDistanceToNow(date, { addSuffix: true })}
+    </span>
+  );
 }
 
 export function TasksCard() {
@@ -148,33 +170,23 @@ export function TasksCard() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="flex cursor-pointer items-start gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted/50"
+              className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 transition-colors hover:bg-muted/50"
               onClick={() => router.push(`/projects/${task.projectId}`)}
             >
-              <div className="mt-0.5 shrink-0">
+              <div className="shrink-0">
                 <StatusIcon status={task.status?.parent ?? ""} />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate leading-snug">
-                  {task.taskName}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {task.projectName && (
-                    <span className="truncate block">{task.projectName}</span>
-                  )}
-                  <span className={cn("text-[11px]", getStatusColor(task.status?.parent ?? ""))}>
-                    {task.status?.parent ?? "To Do"}
-                  </span>
-                </p>
-              </div>
+              <p className="text-sm font-medium truncate min-w-0 flex-1">
+                {task.taskName}
+              </p>
               {task.priority && task.priority !== "medium" && (
                 <span
                   className={cn(
-                    "shrink-0 self-center rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase",
+                    "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase",
                     task.priority === "urgent" && "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
                     task.priority === "high" && "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
                     task.priority === "low" && "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
@@ -183,6 +195,7 @@ export function TasksCard() {
                   {task.priority}
                 </span>
               )}
+              <DueDate dueDate={task.dueDate} />
             </div>
           ))}
           {tasks.length >= 8 && (

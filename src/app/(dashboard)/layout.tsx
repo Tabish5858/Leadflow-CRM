@@ -221,11 +221,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                   {(activeWorkspace?.name || "LF").slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              {!sidebarCollapsed && (
-                <span className="text-lg font-bold tracking-tight truncate">
-                  {activeWorkspace?.name || "LeadFlow"}
-                </span>
-              )}
             </div>
             {!sidebarCollapsed && (
               <button

@@ -89,6 +89,21 @@ export function MessagesCard() {
               ? conv.participantIds?.includes(user.id)
               : false;
 
+            // Resolve display name: group > lead > other participant's name
+            const resolveName = (): string => {
+              if (conv.groupName) return conv.groupName;
+              if (conv.leadName) return conv.leadName;
+              if (user?.id && conv.participantIds?.length && conv.participantNames?.length) {
+                const otherIdx = conv.participantIds.findIndex((id) => id !== user.id);
+                if (otherIdx >= 0 && conv.participantNames[otherIdx]) {
+                  return conv.participantNames[otherIdx];
+                }
+              }
+              return conv.participantNames?.[0] || "Conversation";
+            };
+            const displayName = resolveName();
+            const initials = displayName.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
+
             return (
               <div
                 key={conv.id}
@@ -98,15 +113,15 @@ export function MessagesCard() {
                 )}
                 onClick={() => router.push(`/messages/${conv.id}`)}
               >
-                {/* Avatar placeholder */}
+                {/* Avatar with initials */}
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                  {(conv.groupName || conv.leadName || "?").charAt(0).toUpperCase()}
+                  {initials}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium truncate">
-                      {conv.groupName || conv.leadName || "Conversation"}
+                      {displayName}
                     </p>
                     {conv.unreadCount > 0 && (
                       <span className="shrink-0 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
