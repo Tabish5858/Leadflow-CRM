@@ -79,8 +79,8 @@ export function WorkspaceSwitcher({ collapsed = false, onToggleCollapse }: { col
       {/* Workspace Selector */}
       <div className="pt-3 px-3 flex justify-center items-center w-full">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            {collapsed ? (
+          {collapsed ? (
+            <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
@@ -93,14 +93,11 @@ export function WorkspaceSwitcher({ collapsed = false, onToggleCollapse }: { col
                     {getWorkspaceInitials(activeWorkspace.name)}
                   </AvatarFallback>
                 </Avatar>
-                {onToggleCollapse && (
-                  <span className="absolute -right-3 top-1/2 -translate-y-1/2 h-5 w-5 items-center justify-center rounded-full border bg-background shadow-sm text-muted-foreground hidden group-hover:inline-flex hover:bg-accent hover:text-foreground cursor-pointer">
-                    <ChevronRight className="h-3 w-3" />
-                  </span>
-                )}
               </Button>
-            ) : (
-              <div className="flex items-center w-full gap-1">
+            </DropdownMenuTrigger>
+          ) : (
+            <div className="flex items-center w-full gap-1">
+              <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   className="flex-1 justify-start gap-2 px-2 h-10 text-sm font-medium hover:bg-accent/50"
@@ -115,18 +112,18 @@ export function WorkspaceSwitcher({ collapsed = false, onToggleCollapse }: { col
                     {activeWorkspace.name}
                   </span>
                 </Button>
-                {onToggleCollapse && (
-                  <button
-                    type="button"
-                    onClick={onToggleCollapse}
-                    className="hidden lg:inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            )}
-          </DropdownMenuTrigger>
+              </DropdownMenuTrigger>
+              {onToggleCollapse && (
+                <button
+                  type="button"
+                  onClick={onToggleCollapse}
+                  className="hidden lg:inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          )}
           <DropdownMenuContent
             className="w-64"
             align="start"
