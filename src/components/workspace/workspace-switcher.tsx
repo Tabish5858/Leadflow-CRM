@@ -90,7 +90,7 @@ export function WorkspaceSwitcher({ collapsed = false, onToggleCollapse }: { col
                 >
                   <Avatar className="h-8 w-8 border bg-primary/10">
                     <AvatarImage src={activeWorkspace.logoUrl || undefined} />
-                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary h-9 w-9">
                       {getWorkspaceInitials(activeWorkspace.name)}
                     </AvatarFallback>
                   </Avatar>
@@ -100,7 +100,7 @@ export function WorkspaceSwitcher({ collapsed = false, onToggleCollapse }: { col
                 <button
                   type="button"
                   onClick={onToggleCollapse}
-                  className="absolute -right-3 top-1/2 -translate-y-1/2 h-6 w-6 items-center justify-center rounded-full border bg-background shadow-sm text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer opacity-0 group-hover/ws:opacity-100 transition-opacity z-10"
+                  className="absolute -right-5 top-1/2 -translate-y-1/2 h-6 w-6 items-center justify-center rounded-full border bg-background shadow-sm text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer opacity-0 group-hover/ws:opacity-100 transition-opacity z-10 flex"
                   title="Expand sidebar"
                 >
                   <ChevronRight className="h-3 w-3" />
@@ -108,15 +108,15 @@ export function WorkspaceSwitcher({ collapsed = false, onToggleCollapse }: { col
               )}
             </div>
           ) : (
-            <div className="flex items-center w-full gap-1">
+            <div className="flex items-center w-full gap-1 group">
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   className="flex-1 justify-start gap-2 px-2 h-10 text-sm font-medium hover:bg-accent/50"
                 >
-                  <Avatar className="h-6 w-6 border bg-primary/10">
-                    <AvatarImage src={activeWorkspace.logoUrl || undefined} />
-                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                  <Avatar className="h-9 w-9 border bg-primary/10">
+                    <AvatarImage src={activeWorkspace.logoUrl || undefined} className="w-9 h-9"/>
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary h-9 w-9">
                       {getWorkspaceInitials(activeWorkspace.name)}
                     </AvatarFallback>
                   </Avatar>
@@ -129,7 +129,7 @@ export function WorkspaceSwitcher({ collapsed = false, onToggleCollapse }: { col
                 <button
                   type="button"
                   onClick={onToggleCollapse}
-                  className="hidden lg:inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  className="hidden lg:inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors bg-accent text-foreground opacity-0 group-hover:opacity-100 absolute right-1"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>

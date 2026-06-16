@@ -208,7 +208,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           )}
         >
           {/* ── Workspace Switcher (with collapse toggle) ── */}
-          <div className={cn(sidebarCollapsed ? "flex justify-center pt-3 flex-col" : "pt-3")}>
+          <div className={cn(sidebarCollapsed ? "flex justify-center pt-0.75 flex-col" : "pt-0.75")}>
             <WorkspaceSwitcher collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
           </div>
 
