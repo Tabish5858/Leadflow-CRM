@@ -1,52 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageSquare, ArrowUpRight } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { getConversations } from "@/lib/firebase/messages";
-import { getWorkspaceMembers } from "@/lib/firebase/workspaces";
-import type { Conversation, WorkspaceMember } from "@/types";
+import { useDashboardMessages } from "@/lib/queries/dashboard-queries";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
 export function MessagesCard() {
   const router = useRouter();
   const { activeWorkspace, user } = useWorkspace();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [members, setMembers] = useState<WorkspaceMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!activeWorkspace?.id) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const [data, membersData] = await Promise.all([
-          getConversations(activeWorkspace.id),
-          getWorkspaceMembers(activeWorkspace.id),
-        ]);
-        if (!cancelled) {
-          setConversations(data.slice(0, 6));
-          setMembers(membersData);
-        }
-      } catch (err) {
-        if (!cancelled) setError("Failed to load conversations");
-        console.error(err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [activeWorkspace?.id]);
+  const { data, isLoading, error } = useDashboardMessages(activeWorkspace?.id);
+  const conversations = data?.conversations ?? [];
+  const members = data?.members ?? [];
 
   // Build photo map: userId -> photoURL
   const photoMap = new Map(members.map((m) => [m.userId, m.photoURL]));
@@ -62,7 +31,7 @@ export function MessagesCard() {
           ? `${totalUnread} unread across ${conversations.length} conversations`
           : "Recent conversations"
       }
-      loading={loading}
+      loading={isLoading}
       headerAction={
         <Button
           variant="ghost"
@@ -76,9 +45,9 @@ export function MessagesCard() {
     >
       {error ? (
         <div className="flex h-full items-center justify-center">
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="text-sm text-destructive">{error?.message}</p>
         </div>
-      ) : conversations.length === 0 && !loading ? (
+      ) : conversations.length === 0 && !isLoading ? (
         <div className="flex h-full flex-col items-center justify-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
             <MessageSquare className="h-6 w-6 text-muted-foreground" />

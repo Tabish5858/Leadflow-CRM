@@ -1,50 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, Clock, Video, ArrowUpRight } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { getMeetings } from "@/lib/firebase/meetings";
+import { useDashboardMeetings } from "@/lib/queries/dashboard-queries";
 import type { Meeting } from "@/types";
 import { format } from "date-fns";
 
 export function MeetingsCard() {
   const router = useRouter();
   const { activeWorkspace } = useWorkspace();
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!activeWorkspace?.id) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await getMeetings(activeWorkspace.id);
-        if (!cancelled) {
-          // Filter upcoming (startTime in the future) and sort by startTime ASC
-          const now = Date.now() / 1000;
-          const upcoming = data
-            .filter((m) => m.startTime?.seconds && m.startTime.seconds > now)
-            .sort((a, b) => (a.startTime?.seconds ?? 0) - (b.startTime?.seconds ?? 0))
-            .slice(0, 6);
-          setMeetings(upcoming);
-        }
-      } catch (err) {
-        if (!cancelled) setError("Failed to load meetings");
-        console.error(err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [activeWorkspace?.id]);
+  const { data: meetings = [], isLoading, error } = useDashboardMeetings(activeWorkspace?.id);
 
   const formatMeetingTime = (meeting: Meeting): string => {
     if (!meeting.startTime?.toDate) return "";
@@ -63,7 +31,7 @@ export function MeetingsCard() {
       id="meetings"
       title="Upcoming Meetings"
       description="Scheduled meetings"
-      loading={loading}
+      loading={isLoading}
       headerAction={
         <Button
           variant="ghost"
@@ -77,9 +45,9 @@ export function MeetingsCard() {
     >
       {error ? (
         <div className="flex h-full items-center justify-center">
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="text-sm text-destructive">{error?.message}</p>
         </div>
-      ) : meetings.length === 0 && !loading ? (
+      ) : meetings.length === 0 && !isLoading ? (
         <div className="flex h-full flex-col items-center justify-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
             <Calendar className="h-6 w-6 text-muted-foreground" />

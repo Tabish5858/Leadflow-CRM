@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Receipt, ArrowUpRight } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { getInvoices } from "@/lib/firebase/invoices";
-import type { Invoice } from "@/types";
+import { useDashboardInvoices } from "@/lib/queries/dashboard-queries";
 import { cn, formatCurrency } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
@@ -25,37 +23,14 @@ const STATUS_COLORS: Record<string, string> = {
 export function InvoicesCard() {
   const router = useRouter();
   const { activeWorkspace } = useWorkspace();
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!activeWorkspace?.id) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await getInvoices(activeWorkspace.id, { max: 10 });
-        if (!cancelled) setInvoices(data.slice(0, 6));
-      } catch (err) {
-        if (!cancelled) setError("Failed to load invoices");
-        console.error(err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [activeWorkspace?.id]);
+  const { data: invoices = [], isLoading, error } = useDashboardInvoices(activeWorkspace?.id);
 
   return (
     <DashboardCard
       id="invoices"
       title="Invoices"
       description="Recent invoices"
-      loading={loading}
+      loading={isLoading}
       headerAction={
         <Button
           variant="ghost"
@@ -69,9 +44,9 @@ export function InvoicesCard() {
     >
       {error ? (
         <div className="flex h-full items-center justify-center">
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="text-sm text-destructive">{error.message}</p>
         </div>
-      ) : invoices.length === 0 && !loading ? (
+      ) : invoices.length === 0 && !isLoading ? (
         <div className="flex h-full flex-col items-center justify-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
             <Receipt className="h-6 w-6 text-muted-foreground" />

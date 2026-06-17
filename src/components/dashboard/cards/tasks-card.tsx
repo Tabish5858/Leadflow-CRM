@@ -1,14 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Circle, Clock, ListTodo, AlertCircle, CalendarDays } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { getProjectTasks } from "@/lib/firebase/project-tasks";
-import { getProjects } from "@/lib/firebase/projects";
-import type { ProjectTask } from "@/types";
+import { useDashboardTasks } from "@/lib/queries/dashboard-queries";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, isPast, isToday } from "date-fns";
 
@@ -64,81 +61,14 @@ function DueDate({ dueDate }: { dueDate?: { seconds: number } | null }) {
 export function TasksCard() {
   const router = useRouter();
   const { activeWorkspace, user } = useWorkspace();
-  const [tasks, setTasks] = useState<(ProjectTask & { projectName?: string })[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!activeWorkspace?.id || !user?.id) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Get user's projects (limit to 20 to keep N+1 bounded)
-        const projects = await getProjects(activeWorkspace.id, { max: 20 });
-        const userProjects = projects.filter(
-          (p) => p.memberIds?.includes(user.id) && p.status === "active"
-        );
-
-        // Get tasks from each project and filter by assignee
-        const allTasks: (ProjectTask & { projectName?: string })[] = [];
-        await Promise.all(
-          userProjects.map(async (project) => {
-            try {
-              const projectTasks = await getProjectTasks(project.id);
-              const assigned = projectTasks.filter(
-                (t) =>
-                  t.assigneeId === user.id &&
-                  !t.isDeleted &&
-                  t.status?.parent !== "Complete"
-              );
-              assigned.forEach((t) => {
-                allTasks.push({ ...t, projectName: project.name });
-              });
-            } catch {
-              // Skip projects we can't read
-            }
-          })
-        );
-
-      // Sort: by priority (urgent > high > medium > low), then by dueDate
-      const priorityOrder: Record<string, number> = {
-        urgent: 0,
-        high: 1,
-        medium: 2,
-        low: 3,
-      };
-      allTasks.sort((a, b) => {
-        const pa = priorityOrder[a.priority ?? "low"] ?? 3;
-        const pb = priorityOrder[b.priority ?? "low"] ?? 3;
-        if (pa !== pb) return pa - pb;
-        if (a.dueDate && b.dueDate) return a.dueDate.seconds - b.dueDate.seconds;
-        if (a.dueDate) return -1;
-        if (b.dueDate) return 1;
-        return 0;
-      });
-
-      if (!cancelled) setTasks(allTasks.slice(0, 8));
-    } catch (err) {
-      if (!cancelled) setError("Failed to load tasks");
-      console.error(err);
-    } finally {
-      if (!cancelled) setLoading(false);
-    }
-  })();
-
-  return () => { cancelled = true; };
-}, [activeWorkspace?.id, user?.id]);
+  const { data: tasks = [], isLoading, error } = useDashboardTasks(activeWorkspace?.id, user?.id);
 
   return (
     <DashboardCard
       id="tasks"
       title="My Tasks"
       description="Tasks assigned to you"
-      loading={loading}
+      loading={isLoading}
       headerAction={
         <Button
           variant="ghost"
@@ -152,9 +82,9 @@ export function TasksCard() {
     >
       {error ? (
         <div className="flex h-full items-center justify-center">
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="text-sm text-destructive">{error?.message}</p>
         </div>
-      ) : tasks.length === 0 && !loading ? (
+      ) : tasks.length === 0 && !isLoading ? (
         <div className="flex h-full flex-col items-center justify-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
             <ListTodo className="h-6 w-6 text-muted-foreground" />

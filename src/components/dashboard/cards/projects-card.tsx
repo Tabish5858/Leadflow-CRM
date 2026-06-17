@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FolderKanban, ArrowUpRight } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { getProjects } from "@/lib/firebase/projects";
-import type { Project } from "@/types";
+import { useDashboardProjects } from "@/lib/queries/dashboard-queries";
 import { cn, formatCurrency } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
@@ -22,38 +20,14 @@ const STATUS_COLORS: Record<string, string> = {
 export function ProjectsCard() {
   const router = useRouter();
   const { activeWorkspace, user } = useWorkspace();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!activeWorkspace?.id || !user?.id) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const all = await getProjects(activeWorkspace.id, { max: 50 });
-        const mine = all.filter((p) => p.memberIds?.includes(user.id));
-        if (!cancelled) setProjects(mine.slice(0, 6));
-      } catch (err) {
-        if (!cancelled) setError("Failed to load projects");
-        console.error(err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [activeWorkspace?.id, user?.id]);
+  const { data: projects = [], isLoading, error } = useDashboardProjects(activeWorkspace?.id, user?.id);
 
   return (
     <DashboardCard
       id="projects"
       title="My Projects"
       description="Projects you're part of"
-      loading={loading}
+      loading={isLoading}
       headerAction={
         <Button
           variant="ghost"
@@ -67,9 +41,9 @@ export function ProjectsCard() {
     >
       {error ? (
         <div className="flex h-full items-center justify-center">
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="text-sm text-destructive">{error?.message}</p>
         </div>
-      ) : projects.length === 0 && !loading ? (
+      ) : projects.length === 0 && !isLoading ? (
         <div className="flex h-full flex-col items-center justify-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
             <FolderKanban className="h-6 w-6 text-muted-foreground" />

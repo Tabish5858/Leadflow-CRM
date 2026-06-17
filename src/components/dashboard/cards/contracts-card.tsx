@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PenTool, ArrowUpRight } from "lucide-react";
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useWorkspace } from "@/contexts/workspace-context";
-import { getContracts } from "@/lib/firebase/contracts";
-import type { Contract } from "@/types";
+import { useDashboardContracts } from "@/lib/queries/dashboard-queries";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 
@@ -24,37 +22,14 @@ const STATUS_COLORS: Record<string, string> = {
 export function ContractsCard() {
   const router = useRouter();
   const { activeWorkspace } = useWorkspace();
-  const [contracts, setContracts] = useState<Contract[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!activeWorkspace?.id) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await getContracts(activeWorkspace.id, { max: 10 });
-        if (!cancelled) setContracts(data.slice(0, 6));
-      } catch (err) {
-        if (!cancelled) setError("Failed to load contracts");
-        console.error(err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [activeWorkspace?.id]);
+  const { data: contracts = [], isLoading, error } = useDashboardContracts(activeWorkspace?.id);
 
   return (
     <DashboardCard
       id="contracts"
       title="Contracts"
       description="Recent contracts & proposals"
-      loading={loading}
+      loading={isLoading}
       headerAction={
         <Button
           variant="ghost"
@@ -68,9 +43,9 @@ export function ContractsCard() {
     >
       {error ? (
         <div className="flex h-full items-center justify-center">
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="text-sm text-destructive">{error?.message}</p>
         </div>
-      ) : contracts.length === 0 && !loading ? (
+      ) : contracts.length === 0 && !isLoading ? (
         <div className="flex h-full flex-col items-center justify-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
             <PenTool className="h-6 w-6 text-muted-foreground" />
