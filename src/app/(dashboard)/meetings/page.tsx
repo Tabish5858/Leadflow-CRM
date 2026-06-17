@@ -487,7 +487,7 @@ export default function MeetingsPage() {
 
             {upcoming.length === 0 && inProgress.length === 0 && (
               <Card>
-                <CardContent className="flex flex-col items-center justify-center h-32 gap-2">
+                <CardContent className="flex flex-col items-center justify-center h-32 gap-2 p-6">
                   <Calendar className="h-6 w-6 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
                     No upcoming meetings

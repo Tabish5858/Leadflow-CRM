@@ -794,8 +794,8 @@ function TimeTrackingPreview() {
       <SectionHeader badge="Productivity" title="Time Tracking" description="Live stopwatch, manual entries, per-project billable tracking, and daily grouped views." />
       <motion.div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5" initial={{ opacity: 0, y: 32 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ type: "spring", stiffness: 80, damping: 18 }}>
         {/* Timer */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-4">
+        <div className="flex md:items-center justify-between mb-5 md:flex-row flex-col">
+          <div className="flex items-center gap-4 md:justify-start justify-between">
             <div className="text-3xl font-mono font-bold text-emerald-400 tabular-nums">04:32:18</div>
             <div className="flex gap-1.5">
               <div className="h-8 w-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center"><Play className="h-4 w-4" /></div>

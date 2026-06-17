@@ -120,7 +120,7 @@ export function WorkspaceSwitcher({ collapsed = false, onToggleCollapse }: { col
                       {getWorkspaceInitials(activeWorkspace.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="flex-1 truncate text-left">
+                  <span className="flex-1 truncate text-left pr-2">
                     {activeWorkspace.name}
                   </span>
                 </Button>
