@@ -549,21 +549,33 @@ export default function InvoiceDetailPage() {
                   return;
                 }
                 setReviewing(true);
+                const prevInvoice = invoice;
+
+                // 1. Optimistic — update UI immediately
+                if (showReviewDialog === "approve") {
+                  setInvoice((prev) =>
+                    prev ? { ...prev, status: "paid", paidDate: Timestamp.now(), paymentProof: { ...prev.paymentProof!, status: "approved" as const, reviewedBy: user?.id, reviewedAt: Timestamp.now() } } : prev
+                  );
+                } else {
+                  setInvoice((prev) =>
+                    prev ? { ...prev, status: "sent" as InvoiceStatus, paymentProof: { ...prev.paymentProof!, status: "rejected" as const, reviewedBy: user?.id, reviewedAt: Timestamp.now() } } : prev
+                  );
+                }
+
                 try {
+                  // 2. Sync to Firestore in background
                   if (showReviewDialog === "approve") {
                     await approvePaymentProof(invoice.id, user?.id || "", reviewNotes || undefined);
-                    setInvoice((prev) =>
-                      prev ? { ...prev, status: "paid", paidDate: Timestamp.now(), paymentProof: { ...prev.paymentProof!, status: "approved" as const, reviewedBy: user?.id, reviewedAt: Timestamp.now() } } : prev
-                    );
                     toast.success("Payment approved — invoice marked as paid");
                   } else {
                     await rejectPaymentProof(invoice.id, user?.id || "", reviewNotes);
-                    setInvoice((prev) =>
-                      prev ? { ...prev, status: "sent" as InvoiceStatus, paymentProof: { ...prev.paymentProof!, status: "rejected" as const, reviewedBy: user?.id, reviewedAt: Timestamp.now() } } : prev
-                    );
                     toast.success("Payment proof rejected — invoice reverted to Unpaid");
                   }
+                  // 3. Invalidate list cache
+                  queryClient.invalidateQueries({ queryKey: ["invoices", activeWorkspace?.id] });
                 } catch {
+                  // 4. Rollback on failure
+                  setInvoice(prevInvoice);
                   toast.error("Failed to review payment proof");
                 } finally {
                   setReviewing(false);
