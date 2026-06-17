@@ -45,6 +45,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
+import { usePrefetch } from "@/lib/queries/prefetch-hooks";
 
 const navItems: { href: string; label: string; icon: typeof LayoutDashboard; moduleId: ModuleId }[] = [
   // 1. Dashboard — KPIs & overview first
@@ -70,6 +71,15 @@ const navItems: { href: string; label: string; icon: typeof LayoutDashboard; mod
   // 11. Settings — always last
   { href: "/settings", label: "Settings", icon: Settings, moduleId: "settings" },
 ];
+
+/* Map sidebar href to prefetch page name */
+const HREF_PREFETCH_MAP: Record<string, Parameters<ReturnType<typeof usePrefetch>>[0] | null> = {
+  "/projects": "projects",
+  "/invoices": "invoices",
+  "/contracts": "contracts",
+  "/meetings": "meetings",
+  "/messages": "messages",
+};
 
 function SidebarSkeleton() {
   return (
@@ -108,6 +118,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { user, activeWorkspace, loading: wsLoading } = useWorkspace();
   const { canAccess } = usePermissions();
   const { isDemoMode } = useDemoMode();
+  const prefetch = usePrefetch(activeWorkspace?.id);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -239,6 +250,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                       <Link
                         href={item.href}
                         onClick={() => setSidebarOpen(false)}
+                        onMouseEnter={() => { const page = HREF_PREFETCH_MAP[item.href]; if (page && activeWorkspace?.id) prefetch(page); }}
                         className={cn(
                           "flex items-center justify-center rounded-lg px-2.5 py-2.5 text-sm font-medium transition-all w-max",
                           isActive
@@ -264,6 +276,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     key={item.href}
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
+                    onMouseEnter={() => { const page = HREF_PREFETCH_MAP[item.href]; if (page && activeWorkspace?.id) prefetch(page); }}
                     className={cn(
                       "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
                       isActive
