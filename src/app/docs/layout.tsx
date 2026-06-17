@@ -97,7 +97,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
   const { prev, next } = findAdjacent(pathname);
 
   return (
-    <div className="docs-dark min-h-screen bg-black text-white">
+    <div className="docs-dark min-h-screen bg-background text-foreground">
       {/* Subtle background glow */}
       <div className="pointer-events-none fixed inset-0" aria-hidden="true">
         <div className="absolute -top-32 right-[-10%] h-96 w-96 rounded-full bg-primary/8 blur-3xl" />
@@ -105,7 +105,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* Mobile nav toggle */}
-      <div className="sticky top-0 z-30 border-b border-neutral-800 bg-black/80 backdrop-blur-xl lg:hidden">
+      <div className="sticky top-0 z-30 border-b border-neutral-800 bg-background/80 backdrop-blur-xl lg:hidden">
         <div className="flex items-center justify-between px-4 py-3">
           <Link href="/docs" className="flex items-center gap-2 text-sm font-semibold text-white">
             <div className="flex h-7 w-7 items-center justify-center">
@@ -148,7 +148,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
         )}
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-30 w-72 translate-x-0 border-r border-neutral-800 bg-black p-6 transition-transform lg:hidden",
+            "fixed inset-y-0 left-0 z-30 w-72 translate-x-0 border-r border-neutral-800 bg-background p-6 transition-transform lg:hidden",
             sidebarOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >

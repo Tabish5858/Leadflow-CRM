@@ -83,25 +83,25 @@
    SHADCN SEMANTIC TOKENS (HSL)
    ============================================ */
 :root {
-  /* Dark theme (default) - pure black professional CRM palette */
-  --background: 0 0% 0%;
+  /* Dark theme (default) - dark gray professional CRM palette */
+  --background: 220 14% 6%;
   --foreground: 210 40% 98%;
-  --card: 0 0% 4%;
+  --card: 220 14% 9%;
   --card-foreground: 210 40% 98%;
-  --popover: 0 0% 4%;
+  --popover: 220 14% 9%;
   --popover-foreground: 210 40% 98%;
   --primary: 215 16% 47%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 8%;
+  --secondary: 220 14% 12%;
   --secondary-foreground: 210 40% 98%;
-  --muted: 0 0% 8%;
+  --muted: 220 14% 12%;
   --muted-foreground: 215 16% 60%;
-  --accent: 0 0% 8%;
+  --accent: 220 14% 12%;
   --accent-foreground: 210 40% 98%;
   --destructive: 0 63% 45%;
   --destructive-foreground: 0 0% 100%;
-  --border: 0 0% 12%;
-  --input: 0 0% 12%;
+  --border: 220 14% 16%;
+  --input: 220 14% 16%;
   --ring: 215 16% 47%;
 
   --chart-1: 215 16% 47%;
@@ -170,11 +170,11 @@
    ============================================ */
 .docs-dark {
   color-scheme: dark;
-  --background: 0 0% 0%;
+  --background: 220 14% 6%;
   --foreground: 210 40% 98%;
-  --card: 0 0% 3%;
+  --card: 220 14% 9%;
   --card-foreground: 210 40% 98%;
-  --popover: 0 0% 3%;
+  --popover: 220 14% 9%;
   --popover-foreground: 210 40% 98%;
   --primary: 215 16% 47%;
   --primary-foreground: 0 0% 100%;

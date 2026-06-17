@@ -1192,7 +1192,7 @@ export default function LandingPage() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex items-center gap-3 h-12">
           <Logo animate />
         </div>
@@ -1201,7 +1201,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-black text-white">
+    <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
       {/* Background */}
       <div className="pointer-events-none fixed inset-0">
         <div className="absolute -top-32 right-[-10%] h-96 w-96 rounded-full bg-primary/5 blur-3xl" />
@@ -1210,7 +1210,7 @@ export default function LandingPage() {
 
       {/* Nav */}
       <motion.header initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: "spring", stiffness: 120, damping: 20 }}
-        className="sticky top-0 z-20 border-b border-white/10 bg-black/80 backdrop-blur-xl">
+        className="sticky top-0 z-20 border-b border-white/10 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3.5">
           <Link href="/" className="flex items-center gap-2 h-8">
             <Logo />
