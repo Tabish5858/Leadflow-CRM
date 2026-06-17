@@ -2,6 +2,7 @@
 
 import { Timestamp } from "firebase/firestore";
 import { useWorkspace } from "@/contexts/workspace-context";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   getInvoice,
   updateInvoice,
@@ -90,6 +91,7 @@ export default function InvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { activeWorkspace, user } = useWorkspace();
+  const queryClient = useQueryClient();
   const invoiceId = params.id as string;
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
@@ -150,23 +152,36 @@ export default function InvoiceDetailPage() {
   const handleStatusChange = async (newStatus: InvoiceStatus) => {
     if (!invoice || updating) return;
     setUpdating(true);
+
+    // Save previous state for rollback
+    const previousInvoice = invoice;
+
+    // 1. Optimistic update — show new status immediately
+    setInvoice((prev) =>
+      prev
+        ? {
+            ...prev,
+            status: newStatus,
+            paidDate: newStatus === "paid" ? ({ toDate: () => new Date() } as Invoice["paidDate"]) : prev.paidDate,
+          }
+        : prev
+    );
+
     try {
+      // 2. Sync to Firestore in background
       await updateInvoice(invoice.id, { status: newStatus });
-      setInvoice((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: newStatus,
-              paidDate: newStatus === "paid" ? ({ toDate: () => new Date() } as Invoice["paidDate"]) : prev.paidDate,
-            }
-          : prev
-      );
+
+      // 3. Invalidate list cache so /invoices reflects the change on return
+      queryClient.invalidateQueries({ queryKey: ["invoices", activeWorkspace?.id] });
+
       toast.success(
         newStatus === "sent"
           ? "Invoice sent to client"
           : `Invoice marked as ${newStatus}`
       );
     } catch {
+      // 4. Rollback on failure
+      setInvoice(previousInvoice);
       toast.error("Failed to update invoice");
     } finally {
       setUpdating(false);
