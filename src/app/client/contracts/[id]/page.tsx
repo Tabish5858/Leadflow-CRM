@@ -149,7 +149,7 @@ function ClientContractDetailPage({ params }: { params: Promise<{ id: string }> 
   if (loading) {
     return (
       <div>
-        <PageHeader title="Contract" description="Loading..." />
+        <PageHeader title="Contract" description={<Skeleton className="h-3 w-40" />} />
         <div className="space-y-4">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-64 w-full" />

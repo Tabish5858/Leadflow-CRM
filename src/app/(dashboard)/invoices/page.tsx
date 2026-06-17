@@ -117,7 +117,7 @@ export default function InvoicesPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Invoices</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {isLoading ? "Loading..." : `${invoices.length} invoice${invoices.length !== 1 ? "s" : ""}`}
+              {isLoading ? <Skeleton className="h-4 w-24 inline-block" /> : `${invoices.length} invoice${invoices.length !== 1 ? "s" : ""}`}
             </p>
           </div>
           <Button asChild>

@@ -6,7 +6,6 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { SpreadsheetEditor } from "@/components/leads/spreadsheet-editor";
 import { getSpreadsheet } from "@/lib/firebase/spreadsheets";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2 } from "lucide-react";
 import type { IWorkbookData } from "@univerjs/core";
 
 export default function SpreadsheetEditorPage() {
@@ -42,7 +41,7 @@ export default function SpreadsheetEditorPage() {
   if (!activeWorkspace) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Skeleton className="h-6 w-32" />
       </div>
     );
   }

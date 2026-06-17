@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { auth, db } from "@/lib/firebase/client";
 import { getApiAuthHeaders } from "@/lib/api/client";
 import { toast } from "@/lib/toast";
@@ -812,8 +813,11 @@ export default function AcceptInvitePage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex min-h-screen items-center justify-center p-4">
+          <div className="space-y-4 p-6 w-full max-w-md">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-40 w-full rounded-xl" />
+          </div>
         </div>
       }
     >

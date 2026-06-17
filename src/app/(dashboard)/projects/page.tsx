@@ -125,7 +125,7 @@ export default function ProjectsPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {isLoading ? "Loading..." : `${projects.length} project${projects.length !== 1 ? "s" : ""}`}
+              {isLoading ? <Skeleton className="h-4 w-24 inline-block" /> : `${projects.length} project${projects.length !== 1 ? "s" : ""}`}
             </p>
           </div>
           <Button asChild>

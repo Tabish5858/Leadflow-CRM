@@ -19,6 +19,7 @@ import { FileText, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ErrorState,
   PageHeader,
@@ -109,7 +110,7 @@ function ClientInvoicesPage() {
         title="Invoices"
         description={
           loading
-            ? "Loading..."
+            ? <Skeleton className="h-4 w-24 inline-block" />
             : `${visibleInvoices.length} invoice${visibleInvoices.length !== 1 ? "s" : ""}`
         }
       />

@@ -88,7 +88,7 @@ function ClientContractsPage() {
       <PageHeader
         title="Contracts"
         description={
-          loading ? "Loading..." : `${clientContracts.length} document${clientContracts.length !== 1 ? "s" : ""}`
+          loading ? <Skeleton className="h-4 w-24 inline-block" /> : `${clientContracts.length} document${clientContracts.length !== 1 ? "s" : ""}`
         }
       />
 

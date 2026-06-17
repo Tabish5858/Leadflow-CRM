@@ -9,6 +9,7 @@ import { fetchClientMeetings } from "@/lib/client/client-data";
 import { Calendar, Video } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState, PageHeader, SkeletonList } from "@/components/client/module-layout";
 
 function ClientMeetingsPage() {
@@ -60,7 +61,7 @@ function ClientMeetingsPage() {
         title="Meetings"
         description={
           loading
-            ? "Loading..."
+            ? <Skeleton className="h-4 w-24 inline-block" />
             : `${upcoming.length} upcoming, ${past.length} past`
         }
       />

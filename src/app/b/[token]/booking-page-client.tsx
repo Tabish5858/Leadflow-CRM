@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { BookingInfoPanel } from "@/components/booking/BookingInfoPanel";
 import { BookingCalendar } from "@/components/booking/BookingCalendar";
@@ -343,10 +344,10 @@ export function BookingPageClient({ token, detectedTimezone }: BookingPageClient
       }
     }
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Redirecting...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="space-y-4 p-6 w-full max-w-md">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-40 w-full rounded-xl" />
         </div>
       </div>
     );

@@ -9,7 +9,7 @@ import { auth, db } from "@/lib/firebase/client";
 import { toast } from "@/lib/toast";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, Timestamp } from "firebase/firestore";
-import { AlertCircle, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, ExternalLink } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
@@ -247,9 +247,11 @@ function AcceptClientInviteContent() {
               You now have access to the {invite?.workspaceName} client portal.
             </CardDescription>
           </CardHeader>
-          <CardContent className="text-center text-sm text-muted-foreground">
-            <Loader2 className="mx-auto h-4 w-4 animate-spin" />
-            <p className="mt-2">Redirecting to your dashboard...</p>
+          <CardContent className="text-center">
+            <div className="space-y-4 p-6">
+              <Skeleton className="mx-auto h-8 w-48" />
+              <Skeleton className="mx-auto h-4 w-64" />
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -262,12 +264,14 @@ function AcceptClientInviteContent() {
       <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-            <CardTitle className="mt-4">
-              {signingUp ? "Creating Account" : "Accepting Invitation"}
-            </CardTitle>
-            <CardDescription>Just a moment...</CardDescription>
+            <Skeleton className="mx-auto h-12 w-12 rounded-full" />
+            <Skeleton className="mx-auto mt-4 h-6 w-48" />
+            <Skeleton className="mx-auto mt-2 h-4 w-64" />
           </CardHeader>
+          <CardContent className="space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </CardContent>
         </Card>
       </div>
     );

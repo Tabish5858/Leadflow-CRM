@@ -5,7 +5,6 @@ import { useWorkspace } from "@/contexts/workspace-context";
 import { SpreadsheetList } from "@/components/leads/spreadsheet-list";
 import { getSpreadsheets, type Spreadsheet } from "@/lib/firebase/spreadsheets";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2 } from "lucide-react";
 
 export default function SpreadsheetPage() {
   const { user, activeWorkspace } = useWorkspace();
@@ -32,7 +31,7 @@ export default function SpreadsheetPage() {
   if (!activeWorkspace || !user) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Skeleton className="h-6 w-32" />
       </div>
     );
   }
